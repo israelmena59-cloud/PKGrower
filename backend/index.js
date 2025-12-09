@@ -285,7 +285,7 @@ let appSettings = {
 
 // --- PERSISTENCIA ---
 const fs = require('fs');
-const path = require('path');
+
 const SETTINGS_FILE = path.join(__dirname, 'settings.json');
 // ... (loadSettings/saveSettings stay same)
 
