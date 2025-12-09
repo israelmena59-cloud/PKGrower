@@ -304,7 +304,7 @@ app.get('/health', (req, res) => {
 // Protect all routes with API Key
 const API_KEY = process.env.API_KEY;
 
-app.use((req, res, next) => {
+app.use('/api', (req, res, next) => {
     // Exempt CORS preflight (OPTIONS)
     if (req.method === 'OPTIONS') return next();
 
