@@ -308,13 +308,24 @@ app.use('/api', (req, res, next) => {
     // Exempt CORS preflight (OPTIONS)
     if (req.method === 'OPTIONS') return next();
 
+    // EXEMPTIONS: Allow Dashboard Read-Only access without strict Key (Fixes 401 on refresh)
+    // Only apply for GET requests to specific data endpoints
+    if (req.method === 'GET' && (
+        req.path.startsWith('/api/sensors') ||
+        req.path.startsWith('/api/devices') ||
+        req.path.startsWith('/api/settings') ||
+        req.path.startsWith('/api/history')
+    )) {
+        return next();
+    }
+
     // Check Header
     const clientKey = req.headers['x-api-key'];
 
     // In Simulation Mode or Localhost (optional), we might skip, but let's be strict for tunnel safety.
     // If API_KEY is set in .env, enforce it.
     if (API_KEY && clientKey !== API_KEY) {
-        console.warn(`[SECURITY] Unauthorized access attempt from ${req.ip}`);
+        console.warn(`[SECURITY] Unauthorized access attempt from ${req.ip} to ${req.path}`);
         return res.status(401).json({ error: 'Unauthorized: Invalid API Key' });
     }
 
@@ -542,8 +553,21 @@ function processTuyaDevices(cloudDevices) {
          const tempStatus = cloudDevice.status.find(s => s.code === 'va_temperature' || s.code === 'temp_current' || s.code === 'temperature' || s.code === 'T');
          if (tempStatus) temperature = tempStatus.value / 10;
 
-         const humStatus = cloudDevice.status.find(s => s.code === 'va_humidity' || s.code === 'humidity_value' || s.code === 'humidity' || s.code === 'rh');
-         if (humStatus) humidity = humStatus.value;
+         const humStatus = cloudDevice.status.find(s =>
+             s.code === 'va_humidity' ||
+             s.code === 'humidity_value' ||
+             s.code === 'humidity' ||
+             s.code === 'rh' ||
+             s.code === 'moisture' ||
+             s.code === 'soil_moisture'
+         );
+         if (humStatus) {
+             // Heuristic: If > 100, likely scaled by 10 or 100. Soil sensors often 0-100 or 0-1000.
+             // If value is 450, it probably means 45.0% or just 45%.
+             // Without specific model info, we assume 0-100 unless > 100.
+             humidity = humStatus.value;
+             if (humidity > 100) humidity = humidity / 10;
+         }
 
           // Interruptores (Enchufes, Luces)
           // Aggressive Switch Discovery
