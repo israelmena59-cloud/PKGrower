@@ -1809,6 +1809,27 @@ app.delete('/api/calendar/events/:id', (req, res) => {
   }
 });
 
+// ===== SOIL SENSORS ENDPOINT (Missing Fix) =====
+app.get('/api/sensors/soil', async (req, res) => {
+    try {
+        const soilSensors = [];
+        ['sensorSustrato1', 'sensorSustrato2', 'sensorSustrato3'].forEach(key => {
+            if (tuyaDevices[key]) {
+                 soilSensors.push({
+                     sensor: key,
+                     key: key,
+                     name: tuyaDevices[key].name,
+                     ...tuyaDevices[key], // Include humidity, temperature
+                     lastUpdate: tuyaDevices[key].lastUpdate || new Date().toISOString()
+                 });
+            }
+        });
+        res.json(soilSensors);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // ===== DEVICES - GET ALL =====
 app.get('/api/devices/all', async (req, res) => {
   try {
@@ -2180,6 +2201,22 @@ app.post('/api/ai/analyze-image', upload.single('image'), async (req, res) => {
     }
 });
 
+// ===== IRRIGATION LOG =====
+app.post('/api/irrigation/log', (req, res) => {
+    try {
+        const logEntry = {
+            id: Date.now(),
+            timestamp: new Date().toISOString(),
+            ...req.body
+        };
+        // TODO: Save to Firestore 'irrigation_logs'
+        console.log('[LOG] Irrigation Entry:', logEntry);
+        res.json({ success: true, entry: logEntry });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 app.listen(PORT, '0.0.0.0', async () => { // Escuchar en 0.0.0.0 para acceso LAN
   console.log(`\n╔════════════════════════════════════════════════════════╗`);
   console.log(`║     🌱 PKGrower Backend - Servidor iniciado           ║`);
@@ -2260,8 +2297,54 @@ app.listen(PORT, '0.0.0.0', async () => { // Escuchar en 0.0.0.0 para acceso LAN
         // Backup local (Legacy/Backup for Dev)
         // fs.writeFileSync(HISTORY_FILE, JSON.stringify(sensorHistory)); // Disabled for Cloud Cloud to avoid disk I/O cost/errors
 
-    }, 15000); // 15s (Plan B: 11 endpoints calls / 15s)
+
+    }, 60000); // 60s (Save to DB every minute to reduce costs/bloat)
   }
+
+  // --- HISTORICAL DATA ENDPOINT (RANGE) ---
+  app.get('/api/history', async (req, res) => {
+      try {
+          const { range, start, end } = req.query; // 'day', 'week', 'month' OR start/end
+          let startStr, endStr;
+
+          if (start && end) {
+              // Custom Date Range (from DatePicker)
+              startStr = start;
+              endStr = end;
+          } else {
+              // Relative Range Logic
+              let startTime = new Date();
+              if (range === 'week') {
+                  startTime.setDate(startTime.getDate() - 7);
+              } else if (range === 'month') {
+                  startTime.setDate(startTime.getDate() - 30);
+              } else {
+                  // Default to 'day' (24h)
+                  startTime.setHours(startTime.getHours() - 24);
+              }
+              startStr = startTime.toISOString();
+              endStr = new Date().toISOString();
+          }
+
+          console.log(`[API] Fetching history: ${range} (${startStr} -> ${endStr})`);
+          const data = await firestore.getSensorHistoryRange(startStr, endStr);
+
+          // Downsample for long ranges to improve frontend performance
+          let finalData = data;
+          if (range === 'month' && data.length > 2000) {
+             // Pick every 10th record
+             finalData = data.filter((_, i) => i % 10 === 0);
+          } else if (range === 'week' && data.length > 2000) {
+             // Pick every 5th record
+             finalData = data.filter((_, i) => i % 5 === 0);
+          }
+
+          res.json(finalData);
+      } catch (err) {
+          console.error('[API] Error fetching history:', err);
+          res.json([]);
+      }
+  });
 
   // FORCE REFRESH ENDPOINT
   app.post('/api/devices/refresh', async (req, res) => {

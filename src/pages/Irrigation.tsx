@@ -1,11 +1,23 @@
+
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, Card, CardContent, CardHeader, Grid, Button, TextField, Divider, Alert, CircularProgress } from '@mui/material';
-import { Droplet, Settings, Activity } from 'lucide-react';
+import { Box, Typography, Grid, CardHeader, CardContent, CircularProgress, Alert, Divider, TextField, Button } from '@mui/material';
+import { Droplet, Activity, Settings } from 'lucide-react'; // Check icons used
 import { SoilChart } from '../components/dashboard/SoilChart';
 import { CropSteeringPanel } from '../components/dashboard/CropSteeringPanel';
 import DeviceSwitch from '../components/dashboard/DeviceSwitch';
+import HistoryChart from '../components/dashboard/HistoryChart';
 import { apiClient } from '../api/client';
-import { SensorData } from '../api/client';
+
+interface SensorData {
+    timestamp: string;
+    temperature: number;
+    humidity: number;
+    substrateHumidity: number;
+    sh1: number;
+    sh2: number;
+    sh3: number;
+    vpd: number;
+}
 
 interface IrrigationSettings {
     enabled: boolean;
@@ -30,41 +42,32 @@ const Irrigation: React.FC = () => {
 
   // Load Data
   useEffect(() => {
+    let active = true;
     const fetchData = async () => {
         try {
             // 1. Settings
-            const setRes = await fetch('http://localhost:3000/api/settings');
-            const setData = await setRes.json();
-            setSettings(setData.irrigation);
+            const setData = await apiClient.getSettings();
+            if (active && setData && setData.irrigation) setSettings(setData.irrigation);
 
             // 2. Devices
             const devs = await apiClient.getDeviceStates();
-            setDevices(devs);
+            if (active) setDevices(devs);
 
-            // 3. History (Reusing dashboard endpoint logic or new one?)
-            // Dashboard uses App.tsx state or local? Dashboard has its own polling.
-            // We need a shared history endpoint or just fetch latest 50.
-            // For now, let's look at /api/sensors/history (needs to exist or use /latest workaround)
-            // Wait, standard Pattern: Poll /api/device/refresh to fill backend array, then...
-            // Actually, backend has 'sensorHistory' in memory but no endpoint to GET it fully?
-            // checking backend... 'GET /api/sensors/history' is missing! Dashboard graph was building local history?
-            // No, SoilChart uses 'data' prop.
-            // I will assume for now we start fresh or need to implement history endpoint.
-            // Let's implement a quick poller that builds local history for the session.
+            // 3. History Building Logic
+            // ... (restored below in poll)
 
-        } catch (e) { console.error(e); } finally { setLoading(false); }
+        } catch (e) { console.error(e); } finally { if (active) setLoading(false); }
     };
     fetchData();
 
     // Polling Loop
     const interval = setInterval(async () => {
-        const devs = await apiClient.getDeviceStates();
-        setDevices(devs);
-
-        // Fetch sensor data
         try {
-            const res = await fetch('http://localhost:3000/api/sensors/soil');
-            const soilData = await res.json();
+            const devs = await apiClient.getDeviceStates();
+            if (active) setDevices(devs);
+
+            // Fetch sensor data
+            const soilData = await apiClient.getSoilSensors();
             // Calculate avg
             let avg = 0;
             let count = 0;
@@ -74,7 +77,7 @@ const Irrigation: React.FC = () => {
 
             // Mock History Add (In reality, backend should provide this)
             const newItem: SensorData = {
-                timestamp: new Date().toLocaleTimeString(),
+                timestamp: new Date().toISOString(),
                 temperature: 0, humidity: 0,
                 substrateHumidity: vwc,
                 sh1: soilData.find((s:any)=>s.key==='sensorSustrato1')?.humidity || 0,
@@ -83,10 +86,9 @@ const Irrigation: React.FC = () => {
                 vpd: 0
             };
             setSensorHistory(prev => [...prev.slice(-30), newItem]); // Keep last 30 points
-            setSensorHistory(prev => [...prev.slice(-30), newItem]); // Keep last 30 points
         } catch(e) {}
     }, 10000); // Optimized to 10s for Tunnel performance
-    return () => clearInterval(interval);
+    return () => { active = false; clearInterval(interval); };
   }, []);
 
   const handleSettingsChange = (field: keyof IrrigationSettings, value: any) => {
@@ -99,18 +101,15 @@ const Irrigation: React.FC = () => {
 
   const saveSettings = async () => {
       if (!settings) return;
-      await fetch('http://localhost:3000/api/settings', {
-          method: 'POST', headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({ irrigation: settings })
-      });
+      await apiClient.saveSettings({ irrigation: settings });
   };
 
   const handleShot = async (pct: number) => {
       if (pulsing) return;
       setPulsing(true);
       try {
-          await fetch('http://localhost:3000/api/irrigation/shot', {
-              method: 'POST', headers: {'Content-Type': 'application/json'},
+          await apiClient.request('/api/irrigation/shot', {
+              method: 'POST',
               body: JSON.stringify({ percentage: pct })
           });
       } catch (e) {
@@ -156,6 +155,44 @@ const Irrigation: React.FC = () => {
                 <SoilChart data={sensorHistory} phase={phase} />
               </Box>
               <CropSteeringPanel phase={phase} currentVWC={latestVWC} />
+
+              {/* IRRIGATION LOG */}
+              <Box className="glass-panel" sx={{
+                  mt: 3,
+                  borderRadius: 'var(--squircle-radius)',
+                  bgcolor: 'var(--glass-bg)',
+                  backdropFilter: 'var(--backdrop-blur)',
+                  border: 'var(--glass-border)',
+                  boxShadow: 'var(--glass-shadow)',
+                  overflow: 'hidden'
+              }}>
+                  <CardHeader title="Bitácora de Riego & Runoff" subheader="Registra mediciones para análisis de IA" />
+                  <Divider sx={{ borderColor: 'rgba(255,255,255,0.1)' }} />
+                  <CardContent>
+                      <Grid container spacing={2}>
+                          <Grid item xs={12} md={6}>
+                              <Typography variant="subtitle2" sx={{ mb: 1, color: 'text.secondary' }}>Entrada (Riego)</Typography>
+                              <Box sx={{ display: 'flex', gap: 2 }}>
+                                  <TextField label="pH Entrada" size="small" type="number" fullWidth />
+                                  <TextField label="EC Entrada" size="small" type="number" fullWidth />
+                              </Box>
+                          </Grid>
+                          <Grid item xs={12} md={6}>
+                              <Typography variant="subtitle2" sx={{ mb: 1, color: 'text.secondary' }}>Salida (Runoff)</Typography>
+                              <Box sx={{ display: 'flex', gap: 2 }}>
+                                  <TextField label="pH Runoff" size="small" type="number" fullWidth />
+                                  <TextField label="EC Runoff" size="small" type="number" fullWidth />
+                              </Box>
+                          </Grid>
+                          <Grid item xs={12}>
+                               <TextField label="Volumen Riego (L) - Opcional" size="small" type="number" fullWidth sx={{ mb: 2 }} />
+                               <Button variant="contained" color="primary" fullWidth>
+                                   Guardar Registro
+                               </Button>
+                          </Grid>
+                      </Grid>
+                  </CardContent>
+              </Box>
           </Grid>
 
           {/* RIGHT: Controls */}
@@ -242,6 +279,19 @@ const Irrigation: React.FC = () => {
               </Box>
           </Grid>
       </Grid>
+
+
+      {/* HISTORICAL CHART */}
+      <Box sx={{ mt: 3 }}>
+          <HistoryChart
+              type="substrate"
+              title="Historial Sustrato"
+              targets={{
+                  vwc: settings?.targetVWC || 60,
+                  dryback: settings?.drybackTarget || 20
+              }}
+          />
+      </Box>
     </Box>
   );
 };

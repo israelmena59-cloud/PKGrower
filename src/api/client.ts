@@ -3,8 +3,9 @@
 
 // Read API base URL from environment or use default
 // Read API base URL from environment (Vite/Firebase) or use default (Localhost)
-// NOTE: In Firebase/Vite, use VITE_API_URL env var.
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
+// NOTE: We prefer VITE_API_URL to allow switching between Local and Cloud.
+// export const API_BASE_URL = 'https://pkgrower.onrender.com'; // Hardcoded
+export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 export interface SensorData {
   timestamp: string
@@ -67,7 +68,7 @@ class APIClient {
     this.baseUrl = baseUrl
   }
 
-  private async request<T>(
+  public async request<T>(
     endpoint: string,
     options?: RequestInit
   ): Promise<T> {
@@ -95,6 +96,14 @@ class APIClient {
 
   async getSensorHistory(): Promise<SensorData[]> {
     return this.request<SensorData[]>('/api/sensors/history')
+  }
+
+  async getHistoryRange(range: string): Promise<any[]> {
+    return this.request<any[]>(`/api/history?range=${range}`)
+  }
+
+  async getHistoryDateRange(start: string, end: string): Promise<any[]> {
+    return this.request<any[]>(`/api/history?start=${start}&end=${end}`)
   }
 
   // Devices
