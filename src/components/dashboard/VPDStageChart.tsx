@@ -11,12 +11,13 @@ interface VPDStageChartProps {
 
 type Stage = 'VEG' | 'FLOWER_1_4' | 'FLOWER_4_7' | 'FLOWER_7_PLUS' | 'DRYING';
 
-const STAGE_CONFIG: Record<Stage, { label: string; minVpd: number; maxVpd: number; color: string; icon: React.ReactNode }> = {
-  VEG: { label: 'Vegetativo', minVpd: 0.8, maxVpd: 1.1, color: '#4ade80', icon: <Sprout size={16} /> },
-  FLOWER_1_4: { label: 'Flora 1-4 Sem', minVpd: 1.0, maxVpd: 1.2, color: '#fcd34d', icon: <Flower size={16} /> },
-  FLOWER_4_7: { label: 'Flora 4-7 Sem', minVpd: 1.2, maxVpd: 1.4, color: '#f97316', icon: <Flower size={16} /> },
-  FLOWER_7_PLUS: { label: 'Flora 7+ Sem', minVpd: 1.2, maxVpd: 1.5, color: '#ef4444', icon: <Flower size={16} /> },
-  DRYING: { label: 'Secado', minVpd: 0.7, maxVpd: 0.9, color: '#60a5fa', icon: <Wind size={16} /> },
+// Enhanced Stage Config with Temp/Hum ranges
+const STAGE_CONFIG: Record<Stage, { label: string; minVpd: number; maxVpd: number; color: string; minTemp: number; maxTemp: number; minHum: number; maxHum: number; icon: React.ReactNode }> = {
+  VEG: { label: 'Vegetativo', minVpd: 0.8, maxVpd: 1.1, color: '#4ade80', minTemp: 22, maxTemp: 28, minHum: 60, maxHum: 75, icon: <Sprout size={16} /> },
+  FLOWER_1_4: { label: 'Flora 1-4 Sem', minVpd: 1.0, maxVpd: 1.2, color: '#fcd34d', minTemp: 22, maxTemp: 26, minHum: 50, maxHum: 65, icon: <Flower size={16} /> },
+  FLOWER_4_7: { label: 'Flora 4-7 Sem', minVpd: 1.2, maxVpd: 1.4, color: '#f97316', minTemp: 20, maxTemp: 25, minHum: 40, maxHum: 50, icon: <Flower size={16} /> },
+  FLOWER_7_PLUS: { label: 'Flora 7+ Sem', minVpd: 1.2, maxVpd: 1.5, color: '#ef4444', minTemp: 18, maxTemp: 24, minHum: 35, maxHum: 45, icon: <Flower size={16} /> },
+  DRYING: { label: 'Secado', minVpd: 0.7, maxVpd: 0.9, color: '#60a5fa', minTemp: 18, maxTemp: 22, minHum: 50, maxHum: 60, icon: <Wind size={16} /> },
 };
 
 // VPD Calculation Utility
@@ -48,7 +49,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
             {payload[2] && (
                  <p style={{ color: '#3b82f6' }}>
                    <span className="inline-block w-3 h-3 rounded-full bg-blue-400 mr-2"></span>
-                   Hum: {payload[2].value}%
+                   Humedad: {payload[2].value}%
                 </p>
             )}
         </div>
@@ -97,9 +98,11 @@ export const VPDStageChart: React.FC<VPDStageChartProps> = ({ data = [] }) => {
             </Box>
         }
         subheader={
-            <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.6)' }}>
-                Objetivo {currentStage.label}: {currentStage.minVpd}-{currentStage.maxVpd} kPa
-            </Typography>
+            <Box sx={{ display: 'flex', gap: 2, fontSize: '0.75rem', color: 'rgba(255,255,255,0.6)' }}>
+                <span>VPD: {currentStage.minVpd}-{currentStage.maxVpd}</span>
+                <span style={{ color: '#ef4444' }}>T: {currentStage.minTemp}-{currentStage.maxTemp}°C</span>
+                <span style={{ color: '#3b82f6' }}>H: {currentStage.minHum}-{currentStage.maxHum}%</span>
+            </Box>
         }
         action={
             <ToggleButtonGroup
@@ -138,20 +141,6 @@ export const VPDStageChart: React.FC<VPDStageChartProps> = ({ data = [] }) => {
                 <stop offset="95%" stopColor="#a78bfa" stopOpacity={0.05}/>
               </linearGradient>
             </defs>
-
-            {/* The Green Zone for Ideal VPD */}
-             <ReferenceArea
-                yAxisId="left"
-                y1={currentStage.minVpd}
-                y2={currentStage.maxVpd}
-                fill={currentStage.color}
-                fillOpacity={0.15}
-                strokeOpacity={0}
-             />
-             <ReferenceLine yAxisId="left" y={currentStage.minVpd} stroke={currentStage.color} strokeDasharray="3 3" strokeOpacity={0.5} label={{ value: 'Min', position: 'insideLeft', fill: currentStage.color, fontSize: 10 }} />
-             <ReferenceLine yAxisId="left" y={currentStage.maxVpd} stroke={currentStage.color} strokeDasharray="3 3" strokeOpacity={0.5} label={{ value: 'Max', position: 'insideLeft', fill: currentStage.color, fontSize: 10 }} />
-
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
             <XAxis
                 dataKey="timeStr"
                 stroke="rgba(255,255,255,0.3)"
@@ -176,15 +165,27 @@ export const VPDStageChart: React.FC<VPDStageChartProps> = ({ data = [] }) => {
                 fontSize={11}
                 tickLine={false}
                 axisLine={false}
-                domain={['auto', 'auto']} // Dynamic scaling to avoid flat line "buzz"
-                tickFormatter={(val) => `${val}%`} // Add % unit
+                domain={['auto', 'auto']}
             />
             <Tooltip content={<CustomTooltip />} />
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
+
+            {/* Target VPD Range Zone */}
+            <ReferenceArea
+                yAxisId="left"
+                y1={currentStage.minVpd}
+                y2={currentStage.maxVpd}
+                fill={currentStage.color}
+                fillOpacity={0.15}
+            />
+
+            {/* Optimal Temp/Hum Lines (Optional, maybe too cluttered? Let's add reference lines for min/max if needed, but Area is better) */}
 
             <Area
                 yAxisId="left"
                 type="monotone"
                 dataKey="vpd"
+                name="VPD"
                 stroke="#a78bfa"
                 strokeWidth={3}
                 fillOpacity={1}
@@ -195,19 +196,21 @@ export const VPDStageChart: React.FC<VPDStageChartProps> = ({ data = [] }) => {
                 yAxisId="right"
                 type="monotone"
                 dataKey="temperature"
+                name="Temp"
                 stroke="#ef4444"
                 strokeWidth={2}
                 dot={false}
-                strokeOpacity={0.7}
+                strokeOpacity={0.8}
             />
             <Line
                 yAxisId="right"
                 type="monotone"
                 dataKey="humidity"
+                name="Humedad"
                 stroke="#3b82f6"
                 strokeWidth={2}
                 dot={false}
-                strokeOpacity={0.6}
+                strokeOpacity={0.8}
                 strokeDasharray="5 5"
             />
           </AreaChart>
