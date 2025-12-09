@@ -1144,8 +1144,8 @@ app.post('/api/chat', async (req, res) => {
   try {
       const { GoogleGenerativeAI } = require("@google/generative-ai");
       const genAI = new GoogleGenerativeAI(apiKey);
-      // Use the same model as the vision endpoint or a consistent stable one
-      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+      // Updated to Gemini 3 Pro as requested
+      const model = genAI.getGenerativeModel({ model: "gemini-3-pro-preview" });
 
       const chat = model.startChat({
         history: [
