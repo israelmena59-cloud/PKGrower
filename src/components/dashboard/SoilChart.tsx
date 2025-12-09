@@ -87,6 +87,10 @@ export const SoilChart: React.FC<SoilChartProps> = ({ data, phase }) => {
               <Line type="monotone" dataKey="sh1" name="Sensor 1 (Cyan)" stroke="#06b6d4" strokeWidth={3} dot={false} connectNulls />
               <Line type="monotone" dataKey="sh2" name="Sensor 2 (Magenta)" stroke="#d946ef" strokeWidth={3} dot={false} connectNulls />
               <Line type="monotone" dataKey="sh3" name="Sensor 3 (Yellow)" stroke="#facc15" strokeWidth={3} dot={false} connectNulls />
+
+              {/* Dew Point Line (Requested by User) - Secondary Axis */}
+              <YAxis yAxisId="right" orientation="right" unit="°C" domain={['auto', 'auto']} stroke="#ff9800" />
+              <Line yAxisId="right" type="monotone" dataKey="dp" name="Dew Point (DP)" stroke="#ff9800" strokeWidth={2} dot={false} strokeDasharray="3 3" connectNulls />
             </LineChart>
           </ResponsiveContainer>
           )}

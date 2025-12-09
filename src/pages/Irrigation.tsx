@@ -53,41 +53,45 @@ const Irrigation: React.FC = () => {
             const devs = await apiClient.getDeviceStates();
             if (active) setDevices(devs);
 
-            // 3. History Building Logic
-            // ... (restored below in poll)
+            // 3. History (Immediate Load)
+            const hist = await apiClient.getHistoryRange('day');
+            const processedHist = hist.map((h: any) => ({
+                ...h,
+                dp: h.temperature - ((100 - h.humidity) / 5)
+            }));
+            if (active) setSensorHistory(processedHist);
+            if (processedHist.length > 0) setLatestVWC(processedHist[processedHist.length - 1].substrateHumidity || 0);
 
         } catch (e) { console.error(e); } finally { if (active) setLoading(false); }
     };
     fetchData();
 
-    // Polling Loop
+    // Polling Loop for Real Data
     const interval = setInterval(async () => {
         try {
             const devs = await apiClient.getDeviceStates();
             if (active) setDevices(devs);
 
-            // Fetch sensor data
-            const soilData = await apiClient.getSoilSensors();
-            // Calculate avg
-            let avg = 0;
-            let count = 0;
-            soilData.forEach((s: any) => { if (s.humidity) { avg += s.humidity; count++; } });
-            const vwc = count > 0 ? avg / count : 0;
-            setLatestVWC(vwc);
+            // Fetch Real History from Backend (which now logs T/H/Soil properly)
+            const hist = await apiClient.getHistoryRange('day');
 
-            // Mock History Add (In reality, backend should provide this)
-            const newItem: SensorData = {
-                timestamp: new Date().toISOString(),
-                temperature: 0, humidity: 0,
-                substrateHumidity: vwc,
-                sh1: soilData.find((s:any)=>s.key==='sensorSustrato1')?.humidity || 0,
-                sh2: soilData.find((s:any)=>s.key==='sensorSustrato2')?.humidity || 0,
-                sh3: soilData.find((s:any)=>s.key==='sensorSustrato3')?.humidity || 0,
-                vpd: 0
-            };
-            setSensorHistory(prev => [...prev.slice(-30), newItem]); // Keep last 30 points
-        } catch(e) {}
-    }, 10000); // Optimized to 10s for Tunnel performance
+            // Process History for Dew Point if backend doesn't send it, or just use backend's
+            const processedHist = hist.map((h: any) => ({
+                ...h,
+                // Calculate DP if missing. DP = T - (100-RH)/5 (Approximation) or Magnus formula
+                dp: h.temperature - ((100 - h.humidity) / 5)
+            }));
+
+            if (active) setSensorHistory(processedHist);
+
+            // Update Latest VWC from last history point
+            if (processedHist.length > 0) {
+                const last = processedHist[processedHist.length - 1];
+                setLatestVWC(last.substrateHumidity || 0);
+            }
+
+        } catch(e) { console.error("Poll error", e); }
+    }, 10000); // Optimized to 10s
     return () => { active = false; clearInterval(interval); };
   }, []);
 
