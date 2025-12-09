@@ -54,8 +54,14 @@ export const SoilChart: React.FC<SoilChartProps> = ({ data, phase }) => {
         titleTypographyProps={{ variant: 'h6', fontWeight: 'bold' }}
       />
       <CardContent>
-        <div style={{ width: '100%', height: 400 }}>
-          <ResponsiveContainer>
+        <div style={{ width: '100%', height: 400, minHeight: 400 }}>
+          {(!data || data.length === 0) ? (
+               <Box sx={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
+                     <Typography variant="body2" color="text.secondary">Esperando lecturas de sensores...</Typography>
+                     <Typography variant="caption" color="text.disabled">(Aparecerán aquí en < 1 min)</Typography>
+               </Box>
+          ) : (
+          <ResponsiveContainer width="100%" height="100%">
             <LineChart data={data} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
               <XAxis
@@ -77,18 +83,13 @@ export const SoilChart: React.FC<SoilChartProps> = ({ data, phase }) => {
                   <ReferenceLine y={idealGen} label="Ideal Gen" stroke="#9c27b0" strokeDasharray="5 5" strokeWidth={2} />
               )}
 
-              {/* Data Lines - Assuming data has keys sh1, sh2, sh3. Fallback to substrateHumidity */}
               {/* Data Lines - Distinct High Contrast Colors */}
               <Line type="monotone" dataKey="sh1" name="Sensor 1 (Cyan)" stroke="#06b6d4" strokeWidth={3} dot={false} connectNulls />
               <Line type="monotone" dataKey="sh2" name="Sensor 2 (Magenta)" stroke="#d946ef" strokeWidth={3} dot={false} connectNulls />
               <Line type="monotone" dataKey="sh3" name="Sensor 3 (Yellow)" stroke="#facc15" strokeWidth={3} dot={false} connectNulls />
-
-              {/* Fallback line if individual data missing */}
-              {/* Fallback line if individual data missing (Hidden by default to focus on 3 sensors) */}
-              {/* <Line type="monotone" dataKey="substrateHumidity" name="Promedio" stroke="#66bb6a" strokeWidth={2} dot={false} strokeDasharray="4 4" /> */}
-
             </LineChart>
           </ResponsiveContainer>
+          )}
         </div>
       </CardContent>
     </Card>
