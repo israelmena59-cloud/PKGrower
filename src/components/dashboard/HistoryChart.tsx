@@ -214,13 +214,18 @@ const HistoryChart: React.FC<HistoryChartProps> = ({ type, title, targets }) => 
             </ButtonGroup>
         </Box>
 
-        <Box sx={{ height: 300, width: '100%' }}>
+        <Box sx={{ height: 300, minHeight: 300, width: '100%' }}>
             {loading ? (
                 <Box sx={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center' }}>
                     <CircularProgress size={30} />
                 </Box>
+            ) : data.length === 0 ? (
+                <Box sx={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
+                     <Typography variant="body2" color="text.secondary">Esperando datos reales...</Typography>
+                     <Typography variant="caption" color="text.disabled">(El historial se genera cada 60s)</Typography>
+                </Box>
             ) : (
-                <ResponsiveContainer>
+                <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                         <defs>
                             <linearGradient id="colorTemp" x1="0" y1="0" x2="0" y2="1">

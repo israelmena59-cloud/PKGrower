@@ -2304,7 +2304,30 @@ app.post('/api/irrigation/log', async (req, res) => {
           }
 
           console.log(`[API] Fetching history: ${range} (${startStr} -> ${endStr})`);
-          const data = await firestore.getSensorHistoryRange(startStr, endStr);
+
+          // 1. Try Firestore
+          let data = [];
+          try {
+             data = await firestore.getSensorHistoryRange(startStr, endStr);
+          } catch(e) { console.warn('Firestore error:', e.message); }
+
+          // 2. If empty (or recent), append In-Memory History (Real-time buffer)
+          // This ensures recently added points show up even if Firestore has lag/is empty
+          if (sensorHistory && sensorHistory.length > 0) {
+               // Filter in-memory points within range
+               const memPoints = sensorHistory.filter(p => {
+                   const t = new Date(p.timestamp).getTime();
+                   return t >= new Date(startStr).getTime() && t <= new Date(endStr).getTime();
+               });
+               // Merge avoiding duplicates (simple timestamp check)
+               const dbTimestamps = new Set(data.map(d => d.timestamp));
+               memPoints.forEach(p => {
+                   if (!dbTimestamps.has(p.timestamp)) data.push(p);
+               });
+          }
+
+          // Sort
+          data.sort((a,b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
           // Downsample for long ranges to improve frontend performance
           let finalData = data;
@@ -2319,7 +2342,8 @@ app.post('/api/irrigation/log', async (req, res) => {
           res.json(finalData);
       } catch (err) {
           console.error('[API] Error fetching history:', err);
-          res.json([]);
+          // Fallback to in-memory if everything explodes
+          res.json(sensorHistory || []);
       }
   });
 
@@ -2401,8 +2425,12 @@ setInterval(() => {
             sensorHistory.push(newRecord);
             if (sensorHistory.length > MAX_HISTORY_LENGTH) sensorHistory.shift();
 
-            // Optional: Persist to Firestore occasionally (e.g., every 10 mins)
-            // if (new Date().getMinutes() % 10 === 0) firestore.saveHistory(newRecord);
+            // Persist to Firestore (Every 2 mins to build history faster for user)
+            if (new Date().getMinutes() % 2 === 0) {
+                 try {
+                     firestore.saveSensorRecord(newRecord);
+                 } catch (err) { console.error('Firestore save error:', err.message); }
+            }
 
             console.log(`[HISTORY] Recorded: T${temp} H${hum} VPD${vpdVal} Soil${avgSoil}%`);
 
