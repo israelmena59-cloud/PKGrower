@@ -2356,7 +2356,6 @@ app.listen(PORT, '0.0.0.0', async () => { // Escuchar en 0.0.0.0 para acceso LAN
     // Defer initialization to allow Render to pass health checks immediately
     setTimeout(async () => {
         try {
-        try {
             console.log('📱 [BACKGROUND] Iniciando conexión con Tuya/Xiaomi...');
 
             // 1. Conectar Cliente Tuya (Core)
@@ -2438,6 +2437,11 @@ app.listen(PORT, '0.0.0.0', async () => { // Escuchar en 0.0.0.0 para acceso LAN
 
 
     }, 60000); // 60s (Save to DB every minute to reduce costs/bloat)
+
+        } catch (err) {
+            console.error('❌ [BACKGROUND INIT ERROR]', err);
+        }
+    }, 5000); // Wait 5s before starting heavy init
   }
 
   // FORCE REFRESH ENDPOINT
