@@ -176,7 +176,8 @@ export const VPDStageChart: React.FC<VPDStageChartProps> = ({ data = [] }) => {
                 fontSize={11}
                 tickLine={false}
                 axisLine={false}
-                domain={[0, 100]}
+                domain={['auto', 'auto']} // Dynamic scaling to avoid flat line "buzz"
+                tickFormatter={(val) => `${val}%`} // Add % unit
             />
             <Tooltip content={<CustomTooltip />} />
 

@@ -124,7 +124,7 @@ const Layout: React.FC<LayoutProps> = ({ children, onNavigate, activePage }) => 
             <List component="nav">
                 <NavItem page="dashboard" icon={<LayoutDashboard size={20} />} label="Centro de Mando" />
                 <NavItem page="lighting" icon={<Zap size={20} />} label="Iluminación" />
-                <NavItem page="irrigation" icon={<Droplets size={20} />} label="Hidrología" />
+                <NavItem page="irrigation" icon={<Droplets size={20} />} label="Riego y Estrategia" />
                 <NavItem page="environment" icon={<Wind size={20} />} label="Atmósfera" />
             </List>
 

@@ -78,12 +78,14 @@ export const SoilChart: React.FC<SoilChartProps> = ({ data, phase }) => {
               )}
 
               {/* Data Lines - Assuming data has keys sh1, sh2, sh3. Fallback to substrateHumidity */}
-              <Line type="monotone" dataKey="sh1" name="Sensor 1" stroke="#2196f3" strokeWidth={2} dot={false} connectNulls />
-              <Line type="monotone" dataKey="sh2" name="Sensor 2" stroke="#00bcd4" strokeWidth={2} dot={false} connectNulls />
-              <Line type="monotone" dataKey="sh3" name="Sensor 3" stroke="#3f51b5" strokeWidth={2} dot={false} connectNulls />
+              {/* Data Lines - Distinct High Contrast Colors */}
+              <Line type="monotone" dataKey="sh1" name="Sensor 1 (Cyan)" stroke="#06b6d4" strokeWidth={3} dot={false} connectNulls />
+              <Line type="monotone" dataKey="sh2" name="Sensor 2 (Magenta)" stroke="#d946ef" strokeWidth={3} dot={false} connectNulls />
+              <Line type="monotone" dataKey="sh3" name="Sensor 3 (Yellow)" stroke="#facc15" strokeWidth={3} dot={false} connectNulls />
 
               {/* Fallback line if individual data missing */}
-              <Line type="monotone" dataKey="substrateHumidity" name="Promedio" stroke="#66bb6a" strokeWidth={3} dot={false} strokeDasharray="4 4" />
+              {/* Fallback line if individual data missing (Hidden by default to focus on 3 sensors) */}
+              {/* <Line type="monotone" dataKey="substrateHumidity" name="Promedio" stroke="#66bb6a" strokeWidth={2} dot={false} strokeDasharray="4 4" /> */}
 
             </LineChart>
           </ResponsiveContainer>

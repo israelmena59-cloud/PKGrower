@@ -106,7 +106,7 @@ const TUYA_DEVICES_MAP = {
     platform: 'tuya',
     deviceType: 'light',
     category: 'led_panel',
-    switchCode: 'switch',
+    switchCode: 'switch_1',
   },
   luzPanel4: {
     name: 'Panel LED 4 (Izq Atrás)',
@@ -792,6 +792,18 @@ app.get('/api/sensors/history', (req, res) => {
       console.error('[ERROR HANDLED] en /api/sensors/history:', err.message);
       res.json([]); // Return empty array instead of 500 to keep Frontend alive
   }
+});
+
+app.get('/api/sensors/latest', (req, res) => {
+    try {
+        if (!sensorHistory || sensorHistory.length === 0) {
+            return res.json({ temperature: 0, humidity: 0, substrateHumidity: 0, vpd: 0 });
+        }
+        const latest = sensorHistory[sensorHistory.length - 1];
+        res.json(latest);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
 });
 
 // Dispositivos (combinado Tuya y Xiaomi)
@@ -2233,10 +2245,10 @@ app.listen(PORT, '0.0.0.0', async () => { // Escuchar en 0.0.0.0 para acceso LAN
             temperature: countTemp > 0 ? parseFloat((countTemp === 1 ? avgTemp : avgTemp / countTemp).toFixed(1)) : 0,
             humidity: avgHum, // Now using Real Ambient Humidity
             substrateHumidity: countSubstrate > 0 ? parseFloat((avgSubstrate / countSubstrate).toFixed(0)) : 0,
-            // Individual values for chart
-            sh1: sh1 || 0,
-            sh2: sh2 || 0,
-            sh3: sh3 || 0
+            // Individual values for chart (Ensure they are numbers)
+            sh1: typeof sh1 === 'number' ? sh1 : 0,
+            sh2: typeof sh2 === 'number' ? sh2 : 0,
+            sh3: typeof sh3 === 'number' ? sh3 : 0
         };
 
         sensorHistory.push(newRecord);

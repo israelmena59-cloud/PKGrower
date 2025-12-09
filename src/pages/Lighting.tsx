@@ -26,7 +26,8 @@ const Lighting: React.FC = () => {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const res = await fetch('http://localhost:3000/api/settings');
+        // Use relative path for Cloud compatibility (or apiClient base)
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/settings`);
         const data = await res.json();
         setSettings(data.lighting);
 
@@ -50,7 +51,7 @@ const Lighting: React.FC = () => {
     if (!settings) return;
     setSaving(true);
     try {
-       await fetch('http://localhost:3000/api/settings', {
+       await fetch(`${import.meta.env.VITE_API_URL}/api/settings`, {
            method: 'POST',
            headers: { 'Content-Type': 'application/json' },
            body: JSON.stringify({ lighting: settings })

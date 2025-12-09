@@ -143,34 +143,34 @@ const Dashboard: React.FC = () => {
 
       <ConfigModal open={isConfigOpen} onClose={() => setIsConfigOpen(false)} />
 
-      {/* AI COPILOT & SENSORS ROW */}
+      <ConfigModal open={isConfigOpen} onClose={() => setIsConfigOpen(false)} />
+
+      {/* SENSORS ROW - TOP PRIORITY */}
+      <Grid container spacing={2}>
+        <Grid item xs={12} md={6} lg={3}>
+            <SensorCard icon={<Thermometer />} name="Temp. Aire" value={latestSensors?.temperature ?? '--'} unit="°C" color="#ef4444" description="Temperatura óptima: 22-26°C." />
+        </Grid>
+        <Grid item xs={12} md={6} lg={3}>
+            <SensorCard icon={<Droplet />} name="Humedad" value={latestSensors?.humidity ?? '--'} unit="%" color="#3b82f6" description="Humedad Relativa." />
+        </Grid>
+        <Grid item xs={12} md={6} lg={3}>
+            <SensorCard icon={<Wind />} name="VPD" value={latestSensors?.vpd ?? '--'} unit="kPa" color="#8b5cf6" description="Déficit de Presión de Vapor." />
+        </Grid>
+        <Grid item xs={12} md={6} lg={3}>
+            <SensorCard icon={<Droplets />} name="Sustrato" value={latestSensors?.substrateHumidity ?? '--'} unit="%" color="#f59e0b" description="Humedad volumétrica prom." />
+        </Grid>
+      </Grid>
+
+      {/* AI COPILOT & VPD CHART */}
       <Grid container spacing={3}>
-        <Grid item xs={12} lg={4}>
-            <AICopilotWidget sensors={latestSensors} phase={phase} />
+        <Grid item xs={12} lg={4} sx={{ display: 'flex' }}>
+            {/* Make AI Copilot full height to fill space */}
+            <Box sx={{ width: '100%' }}>
+                <AICopilotWidget sensors={latestSensors} phase={phase} />
+            </Box>
         </Grid>
         <Grid item xs={12} lg={8}>
-            <Grid container spacing={3}>
-                <Grid item xs={12}>
-                    <VPDStageChart data={sensorHistory} />
-                </Grid>
-                <Grid item xs={12}>
-                    <HistoryChart data={sensorHistory} />
-                </Grid>
-            </Grid>
-            <Grid container spacing={2} sx={{ mt: 3 }}> {/* Added margin top to separate charts from sensor cards */}
-                <Grid item xs={12} md={3}>
-                    <SensorCard icon={<Thermometer />} name="Temp. Aire" value={latestSensors?.temperature ?? '--'} unit="°C" color="#ef4444" description="Temperatura óptima: 22-26°C." />
-                </Grid>
-                <Grid item xs={12} md={3}>
-                    <SensorCard icon={<Droplet />} name="Humedad" value={latestSensors?.humidity ?? '--'} unit="%" color="#3b82f6" description="Humedad Relativa del aire." />
-                </Grid>
-                <Grid item xs={12} md={3}>
-                    <SensorCard icon={<Wind />} name="VPD" value={latestSensors?.vpd ?? '--'} unit="kPa" color="#8b5cf6" description="Déficit de Presión de Vapor." />
-                </Grid>
-                <Grid item xs={12} md={3}>
-                    <SensorCard icon={<Droplets />} name="Sustrato" value={latestSensors?.substrateHumidity ?? '--'} unit="%" color="#f59e0b" description="Humedad volumétrica del sustrato." />
-                </Grid>
-            </Grid>
+            <VPDStageChart data={sensorHistory} />
         </Grid>
       </Grid>
 
