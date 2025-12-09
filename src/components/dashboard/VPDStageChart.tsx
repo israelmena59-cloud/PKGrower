@@ -132,8 +132,8 @@ export const VPDStageChart: React.FC<VPDStageChartProps> = ({ data = [] }) => {
             </ToggleButtonGroup>
         }
       />
-      <CardContent sx={{ flexGrow: 1, pt: 0, pb: '16px !important', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-        <Box sx={{ flexGrow: 1, width: '100%', minHeight: 0 }}>
+      <CardContent sx={{ flexGrow: 1, pt: 0, pb: '16px !important', display: 'flex', flexDirection: 'column', minHeight: 400 }}>
+        <Box sx={{ flexGrow: 1, width: '100%', minHeight: 400 }}>
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <defs>
