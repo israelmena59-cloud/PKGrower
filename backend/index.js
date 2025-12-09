@@ -2435,11 +2435,11 @@ setInterval(() => {
                     vpdVal = parseFloat((svp * (1 - (hum / 100))).toFixed(2));
             }
 
-            // CRITICAL FIX: Do not log invalid zero data to history (prevents "Drastic Curves")
-            if (temp === 0 && hum === 0 && avgSoil === 0) {
-                 console.log('[HISTORY] 跳过无效数据 (Zero readings)');
-                 return;
-            }
+            // CRITICAL FIX: Temporarily Allow Zeros to debug "Missing Info" vs "Zero Info"
+            // if (temp === 0 && hum === 0 && avgSoil === 0) {
+            //      console.log('[HISTORY] 跳过无效数据 (Zero readings)');
+            //      return;
+            // }
 
             const newRecord = {
                 timestamp: new Date().toISOString(),
