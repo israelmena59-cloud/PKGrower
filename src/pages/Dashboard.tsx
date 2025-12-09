@@ -154,7 +154,7 @@ const Dashboard: React.FC = () => {
             <SensorCard icon={<Droplet />} name="Humedad" value={latestSensors?.humidity ?? '--'} unit="%" color="#3b82f6" description="Humedad Relativa." />
         </Grid>
         <Grid item xs={12} md={6} lg={3}>
-            <SensorCard icon={<Wind />} name="VPD" value={latestSensors?.vpd ?? '--'} unit="kPa" color="#8b5cf6" description="Déficit de Presión de Vapor." />
+            <SensorCard icon={<Wind />} name="D.P.V." value={latestSensors?.vpd ?? '--'} unit="kPa" color="#8b5cf6" description="Déficit de Presión de Vapor." />
         </Grid>
         <Grid item xs={12} md={6} lg={3}>
             <SensorCard icon={<Droplets />} name="Sustrato" value={latestSensors?.substrateHumidity ?? '--'} unit="%" color="#f59e0b" description="Humedad volumétrica prom." />

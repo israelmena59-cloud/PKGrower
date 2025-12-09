@@ -176,7 +176,7 @@ const Environment: React.FC = () => {
                 boxShadow: 'var(--glass-shadow)',
                 overflow: 'hidden'
             }}>
-                <CardHeader title="Monitor VPD (Presion de Vapor)" subheader="Relación Temperatura / Humedad" titleTypographyProps={{ fontWeight: 'bold' }} />
+                <CardHeader title="Monitor D.P.V. (Presion de Vapor)" subheader="Relación Temperatura / Humedad" titleTypographyProps={{ fontWeight: 'bold' }} />
                 <Divider sx={{ borderColor: 'rgba(255,255,255,0.1)' }} />
                 <Box sx={{ height: 300, p: 2 }}>
                     <ResponsiveContainer width="100%" height="100%">

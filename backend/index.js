@@ -2343,6 +2343,75 @@ app.post('/api/irrigation/log', async (req, res) => {
 
 
 
+// --- HISTORY LOGGER (REAL MODE) ---
+// Poll real sensors and save to history every 60 seconds
+setInterval(() => {
+    if (!MODO_SIMULACION) {
+        try {
+            // 1. Get Ambient Data (Tuya Sensor or defaults)
+            const tempSensor = tuyaDevices[process.env.TUYA_SENSOR_AMBIENTE_ID] || {};
+            // Fallback to 20°C/50% if sensor invalid, to avoid breaking charts
+            const temp = tempSensor.temperature || 0;
+            const hum = tempSensor.humidity || 0;
+
+            // 2. Get Soil Data (Average of 3 sensors)
+            let soilHumSum = 0;
+            let soilCount = 0;
+            let sh1 = 0, sh2 = 0, sh3 = 0;
+
+            if (tuyaDevices[process.env.TUYA_SENSOR_SUSTRATO_1_ID]) {
+                sh1 = tuyaDevices[process.env.TUYA_SENSOR_SUSTRATO_1_ID].value || 0;
+                soilHumSum += sh1;
+                soilCount++;
+            }
+            if (tuyaDevices[process.env.TUYA_SENSOR_SUSTRATO_2_ID]) {
+                sh2 = tuyaDevices[process.env.TUYA_SENSOR_SUSTRATO_2_ID].value || 0;
+                soilHumSum += sh2;
+                soilCount++;
+            }
+            if (tuyaDevices[process.env.TUYA_SENSOR_SUSTRATO_3_ID]) {
+                sh3 = tuyaDevices[process.env.TUYA_SENSOR_SUSTRATO_3_ID].value || 0;
+                soilHumSum += sh3;
+                soilCount++;
+            }
+
+            const avgSoil = soilCount > 0 ? (soilHumSum / soilCount) : 0;
+
+            // 3. Calculate VPD
+            // VPD = SVP * (1 - RH/100)
+            // SVP = 0.6108 * exp(17.27 * T / (T + 237.3))
+            let vpdVal = 0;
+            if (temp > 0 && hum > 0) {
+                    const svp = 0.6108 * Math.exp((17.27 * temp) / (temp + 237.3));
+                    vpdVal = parseFloat((svp * (1 - (hum / 100))).toFixed(2));
+            }
+
+            const newRecord = {
+                timestamp: new Date().toISOString(),
+                temperature: temp,
+                humidity: hum,
+                substrateHumidity: parseFloat(avgSoil.toFixed(1)),
+                sh1: sh1, // Individual sensors for SoilChart
+                sh2: sh2,
+                sh3: sh3,
+                vpd: vpdVal
+            };
+
+            // Push to in-memory history
+            sensorHistory.push(newRecord);
+            if (sensorHistory.length > MAX_HISTORY_LENGTH) sensorHistory.shift();
+
+            // Optional: Persist to Firestore occasionally (e.g., every 10 mins)
+            // if (new Date().getMinutes() % 10 === 0) firestore.saveHistory(newRecord);
+
+            console.log(`[HISTORY] Recorded: T${temp} H${hum} VPD${vpdVal} Soil${avgSoil}%`);
+
+        } catch (e) {
+            console.error('[HISTORY] Error logging real data:', e.message);
+        }
+    }
+}, 60000);
+
 app.listen(PORT, '0.0.0.0', async () => { // Escuchar en 0.0.0.0 para acceso LAN
   console.log(`\n╔════════════════════════════════════════════════════════╗`);
   console.log(`║     🌱 PKGrower Backend - Servidor iniciado           ║`);
