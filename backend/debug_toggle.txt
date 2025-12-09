@@ -1,0 +1,24 @@
+[2025-12-08T06:52:02.256Z] REQUEST: eb854fi6faf2sfwl (ConfigCode: switch)
+[2025-12-08T06:52:04.992Z] REQUEST: eb854fi6faf2sfwl (ConfigCode: switch)
+[2025-12-08T06:53:27.471Z] REQUEST: eb854fi6faf2sfwl (ConfigCode: switch)
+[2025-12-08T06:54:20.066Z] REQUEST: eb854fi6faf2sfwl (ConfigCode: switch)
+STATUS FAILED: (Success=undefined)
+SENDING: {"commands":[{"code":"switch","value":true}]}
+RESPONSE: Success=undefined, Result=undefined, Msg=undefined
+ERROR: undefined
+[2025-12-08T07:00:53.060Z] REQUEST: eb854fi6faf2sfwl (ConfigCode: switch)
+FOUND SWITCH: Code=switch, Val=false
+SENDING: {"commands":[{"code":"switch","value":true}]}
+RESPONSE: Success=true
+[2025-12-08T07:03:32.434Z] REQUEST: eb854fi6faf2sfwl (ConfigCode: switch)
+FOUND SWITCH: Code=switch, Val=false
+SENDING: {"commands":[{"code":"switch","value":true}]}
+RESPONSE: Success=true
+[2025-12-08T07:03:34.017Z] REQUEST: eb854fi6faf2sfwl (ConfigCode: switch)
+FOUND SWITCH: Code=switch, Val=false
+SENDING: {"commands":[{"code":"switch","value":true}]}
+RESPONSE: Success=true
+[2025-12-08T07:10:22.472Z] REQUEST: eb854fi6faf2sfwl (ConfigCode: switch)
+FOUND SWITCH: Code=switch, Val=false
+SENDING: {"commands":[{"code":"switch","value":true}]}
+RESPONSE: Success=true

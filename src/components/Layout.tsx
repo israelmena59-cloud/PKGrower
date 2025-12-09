@@ -1,15 +1,13 @@
+
 // src/components/Layout.tsx
 import React, { useState, useEffect } from 'react';
 import Alerts, { Alert } from './Alerts';
-import { Button } from '@/components/ui/button';
-import Box from '@mui/material/Box'
-import List from '@mui/material/List'
-import ListItem from '@mui/material/ListItem'
-import Typography from '@mui/material/Typography'
-import Divider from '@mui/material/Divider'
+import { Box, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Typography, Divider, GlobalStyles, Fade, IconButton, Tooltip, useMediaQuery, Drawer, AppBar, Toolbar } from '@mui/material';
+import { LayoutDashboard, Zap, Droplets, Wind, Bot, Calendar, Settings, Camera, Cpu, Sun, Moon, Menu as MenuIcon } from 'lucide-react';
+import { useTheme } from '../context/ThemeContext';
 
 // Define the type for the pages
-export type Page = 'dashboard' | 'automations' | 'ai_assistant' | 'calendar' | 'devices' | 'settings';
+export type Page = 'dashboard' | 'lighting' | 'irrigation' | 'environment' | 'ai_assistant' | 'calendar' | 'devices' | 'camera' | 'settings';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -17,42 +15,29 @@ interface LayoutProps {
   activePage: Page;
 }
 
-const NavLink: React.FC<{
-  page: Page;
-  activePage: Page;
-  onNavigate: (page: Page) => void;
-  children: React.ReactNode;
-}> = ({ page, activePage, onNavigate, children }) => {
-  const isActive = page === activePage;
-  return (
-    <ListItem disablePadding>
-      <Button
-        variant={isActive ? 'secondary' : 'ghost'}
-        onClick={() => onNavigate(page)}
-        sx={{ justifyContent: 'flex-start', width: '100%' }}
-      >
-        {children}
-      </Button>
-    </ListItem>
-  )
-}
-
 const Layout: React.FC<LayoutProps> = ({ children, onNavigate, activePage }) => {
+  // Responsive Logic
+  const { mode, toggleTheme } = useTheme();
+  const isMobile = useMediaQuery('(max-width:960px)'); // MD breakpoint
+  const [mobileOpen, setMobileOpen] = useState(false);
   const [alerts, setAlerts] = useState<Alert[]>([]);
 
-  // Simulate adding an alert
   useEffect(() => {
+    // Welcome alert
     const timer = setTimeout(() => {
       addAlert({
         id: Date.now(),
-        message: 'La temperatura ha superado el umbral recomendado.',
-        type: 'warning',
+        message: 'Bienvenido a PKGrower 3.0 - Sistema "Symbiosis"',
+        type: 'info',
       });
-    }, 5000); // Add a warning after 5 seconds
-
+    }, 1500);
     return () => clearTimeout(timer);
   }, []);
-  
+
+  const handleDrawerToggle = () => {
+    setMobileOpen(!mobileOpen);
+  };
+
   const addAlert = (alert: Alert) => {
     setAlerts(prev => [...prev, alert]);
   };
@@ -61,32 +46,237 @@ const Layout: React.FC<LayoutProps> = ({ children, onNavigate, activePage }) => 
     setAlerts(prev => prev.filter(alert => alert.id !== id));
   };
 
+  const NavItem = ({ page, icon, label }: { page: Page, icon: React.ReactNode, label: string }) => {
+    const isSelected = activePage === page;
+    const isDark = mode === 'dark';
+
+    return (
+        <ListItem disablePadding sx={{ mb: 1 }}>
+          <ListItemButton
+            selected={isSelected}
+            onClick={() => {
+                onNavigate(page);
+                if (isMobile) setMobileOpen(false);
+            }}
+            sx={{
+              borderRadius: 'var(--squircle-radius)',
+              mx: 1,
+              py: 1.5,
+              transition: 'all 0.4s cubic-bezier(0.25, 1, 0.5, 1)',
+              bgcolor: isSelected ? 'rgba(255, 255, 255, 0.15)' : 'transparent',
+              backdropFilter: isSelected ? 'var(--backdrop-blur)' : 'none',
+              border: isSelected ? 'var(--glass-border)' : '1px solid transparent',
+              boxShadow: isSelected ? '0 4px 20px rgba(0,0,0,0.05)' : 'none',
+              '&:hover': {
+                  bgcolor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)',
+                  transform: 'translateX(4px)'
+              },
+            }}
+          >
+            <ListItemIcon sx={{
+                minWidth: 40,
+                color: isSelected ? (isDark ? '#a5f3fc' : '#15803d') : (isDark ? 'rgba(255,255,255,0.6)' : 'text.secondary'),
+                filter: isSelected && isDark ? 'drop-shadow(0 0 5px rgba(165, 243, 252, 0.5))' : 'none'
+            }}>
+              {icon}
+            </ListItemIcon>
+            <ListItemText
+                primary={label}
+                primaryTypographyProps={{
+                    fontWeight: isSelected ? 700 : 500,
+                    color: isSelected ? (isDark ? 'white' : 'text.primary') : (isDark ? 'rgba(255,255,255,0.7)' : 'text.secondary'),
+                    fontSize: '0.95rem'
+                }}
+            />
+          </ListItemButton>
+        </ListItem>
+    );
+  };
+
+  const SidebarContent = (
+      <>
+        <Box sx={{ p: 4, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Box sx={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: '12px',
+                    background: 'linear-gradient(135deg, #22c55e 0%, #06b6d4 100%)',
+                    boxShadow: '0 0 15px rgba(34, 197, 94, 0.4)'
+                }} />
+                <Box>
+                    <Typography variant="h6" fontWeight="800" sx={{ color: mode === 'dark' ? 'white' : 'text.primary', letterSpacing: 0.5 }}>PKGrower</Typography>
+                    <Typography variant="caption" sx={{ color: mode === 'dark' ? 'rgba(255,255,255,0.5)' : 'text.secondary', letterSpacing: 1 }}>SYMBIOSIS OS</Typography>
+                </Box>
+            </Box>
+
+            {!isMobile && (
+                <Tooltip title={mode === 'dark' ? 'Cambiar a Modo Claro' : 'Cambiar a Modo Oscuro'}>
+                    <IconButton onClick={toggleTheme} size="small" sx={{ color: mode === 'dark' ? 'white' : 'text.primary' }}>
+                        {mode === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+                    </IconButton>
+                </Tooltip>
+            )}
+        </Box>
+
+        <Box sx={{ flex: 1, overflowY: 'auto', py: 2 }}>
+            <Typography variant="caption" sx={{ px: 4, mb: 1, display: 'block', fontWeight: 'bold', color: mode === 'dark' ? 'rgba(255,255,255,0.4)' : 'text.disabled', letterSpacing: 1 }}>CORE</Typography>
+            <List component="nav">
+                <NavItem page="dashboard" icon={<LayoutDashboard size={20} />} label="Centro de Mando" />
+                <NavItem page="lighting" icon={<Zap size={20} />} label="Iluminación" />
+                <NavItem page="irrigation" icon={<Droplets size={20} />} label="Hidrología" />
+                <NavItem page="environment" icon={<Wind size={20} />} label="Atmósfera" />
+            </List>
+
+            <Divider sx={{ my: 2, borderColor: mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)', mx: 3 }} />
+
+            <Typography variant="caption" sx={{ px: 4, mb: 1, display: 'block', fontWeight: 'bold', color: mode === 'dark' ? 'rgba(255,255,255,0.4)' : 'text.disabled', letterSpacing: 1 }}>NEURAL</Typography>
+            <List component="nav">
+                <NavItem page="ai_assistant" icon={<Bot size={20} />} label="Copiloto IA" />
+                <NavItem page="calendar" icon={<Calendar size={20} />} label="Cronología" />
+            </List>
+
+            <Divider sx={{ my: 2, borderColor: mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)', mx: 3 }} />
+
+            <Typography variant="caption" sx={{ px: 4, mb: 1, display: 'block', fontWeight: 'bold', color: mode === 'dark' ? 'rgba(255,255,255,0.4)' : 'text.disabled', letterSpacing: 1 }}>SYSTEM</Typography>
+            <List component="nav">
+                <NavItem page="devices" icon={<Cpu size={20} />} label="Hardware" />
+                <NavItem page="camera" icon={<Camera size={20} />} label="Visión" />
+                <NavItem page="settings" icon={<Settings size={20} />} label="Configuración" />
+            </List>
+        </Box>
+      </>
+  );
 
   return (
-    <Box sx={{ display: 'flex', height: '100vh' }}>
+    <Box sx={{ display: 'flex', height: '100vh', overflow: 'hidden', position: 'relative' }}>
+
+      {/* GLOBAL ANIMATED BACKGROUND - DYNAMIC */}
+      <GlobalStyles styles={{
+        '@keyframes floating': {
+            '0%': { transform: 'translate(0, 0) rotate(0deg)' },
+            '50%': { transform: 'translate(20px, 40px) rotate(5deg)' },
+            '100%': { transform: 'translate(0, 0) rotate(0deg)' },
+        },
+        '@keyframes gradient': {
+            '0%': { backgroundPosition: '0% 50%' },
+            '50%': { backgroundPosition: '100% 50%' },
+            '100%': { backgroundPosition: '0% 50%' },
+        },
+        body: {
+            background: mode === 'dark'
+                ? 'linear-gradient(-45deg, #0f172a, #111827, #064e3b, #1e1b4b)'
+                : 'linear-gradient(-45deg, #f0f9ff, #ecfccb, #e0f2fe, #dbeafe)',
+            backgroundSize: '400% 400%',
+            animation: 'gradient 30s ease infinite',
+            overflow: 'hidden'
+        }
+      }} />
+
       <Alerts alerts={alerts} onDismiss={dismissAlert} />
 
-      <Box component="aside" sx={{ width: 256, bgcolor: 'background.paper', p: 2, boxShadow: 1, display: 'flex', flexDirection: 'column' }}>
-        <Typography variant="h5" align="center" sx={{ mb: 2 }}>PKGrower</Typography>
-        <Divider sx={{ mb: 2 }} />
-        <nav>
-          <List>
-            <NavLink page="dashboard" activePage={activePage} onNavigate={onNavigate}>Dashboard</NavLink>
-            <NavLink page="automations" activePage={activePage} onNavigate={onNavigate}>Automatizaciones</NavLink>
-            <NavLink page="ai_assistant" activePage={activePage} onNavigate={onNavigate}>Asistente IA</NavLink>
-            <NavLink page="calendar" activePage={activePage} onNavigate={onNavigate}>Calendario</NavLink>
-          </List>
-        </nav>
-        <Box sx={{ mt: 'auto' }}>
-          <List>
-            <NavLink page="devices" activePage={activePage} onNavigate={onNavigate}>Dispositivos</NavLink>
-            <NavLink page="settings" activePage={activePage} onNavigate={onNavigate}>Configuración</NavLink>
-          </List>
-        </Box>
+      {/* MOBILE APP BAR */}
+      {isMobile && (
+          <AppBar position="fixed" elevation={0} sx={{ bgcolor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(10px)', top: 0, left: 0, right: 0, zIndex: 1200 }}>
+              <Toolbar>
+                  <IconButton
+                      color="inherit"
+                      aria-label="open drawer"
+                      edge="start"
+                      onClick={handleDrawerToggle}
+                      sx={{ mr: 2 }}
+                  >
+                      <MenuIcon />
+                  </IconButton>
+                  <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
+                      PKGrower
+                  </Typography>
+                  <IconButton onClick={toggleTheme} color="inherit">
+                      {mode === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+                  </IconButton>
+              </Toolbar>
+          </AppBar>
+      )}
+
+      {/* RESPONSIVE NAVIGATION */}
+      <Box
+        component="nav"
+        sx={{ width: { md: 300 }, flexShrink: { md: 0 } }}
+        aria-label="mailbox folders"
+      >
+          {/* Mobile Drawer */}
+          {isMobile ? (
+              <Drawer
+                  variant="temporary"
+                  open={mobileOpen}
+                  onClose={handleDrawerToggle}
+                  ModalProps={{ keepMounted: true }} // Better open performance on mobile.
+                  sx={{
+                      '& .MuiDrawer-paper': { boxSizing: 'border-box', width: 280, bgcolor: mode === 'dark' ? '#0f172a' : '#fff' },
+                  }}
+              >
+                  {SidebarContent}
+              </Drawer>
+          ) : (
+              /* Desktop Persistent Sidebar (Liquid Floating Island) */
+              <Box
+                component="aside"
+                sx={{
+                    width: 280,
+                    m: 3,
+                    height: 'calc(100vh - 48px)',
+                    borderRadius: 'var(--squircle-radius)',
+                    bgcolor: 'var(--glass-bg)',
+                    backdropFilter: 'var(--backdrop-blur)',
+                    border: 'var(--glass-border)',
+                    boxShadow: 'var(--glass-shadow)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    overflow: 'hidden',
+                    transition: 'all 0.5s cubic-bezier(0.25, 1, 0.5, 1)',
+                    position: 'relative',
+                    '&::before': {
+                        content: '""',
+                        position: 'absolute',
+                        top: 0, left: 0, right: 0, height: '200px',
+                        background: 'linear-gradient(180deg, rgba(255,255,255,0.05) 0%, transparent 100%)',
+                        pointerEvents: 'none'
+                    }
+                }}
+              >
+                  {SidebarContent}
+              </Box>
+          )}
       </Box>
 
-      <Box component="main" sx={{ flex: 1, p: 3, overflow: 'auto' }}>
-        {children}
+      {/* MAIN CONTENT AREA */}
+      <Box component="main" sx={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', position: 'relative', pt: isMobile ? 8 : 0 }}>
+
+        {/* Dynamic Glowing Orbs Background (Only in Dark Mode for effect, or subtle in Light) */}
+        {mode === 'dark' && (
+            <>
+                <Box sx={{
+                    position: 'absolute', width: '600px', height: '600px', borderRadius: '50%',
+                    background: 'radial-gradient(circle, rgba(34,197,94,0.15) 0%, rgba(0,0,0,0) 70%)',
+                    top: '-20%', left: '10%', filter: 'blur(60px)',
+                    animation: 'floating 10s ease-in-out infinite'
+                }} />
+                <Box sx={{
+                    position: 'absolute', width: '500px', height: '500px', borderRadius: '50%',
+                    background: 'radial-gradient(circle, rgba(168,85,247,0.15) 0%, rgba(0,0,0,0) 70%)',
+                    bottom: '-10%', right: '10%', filter: 'blur(60px)',
+                    animation: 'floating 14s ease-in-out infinite reverse'
+                }} />
+            </>
+        )}
+
+        <Box sx={{ flex: 1, overflow: 'auto', p: isMobile ? 2 : 3, position: 'relative', zIndex: 1 }}>
+            <Fade in={true} timeout={500}>
+                <Box>
+                    {children}
+                </Box>
+            </Fade>
+        </Box>
       </Box>
     </Box>
   )

@@ -1,0 +1,549 @@
+[
+  {
+    "active_time": 1765051440,
+    "biz_type": 18,
+    "category": "wsdcg",
+    "create_time": 1749062576,
+    "icon": "smart/icon/ay1545813662186VvWHx/ab605398316f82dfab793086cb6cd23a.jpg",
+    "id": "eb33e6b487314c81cdkc1g",
+    "ip": "179.60.74.240",
+    "lat": "-33.11",
+    "local_key": "/vv4p}[[QCkTx/_#",
+    "lon": "-71.55",
+    "model": "WiFi soil sensor",
+    "name": "Sensor 1",
+    "online": true,
+    "owner_id": "170315355",
+    "product_id": "ggzgysgk31harwer",
+    "product_name": "WiFi soil sensor",
+    "status": [
+      {
+        "code": "va_temperature",
+        "value": 210
+      },
+      {
+        "code": "va_humidity",
+        "value": 80
+      },
+      {
+        "code": "battery_state",
+        "value": "high"
+      },
+      {
+        "code": "battery_percentage",
+        "value": 100
+      },
+      {
+        "code": "temp_unit_convert",
+        "value": "c"
+      }
+    ],
+    "sub": false,
+    "time_zone": "-03:00",
+    "uid": "az1695948664234E8izj",
+    "update_time": 1765172793,
+    "uuid": "bfa74f6b9af21718"
+  },
+  {
+    "active_time": 1764660756,
+    "biz_type": 18,
+    "category": "wsdcg",
+    "create_time": 1749062798,
+    "icon": "smart/icon/ay1545813662186VvWHx/ab605398316f82dfab793086cb6cd23a.jpg",
+    "id": "eb60f46a8dc4f7af11hgp9",
+    "ip": "179.60.74.240",
+    "lat": "-32.93",
+    "local_key": "k<:>2EllTA5@SG:;",
+    "lon": "-71.55",
+    "model": "WiFi soil sensor",
+    "name": "Sensor 2",
+    "online": true,
+    "owner_id": "170315355",
+    "product_id": "ggzgysgk31harwer",
+    "product_name": "WiFi soil sensor",
+    "status": [
+      {
+        "code": "va_temperature",
+        "value": 220
+      },
+      {
+        "code": "va_humidity",
+        "value": 63
+      },
+      {
+        "code": "battery_state",
+        "value": "high"
+      },
+      {
+        "code": "battery_percentage",
+        "value": 100
+      },
+      {
+        "code": "temp_unit_convert",
+        "value": "c"
+      }
+    ],
+    "sub": false,
+    "time_zone": "-03:00",
+    "uid": "az1695948664234E8izj",
+    "update_time": 1765170135,
+    "uuid": "f302710d889f048c"
+  },
+  {
+    "active_time": 1764659693,
+    "biz_type": 18,
+    "category": "wsdcg",
+    "create_time": 1749062865,
+    "icon": "smart/icon/ay1545813662186VvWHx/ab605398316f82dfab793086cb6cd23a.jpg",
+    "id": "ebe398e4908b4437f0bjuv",
+    "ip": "179.60.74.240",
+    "lat": "-33.11",
+    "local_key": ".6I<w@n0mq-p*UTZ",
+    "lon": "-71.55",
+    "model": "WiFi soil sensor",
+    "name": "Sensor 3",
+    "online": true,
+    "owner_id": "170315355",
+    "product_id": "ggzgysgk31harwer",
+    "product_name": "WiFi soil sensor",
+    "status": [
+      {
+        "code": "va_temperature",
+        "value": 210
+      },
+      {
+        "code": "va_humidity",
+        "value": 78
+      },
+      {
+        "code": "battery_state",
+        "value": "high"
+      },
+      {
+        "code": "battery_percentage",
+        "value": 100
+      },
+      {
+        "code": "temp_unit_convert",
+        "value": "c"
+      }
+    ],
+    "sub": false,
+    "time_zone": "-03:00",
+    "uid": "az1695948664234E8izj",
+    "update_time": 1765168516,
+    "uuid": "5e1b230609e495b4"
+  },
+  {
+    "active_time": 1764491983,
+    "biz_type": 18,
+    "category": "tdq",
+    "create_time": 1714163340,
+    "icon": "smart/icon/bay1663926309260hKtN/a855750a120a1307a7463d6102e3f385.png",
+    "id": "eba939ccdda8167e71fh7u",
+    "ip": "179.60.74.240",
+    "lat": "-33.11",
+    "local_key": ">~'pz/kOUoSRnCEV",
+    "lon": "-71.55",
+    "model": "B201-RF433",
+    "name": "Bandeja der adelante",
+    "online": true,
+    "owner_id": "170315355",
+    "product_id": "3e1rkwaxtvi8yjnv",
+    "product_name": "1 gang Mini Smart Switch RF433",
+    "status": [
+      {
+        "code": "switch_1",
+        "value": true
+      },
+      {
+        "code": "countdown_1",
+        "value": 0
+      },
+      {
+        "code": "relay_status",
+        "value": "0"
+      },
+      {
+        "code": "light_mode",
+        "value": "relay"
+      },
+      {
+        "code": "cycle_time",
+        "value": ""
+      },
+      {
+        "code": "random_time",
+        "value": ""
+      },
+      {
+        "code": "switch_inching",
+        "value": ""
+      },
+      {
+        "code": "remote_add",
+        "value": ""
+      },
+      {
+        "code": "remote_list",
+        "value": "AA=="
+      }
+    ],
+    "sub": false,
+    "time_zone": "-03:00",
+    "uid": "az1695948664234E8izj",
+    "update_time": 1765172259,
+    "uuid": "1b184532200af7f7"
+  },
+  {
+    "active_time": 1763960546,
+    "biz_type": 18,
+    "category": "tdq",
+    "create_time": 1714162994,
+    "icon": "smart/icon/bay1663926309260hKtN/a855750a120a1307a7463d6102e3f385.png",
+    "id": "eb2182339420bb6701wu4q",
+    "ip": "179.60.74.240",
+    "lat": "-33.11",
+    "local_key": "U')|$OhV9;/1EwHS",
+    "lon": "-71.55",
+    "model": "B201-RF433",
+    "name": "Bandeja der atrás",
+    "online": true,
+    "owner_id": "170315355",
+    "product_id": "3e1rkwaxtvi8yjnv",
+    "product_name": "1 gang Mini Smart Switch RF433",
+    "status": [
+      {
+        "code": "switch_1",
+        "value": true
+      },
+      {
+        "code": "countdown_1",
+        "value": 0
+      },
+      {
+        "code": "relay_status",
+        "value": "1"
+      },
+      {
+        "code": "light_mode",
+        "value": "relay"
+      },
+      {
+        "code": "cycle_time",
+        "value": ""
+      },
+      {
+        "code": "random_time",
+        "value": ""
+      },
+      {
+        "code": "switch_inching",
+        "value": ""
+      },
+      {
+        "code": "remote_add",
+        "value": ""
+      },
+      {
+        "code": "remote_list",
+        "value": "AA=="
+      }
+    ],
+    "sub": false,
+    "time_zone": "-03:00",
+    "uid": "az1695948664234E8izj",
+    "update_time": 1765172246,
+    "uuid": "b86fadbe81a17ed3"
+  },
+  {
+    "active_time": 1765171829,
+    "biz_type": 18,
+    "category": "cz",
+    "create_time": 1765171829,
+    "icon": "smart/icon/bay17289578568037AkA/ef175f7327e8c00a6eda800f0af0dcbc.png",
+    "id": "eb854fi6faf2sfwl",
+    "ip": "",
+    "lat": "-33.11",
+    "local_key": "1nd<@;p#gtL]<W(K",
+    "lon": "-71.55",
+    "model": "",
+    "name": "Bandeja Izq adelante ",
+    "node_id": "000000010000001a",
+    "online": true,
+    "owner_id": "170315355",
+    "product_id": "362qrlab1czuqg0l",
+    "product_name": "W20-UBEA",
+    "status": [
+      {
+        "code": "switch",
+        "value": false
+      }
+    ],
+    "sub": true,
+    "time_zone": "+08:00",
+    "uid": "az1695948664234E8izj",
+    "update_time": 1765172215,
+    "uuid": "eb854fi6faf2sfwl"
+  },
+  {
+    "active_time": 1765172196,
+    "biz_type": 18,
+    "category": "cz",
+    "create_time": 1765172196,
+    "icon": "smart/icon/bay17289578568037AkA/ef175f7327e8c00a6eda800f0af0dcbc.png",
+    "id": "ebf84afaludhei1x",
+    "ip": "",
+    "lat": "-33.11",
+    "local_key": "1nd<@;p#gtL]<W(K",
+    "lon": "-71.55",
+    "model": "",
+    "name": "Bandeja Izq Atrás",
+    "node_id": "000000010000001b",
+    "online": true,
+    "owner_id": "170315355",
+    "product_id": "362qrlab1czuqg0l",
+    "product_name": "W20-UBEA",
+    "status": [
+      {
+        "code": "switch",
+        "value": true
+      }
+    ],
+    "sub": true,
+    "time_zone": "+08:00",
+    "uid": "az1695948664234E8izj",
+    "update_time": 1765172225,
+    "uuid": "ebf84afaludhei1x"
+  },
+  {
+    "active_time": 1764555897,
+    "biz_type": 18,
+    "category": "wg2",
+    "create_time": 1764555897,
+    "icon": "smart/icon/ay1547090862379wXw2X/3f217cb64f72c0c93cfa52bd2c8c1e21.png",
+    "id": "ebfad3e7bddeaf7660yn4f",
+    "ip": "179.60.74.240",
+    "lat": "-33.11",
+    "local_key": "1nd<@;p#gtL]<W(K",
+    "lon": "-71.55",
+    "model": "THP10-Z-X，Type-C",
+    "name": "Smart Wired Zigbee Gateway Pro",
+    "online": true,
+    "owner_id": "170315355",
+    "product_id": "jwbmqs1q7qf0xkh6",
+    "product_name": "Smart Wired Zigbee Gateway Pro",
+    "status": [
+      {
+        "code": "switch_alarm_sound",
+        "value": false
+      },
+      {
+        "code": "master_state",
+        "value": "normal"
+      },
+      {
+        "code": "factory_reset",
+        "value": false
+      },
+      {
+        "code": "alarm_active",
+        "value": ""
+      }
+    ],
+    "sub": false,
+    "time_zone": "-03:00",
+    "uid": "az1695948664234E8izj",
+    "update_time": 1765172141,
+    "uuid": "aa8a28a00c4e7c38"
+  },
+  {
+    "active_time": 1763959469,
+    "biz_type": 18,
+    "category": "cz",
+    "create_time": 1736470353,
+    "icon": "smart/icon/ay1552546478455PA09B/16536201369942f47a15b.png",
+    "id": "ebf51e207ba1359b93wbz9",
+    "ip": "179.60.74.240",
+    "lat": "-33.11",
+    "local_key": "mJPE|4sTTzz_qVgP",
+    "lon": "-71.55",
+    "model": "CR3L蓝牙网关，支持128子设备 ",
+    "name": "Bluetooth Gateway",
+    "online": true,
+    "owner_id": "170315355",
+    "product_id": "csvxfq3ecmedidkh",
+    "product_name": "Bluetooth Gateway",
+    "status": [
+      {
+        "code": "relay_status",
+        "value": "last"
+      }
+    ],
+    "sub": true,
+    "time_zone": "-03:00",
+    "uid": "az1695948664234E8izj",
+    "update_time": 1765172141,
+    "uuid": "a09c02dc105db2b1"
+  },
+  {
+    "active_time": 1764556148,
+    "biz_type": 18,
+    "category": "cz",
+    "create_time": 1764556148,
+    "icon": "smart/icon/bay17289578568037AkA/ef175f7327e8c00a6eda800f0af0dcbc.png",
+    "id": "ebf427eih6oxomiv",
+    "ip": "",
+    "lat": "-33.11",
+    "local_key": "1nd<@;p#gtL]<W(K",
+    "lon": "-71.55",
+    "model": "",
+    "name": "Bomba",
+    "node_id": "0000000100000017",
+    "online": true,
+    "owner_id": "170315355",
+    "product_id": "362qrlab1czuqg0l",
+    "product_name": "W20-UBEA",
+    "status": [
+      {
+        "code": "switch",
+        "value": false
+      }
+    ],
+    "sub": true,
+    "time_zone": "+08:00",
+    "uid": "az1695948664234E8izj",
+    "update_time": 1764980414,
+    "uuid": "ebf427eih6oxomiv"
+  },
+  {
+    "active_time": 1764569266,
+    "biz_type": 18,
+    "category": "cz",
+    "create_time": 1764569266,
+    "icon": "smart/icon/bay17289578568037AkA/ef175f7327e8c00a6eda800f0af0dcbc.png",
+    "id": "eb0e121ux4rrtjkf",
+    "ip": "",
+    "lat": "-33.11",
+    "local_key": "1nd<@;p#gtL]<W(K",
+    "lon": "-71.55",
+    "model": "",
+    "name": "Extractor",
+    "node_id": "0000000100000018",
+    "online": true,
+    "owner_id": "170315355",
+    "product_id": "362qrlab1czuqg0l",
+    "product_name": "W20-UBEA",
+    "status": [
+      {
+        "code": "switch",
+        "value": true
+      }
+    ],
+    "sub": true,
+    "time_zone": "+08:00",
+    "uid": "az1695948664234E8izj",
+    "update_time": 1764980424,
+    "uuid": "eb0e121ux4rrtjkf"
+  },
+  {
+    "active_time": 1764571653,
+    "biz_type": 18,
+    "category": "cz",
+    "create_time": 1764571653,
+    "icon": "smart/icon/bay17289578568037AkA/ef175f7327e8c00a6eda800f0af0dcbc.png",
+    "id": "ebc50c11rda7ug9j",
+    "ip": "",
+    "lat": "-33.11",
+    "local_key": "1nd<@;p#gtL]<W(K",
+    "lon": "-71.55",
+    "model": "",
+    "name": "Red",
+    "node_id": "0000000100000019",
+    "online": true,
+    "owner_id": "170315355",
+    "product_id": "362qrlab1czuqg0l",
+    "product_name": "W20-UBEA",
+    "status": [
+      {
+        "code": "switch",
+        "value": true
+      }
+    ],
+    "sub": true,
+    "time_zone": "+08:00",
+    "uid": "az1695948664234E8izj",
+    "update_time": 1764980424,
+    "uuid": "ebc50c11rda7ug9j"
+  },
+  {
+    "active_time": 1735930641,
+    "biz_type": 18,
+    "category": "sfkzq",
+    "create_time": 1735930641,
+    "icon": "smart/icon/ay1528018319540RHaJO/daf253ed61b0f2dc8da5882c7a1b128c.jpg",
+    "id": "eb50dd4bggxac9zz",
+    "ip": "",
+    "lat": "0",
+    "local_key": "mJPE|4sTTzz_qVgP",
+    "lon": "0",
+    "model": "",
+    "name": "Water timer",
+    "node_id": "72a6dbc4a23edf1e",
+    "online": false,
+    "owner_id": "170315355",
+    "product_id": "3qaqsgrd",
+    "product_name": "Water timer",
+    "status": [
+      {
+        "code": "va_temperature",
+        "value": -200
+      },
+      {
+        "code": "va_humidity",
+        "value": 0
+      },
+      {
+        "code": "battery_state",
+        "value": "high"
+      },
+      {
+        "code": "charge_state",
+        "value": false
+      },
+      {
+        "code": "maxtemp_set",
+        "value": -200
+      },
+      {
+        "code": "minitemp_set",
+        "value": -200
+      },
+      {
+        "code": "maxhum_set",
+        "value": 0
+      },
+      {
+        "code": "minihum_set",
+        "value": 0
+      },
+      {
+        "code": "temp_alarm",
+        "value": "loweralarm"
+      },
+      {
+        "code": "hum_alarm",
+        "value": "loweralarm"
+      },
+      {
+        "code": "switch",
+        "value": false
+      }
+    ],
+    "sub": true,
+    "time_zone": "-03:00",
+    "uid": "az1695948664234E8izj",
+    "update_time": 1765161594,
+    "uuid": "72a6dbc4a23edf1e"
+  }
+]

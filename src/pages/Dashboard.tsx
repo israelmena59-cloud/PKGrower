@@ -3,158 +3,289 @@ import React, { useEffect, useState } from 'react';
 import SensorCard from '../components/dashboard/SensorCard';
 import DeviceSwitch from '../components/dashboard/DeviceSwitch';
 import HistoryChart from '../components/dashboard/HistoryChart';
-import { Thermometer, Droplet, Wind, Lightbulb, Fan, Droplets } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card';
-import Typography from '@mui/material/Typography'
-import Grid from '@mui/material/Grid'
-import Box from '@mui/material/Box'
-
-// Define types for our data
-interface SensorData {
-  timestamp: string;
-  temperature: number;
-  humidity: number;
-  substrateHumidity: number;
-  vpd: number;
-}
-
-interface DeviceStates {
-  luzRoja: boolean; // Cambiado de 'lights' a 'luzRoja'
-  extractor: boolean;
-  bomba: boolean; // Cambiado de 'pump' a 'bomba'
-  humidifier: boolean;
-}
+import { SoilSensorsGrid } from '../components/dashboard/SoilSensorsGrid';
+import { CameraControl } from '../components/camera/CameraControl';
+import { HumidifierExtractorControl } from '../components/environment/HumidifierExtractorControl';
+import { Thermometer, Droplet, Wind, Lightbulb, Fan, Droplets, Settings, RefreshCw, Sprout, Leaf, Activity } from 'lucide-react';
+import { Card, CardHeader, CardContent, Typography, Grid, Box, IconButton, ToggleButton, ToggleButtonGroup, Chip, Paper } from '@mui/material';
+import { apiClient, type SensorData, type DeviceStates } from '../api/client'
+import ConfigModal from '../components/dashboard/ConfigModal';
+import { SoilChart } from '../components/dashboard/SoilChart';
+import { CropSteeringPanel } from '../components/dashboard/CropSteeringPanel';
+import AICopilotWidget from '../components/dashboard/AICopilotWidget';
+import { VPDStageChart } from '../components/dashboard/VPDStageChart';
 
 const Dashboard: React.FC = () => {
   const [latestSensors, setLatestSensors] = useState<SensorData | null>(null);
   const [sensorHistory, setSensorHistory] = useState<SensorData[]>([]);
   const [devices, setDevices] = useState<DeviceStates | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isConfigOpen, setIsConfigOpen] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [phase, setPhase] = useState<'vegetative' | 'generative'>('vegetative');
+  const [timeOfDay, setTimeOfDay] = useState('Día');
+
+  useEffect(() => {
+    const hour = new Date().getHours();
+    setTimeOfDay(hour >= 6 && hour < 18 ? 'Día' : 'Noche');
+  }, []);
+
+  const handlePhaseChange = (
+    event: React.MouseEvent<HTMLElement>,
+    newPhase: 'vegetative' | 'generative',
+  ) => {
+    if (newPhase !== null) setPhase(newPhase);
+  };
 
   const fetchData = async () => {
     try {
-      const latestSensorsResponse = await fetch('http://localhost:3000/api/sensors/latest');
-      const historyResponse = await fetch('http://localhost:3000/api/sensors/history');
-      const devicesResponse = await fetch('http://localhost:3000/api/devices');
+      let latestSensorsData: SensorData | null = null;
+      let historyData: SensorData[] = [];
+      let devicesData: Partial<DeviceStates> = {};
 
-      if (!latestSensorsResponse.ok || !historyResponse.ok || !devicesResponse.ok) {
-        throw new Error('Network response was not ok');
-      }
+      try { latestSensorsData = await apiClient.getLatestSensors(); } catch(e) { console.warn('Diff sensors', e); }
+      try { historyData = await apiClient.getSensorHistory(); } catch(e) { console.warn('Diff history', e); }
+      try { devicesData = await apiClient.getDeviceStates(); } catch(e) { console.warn('Diff devices', e); }
 
-      const latestSensorsData = await latestSensorsResponse.json();
-      const historyData = await historyResponse.json();
-      const devicesData = await devicesResponse.json();
-
-      setLatestSensors(latestSensorsData);
-      setSensorHistory(historyData);
-      setDevices(devicesData);
+      setLatestSensors(latestSensorsData || { temperature: 0, humidity: 0, substrateHumidity: 0, vpd: 0 } as any);
+      setSensorHistory(historyData || []);
+      setDevices((devicesData || {}) as DeviceStates);
       setError(null);
-    } catch (error) {
-      console.error("Failed to fetch data:", error);
-      setError("Failed to connect to simulation server. Is it running?");
+    } catch (globalError) {
+      console.error("Critical failure fetching data:", globalError);
+      setError(null);
     }
+  };
+
+  const handleRefresh = async () => {
+      setRefreshing(true);
+      try {
+          await apiClient.refreshDevices();
+          await fetchData();
+      } catch (e) {
+          console.error('Refresh failed', e);
+      } finally {
+          setTimeout(() => setRefreshing(false), 800);
+      }
   };
 
   useEffect(() => {
-    fetchData(); // Initial fetch
-    const interval = setInterval(fetchData, 5000); // Fetch every 5 seconds
-
-    return () => clearInterval(interval); // Cleanup on component unmount
+    fetchData();
+    const interval = setInterval(fetchData, 10000); // Optimized to 10s for Tunnel performance
+    return () => clearInterval(interval);
   }, []);
 
+  // Updated to return a Promise for the new robust DeviceSwitch
   const handleToggle = async (deviceId: keyof DeviceStates) => {
-    try {
-      const response = await fetch(`http://localhost:3000/api/device/${deviceId}/toggle`, {
-        method: 'POST',
-      });
-      if (!response.ok) {
-        throw new Error('Failed to toggle device');
-      }
-      fetchData(); // Re-fetch data to get the new state
-    } catch (error) {
-      console.error("Failed to toggle device:", error);
-    }
+      const currentState = devices?.[deviceId] || false;
+      const action = currentState ? 'off' : 'on';
+
+      // Perform API call
+      await apiClient.controlDevice(deviceId as string, action);
+
+      // Update local state only after success (or rely on next fetch)
+      // But for responsiveness, we can optimistic update here too if desired.
+      // Given the robust switch has its own loader, we can wait for real confirmation or just update local map.
+      setDevices(prev => prev ? ({ ...prev, [deviceId]: !currentState }) : null);
+
+      // Trigger background refresh to sync everything
+      fetchData();
   };
 
-  if (error) {
-    return <Box sx={{ textAlign: 'center', color: 'error.main', fontSize: '1.125rem', p: 2, bgcolor: 'background.paper', borderRadius: 1 }}>{error}</Box>
-  }
-
-  if (!latestSensors || !devices) {
-    return <Box sx={{ textAlign: 'center', color: 'text.secondary', fontSize: '1.125rem', p: 2, bgcolor: 'background.paper', borderRadius: 1 }}>Cargando datos...</Box>
+  if (!devices) {
+    return <Box sx={{ display: 'flex', justifyContent: 'center', p: 10 }}><RefreshCw className="animate-spin" size={40} /></Box>
   }
 
   return (
-    <Box sx={{ '& > * + *': { mt: 3 } }}>
-      <Typography variant="h4" sx={{ fontWeight: 'bold' }}>Dashboard del Cultivo</Typography>
-      
-      <Card>
-        <CardHeader>
-          <CardTitle>Datos Actuales de Sensores</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Grid container spacing={2}>
-            <Grid item xs={12} md={6} lg={3}>
-              <SensorCard icon={<Thermometer />} name="Temperatura" value={latestSensors.temperature} unit="°C" />
-            </Grid>
-            <Grid item xs={12} md={6} lg={3}>
-              <SensorCard icon={<Droplet />} name="Humedad Ambiente" value={latestSensors.humidity} unit="%" />
-            </Grid>
-            <Grid item xs={12} md={6} lg={3}>
-              <SensorCard icon={<Droplets />} name="Humedad Sustrato" value={latestSensors.substrateHumidity} unit="%" />
-            </Grid>
-            <Grid item xs={12} md={6} lg={3}>
-              <SensorCard icon={<Wind />} name="VPD" value={latestSensors.vpd} unit="kPa" />
-            </Grid>
-          </Grid>
-        </CardContent>
-      </Card>
+    <Box sx={{ maxWidth: 1600, mx: 'auto', p: 1, '& > *': { mb: 3 } }}>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Historial de Sensores</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Grid container spacing={2}>
-            <Grid item xs={12} lg={6}>
-              <Typography variant="h6" sx={{ mb: 1 }}>Temperatura</Typography>
-              <HistoryChart data={sensorHistory} dataKey="temperature" stroke="#ef4444" />
-            </Grid>
-            <Grid item xs={12} lg={6}>
-              <Typography variant="h6" sx={{ mb: 1 }}>Humedad</Typography>
-              <HistoryChart data={sensorHistory} dataKey="humidity" stroke="#3b82f6" />
-            </Grid>
-            <Grid item xs={12}>
-              <Typography variant="h6" sx={{ mb: 1 }}>Humedad del Sustrato</Typography>
-              <HistoryChart data={sensorHistory} dataKey="substrateHumidity" stroke="#22c55e" />
-            </Grid>
-          </Grid>
-        </CardContent>
-      </Card>
+      {/* HEADER PREMIUM */}
+      {/* HEADER PREMIUM */}
+      <Paper
+        elevation={0}
+        sx={{
+            p: 3,
+            borderRadius: 'var(--squircle-radius)',
+            background: 'var(--glass-bg)',
+            backdropFilter: 'var(--backdrop-blur)',
+            border: 'var(--glass-border)',
+            boxShadow: 'var(--glass-shadow)',
+            color: 'white',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            position: 'relative',
+            overflow: 'hidden'
+        }}
+      >
+        <Box sx={{ position: 'relative', zIndex: 1 }}>
+            <Typography variant="overline" sx={{ opacity: 0.7, letterSpacing: 2 }}>
+                SYSTEM STATUS: ACTIVE
+            </Typography>
+            <Typography variant="h3" fontWeight="900" sx={{ background: 'linear-gradient(45deg, #fff 30%, #a5f3fc 90%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', letterSpacing: -1 }}>
+                PKGrower 3.0
+            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 1 }}>
+                <Chip icon={<Activity size={14} />} label="Online" color="success" size="small" variant="outlined" sx={{ color: '#4ade80',  borderColor: '#4ade80' }} />
+                <Chip icon={phase === 'vegetative' ? <Sprout size={14}/> : <Leaf size={14}/>} label={`${phase === 'vegetative' ? 'Vegetativa' : 'Floración'}`} color={phase === 'vegetative' ? 'primary' : 'secondary'} size="small" variant="filled" />
+            </Box>
+        </Box>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Control de Dispositivos</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Grid container spacing={2}>
-            <Grid item xs={6} md={4} lg={2}>
-              <DeviceSwitch icon={<Lightbulb />} name="Luz Roja" isOn={devices.luzRoja} onToggle={() => handleToggle('luzRoja')} />
+        <Box sx={{ zIndex: 1, display: 'flex', gap: 1 }}>
+            <IconButton onClick={handleRefresh} sx={{ color: 'white', bgcolor: 'rgba(255,255,255,0.05)', '&:hover': { bgcolor: 'rgba(255,255,255,0.1)' } }}>
+                <RefreshCw className={refreshing ? "animate-spin" : ""} />
+            </IconButton>
+            <IconButton onClick={() => setIsConfigOpen(true)} sx={{ color: 'white', bgcolor: 'rgba(255,255,255,0.05)', '&:hover': { bgcolor: 'rgba(255,255,255,0.1)' } }}>
+              <Settings />
+            </IconButton>
+        </Box>
+      </Paper>
+
+      <ConfigModal open={isConfigOpen} onClose={() => setIsConfigOpen(false)} />
+
+      {/* AI COPILOT & SENSORS ROW */}
+      <Grid container spacing={3}>
+        <Grid item xs={12} lg={4}>
+            <AICopilotWidget sensors={latestSensors} phase={phase} />
+        </Grid>
+        <Grid item xs={12} lg={8}>
+            <Grid container spacing={3}>
+                <Grid item xs={12}>
+                    <VPDStageChart data={sensorHistory} />
+                </Grid>
+                <Grid item xs={12}>
+                    <HistoryChart data={sensorHistory} />
+                </Grid>
             </Grid>
-            <Grid item xs={6} md={4} lg={2}>
-              <DeviceSwitch icon={<Fan />} name="Extractor" isOn={devices.extractor} onToggle={() => handleToggle('extractor')} />
+            <Grid container spacing={2} sx={{ mt: 3 }}> {/* Added margin top to separate charts from sensor cards */}
+                <Grid item xs={12} md={3}>
+                    <SensorCard icon={<Thermometer />} name="Temp. Aire" value={latestSensors?.temperature ?? '--'} unit="°C" color="#ef4444" description="Temperatura óptima: 22-26°C." />
+                </Grid>
+                <Grid item xs={12} md={3}>
+                    <SensorCard icon={<Droplet />} name="Humedad" value={latestSensors?.humidity ?? '--'} unit="%" color="#3b82f6" description="Humedad Relativa del aire." />
+                </Grid>
+                <Grid item xs={12} md={3}>
+                    <SensorCard icon={<Wind />} name="VPD" value={latestSensors?.vpd ?? '--'} unit="kPa" color="#8b5cf6" description="Déficit de Presión de Vapor." />
+                </Grid>
+                <Grid item xs={12} md={3}>
+                    <SensorCard icon={<Droplets />} name="Sustrato" value={latestSensors?.substrateHumidity ?? '--'} unit="%" color="#f59e0b" description="Humedad volumétrica del sustrato." />
+                </Grid>
             </Grid>
-            <Grid item xs={6} md={4} lg={2}>
-              <DeviceSwitch icon={<Droplets />} name="Bomba de Riego" isOn={devices.bomba} onToggle={() => handleToggle('bomba')} />
-            </Grid>
-            <Grid item xs={6} md={4} lg={2}>
-              <DeviceSwitch icon={<Droplet />} name="Humidificador" isOn={devices.humidifier} onToggle={() => handleToggle('humidifier')} />
-            </Grid>
+        </Grid>
+      </Grid>
+
+      {/* Control de Humedad (Humidificador + Extractor) */}
+      <HumidifierExtractorControl />
+
+      <Grid container spacing={3}>
+          {/* Main Content Area */}
+          <Grid item xs={12} lg={8}>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+
+                  {/* Detailed Soil Analysis */}
+                  <SoilSensorsGrid />
+
+                  {/* Charts */}
+                  <Card sx={{
+                      borderRadius: 'var(--squircle-radius)',
+                      overflow: 'hidden',
+                      bgcolor: 'var(--glass-bg)',
+                      backdropFilter: 'var(--backdrop-blur)',
+                      border: 'var(--glass-border)',
+                      boxShadow: 'var(--glass-shadow)'
+                  }}>
+                    <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: 1, borderColor: 'rgba(255,255,255,0.05)' }}>
+                        <Typography variant="h6" fontWeight="bold" color="white">Análisis de Historial</Typography>
+                        <ToggleButtonGroup
+                            value={phase}
+                            exclusive
+                            onChange={handlePhaseChange}
+                            size="small"
+                            sx={{ bgcolor: 'rgba(255,255,255,0.05)' }}
+                        >
+                            <ToggleButton value="vegetative" sx={{ color: 'white' }}>Vegetativo</ToggleButton>
+                            <ToggleButton value="generative" sx={{ color: 'white' }}>Generativo</ToggleButton>
+                        </ToggleButtonGroup>
+                    </Box>
+                    <CardContent>
+                        <SoilChart data={sensorHistory} phase={phase} />
+                        <Box sx={{ mt: 3 }}>
+                            <Grid container spacing={2}>
+                                <Grid item xs={12} md={6}>
+                                    <HistoryChart data={sensorHistory} dataKey="temperature" stroke="#ef4444" />
+                                </Grid>
+                                <Grid item xs={12} md={6}>
+                                    <HistoryChart data={sensorHistory} dataKey="humidity" stroke="#3b82f6" />
+                                </Grid>
+                            </Grid>
+                        </Box>
+                    </CardContent>
+                  </Card>
+              </Box>
           </Grid>
-        </CardContent>
-      </Card>
+
+          {/* Sidebar / Controls */}
+          <Grid item xs={12} lg={4}>
+               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+
+                    {/* Camera */}
+                    <Box sx={{ borderRadius: 3, overflow: 'hidden', boxShadow: 3 }}>
+                        <CameraControl />
+                    </Box>
+
+                    {/* Crop Steering Strategy */}
+                    <CropSteeringPanel phase={phase} currentVWC={latestSensors?.substrateHumidity ?? 0} />
+
+                    {/* Quick Controls */}
+                    <Card sx={{
+                        borderRadius: 'var(--squircle-radius)',
+                        bgcolor: 'var(--glass-bg)',
+                        backdropFilter: 'var(--backdrop-blur)',
+                        border: 'var(--glass-border)',
+                        boxShadow: 'var(--glass-shadow)'
+                    }}>
+                        <CardHeader title="Actuadores" subheader="Control Manual Directo" titleTypographyProps={{ color: 'white', fontWeight: 'bold' }} subheaderTypographyProps={{ color: 'rgba(255,255,255,0.5)' }} />
+                        <CardContent>
+                            <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.5)', mb: 1, display: 'block', fontWeight: 'bold' }}>ILUMINACIÓN</Typography>
+                            <Grid container spacing={2} sx={{ mb: 3 }}>
+                                <Grid item xs={6} md={3}>
+                                    <DeviceSwitch icon={<Lightbulb />} name="Panel 1" isOn={devices.luzPanel1 || false} onToggle={() => handleToggle('luzPanel1')} />
+                                </Grid>
+                                <Grid item xs={6} md={3}>
+                                    <DeviceSwitch icon={<Lightbulb />} name="Panel 2" isOn={devices.luzPanel2 || false} onToggle={() => handleToggle('luzPanel2')} />
+                                </Grid>
+                                <Grid item xs={6} md={3}>
+                                    <DeviceSwitch icon={<Lightbulb />} name="Panel 3" isOn={devices.luzPanel3 || false} onToggle={() => handleToggle('luzPanel3')} />
+                                </Grid>
+                                <Grid item xs={6} md={3}>
+                                    <DeviceSwitch icon={<Lightbulb />} name="Panel 4" isOn={devices.luzPanel4 || false} onToggle={() => handleToggle('luzPanel4')} />
+                                </Grid>
+                                <Grid item xs={12}>
+                                    <DeviceSwitch icon={<Lightbulb sx={{ color: '#ef4444' }} />} name="Luz Roja (Emerson)" isOn={devices.controladorLuzRoja || false} onToggle={() => handleToggle('controladorLuzRoja')} />
+                                </Grid>
+                            </Grid>
+
+                            <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.5)', mb: 1, display: 'block', fontWeight: 'bold' }}>RIEGO & CLIMA</Typography>
+                            <Grid container spacing={2}>
+                                <Grid item xs={6}>
+                                    <DeviceSwitch icon={<Fan />} name="Extractor" isOn={devices.extractorControlador || false} onToggle={() => handleToggle('extractorControlador')} />
+                                </Grid>
+                                <Grid item xs={6}>
+                                    <DeviceSwitch icon={<Droplets />} name="Bomba" isOn={devices.bombaControlador || false} onToggle={() => handleToggle('bombaControlador')} />
+                                </Grid>
+                                <Grid item xs={12}>
+                                    <DeviceSwitch icon={<Droplet />} name="Humidificador" isOn={devices.humidifier || false} onToggle={() => handleToggle('humidifier')} />
+                                </Grid>
+                            </Grid>
+                        </CardContent>
+                    </Card>
+               </Box>
+          </Grid>
+      </Grid>
     </Box>
   );
 };
+
+const InfoIcon = () => <Activity size={20} />;
 
 export default Dashboard;

@@ -2,22 +2,39 @@
 import { useState } from 'react';
 import Layout, { Page } from './components/Layout';
 import Dashboard from './pages/Dashboard';
-import Automations from './pages/Automations';
+import Lighting from './pages/Lighting';
+import Irrigation from './pages/Irrigation';
+import Environment from './pages/Environment';
 import AIAssistant from './pages/AIAssistant';
-// Import other pages as they are created
+import Calendar from './pages/Calendar';
+import Devices from './pages/Devices';
+import Camera from './pages/Camera';
+import Settings from './pages/Settings';
+import { ThemeProvider } from './context/ThemeContext';
 
-function App() {
+function AppContent() {
   const [activePage, setActivePage] = useState<Page>('dashboard');
 
   const renderPage = () => {
     switch (activePage) {
       case 'dashboard':
         return <Dashboard />;
-      case 'automations':
-        return <Automations />;
+      case 'lighting':
+        return <Lighting />;
+      case 'irrigation':
+        return <Irrigation />;
+      case 'environment':
+        return <Environment />;
       case 'ai_assistant':
         return <AIAssistant />;
-      // Add other cases here for other pages
+      case 'calendar':
+        return <Calendar />;
+      case 'devices':
+        return <Devices />;
+      case 'camera':
+        return <Camera />;
+      case 'settings':
+        return <Settings />;
       default:
         return <div>Pagina no encontrada</div>;
     }
@@ -27,6 +44,14 @@ function App() {
     <Layout activePage={activePage} onNavigate={setActivePage}>
       {renderPage()}
     </Layout>
+  );
+}
+
+function App() {
+  return (
+    <ThemeProvider>
+      <AppContent />
+    </ThemeProvider>
   );
 }
 
