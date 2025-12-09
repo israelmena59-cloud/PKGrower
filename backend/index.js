@@ -190,6 +190,7 @@ const DEVICE_MAP = {
 
 // --- INICIALIZACIÓN DE LA APP Y CONECTORES ---
 const app = express();
+const path = require('path'); // Import path
 app.use(cors()); // Safe toggle
 const PORT = process.env.PORT || 3000;
 // Inicializar TuyaOpenApiClient con manejo de errores
@@ -1128,60 +1129,51 @@ app.post('/api/chat', async (req, res) => {
       }
   };
 
-  const options = {
-      // Use gemini-1.5-flash for faster and more reliable responses
-      hostname: 'generativelanguage.googleapis.com',
-      path: `/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
-      method: 'POST',
-      headers: {
-          'Content-Type': 'application/json',
-      }
-  };
+  // Refactored to use Google Generative AI SDK
+  try {
+      const { GoogleGenerativeAI } = require("@google/generative-ai");
+      const genAI = new GoogleGenerativeAI(apiKey);
+      // Use the same model as the vision endpoint or a consistent stable one
+      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
 
-  const request = https.request(options, (response) => {
-      let data = '';
-      response.on('data', (chunk) => { data += chunk; });
-      response.on('end', () => {
-          if (response.statusCode >= 200 && response.statusCode < 300) {
-              try {
-                  const json = JSON.parse(data);
-                  const reply = json.candidates?.[0]?.content?.parts?.[0]?.text || "No pude generar una respuesta.";
-
-                  // GUARDAR EN CACHE
-                  lastAiResponse = reply;
-                  lastAiCallTimestamp = Date.now();
-
-                  // Log success
-                  console.log('[AI SUCCESS] Gemini respondió:', reply.substring(0, 50) + '...');
-
-                  res.json({ reply });
-              } catch (e) {
-                  console.error('[AI PARSE ERROR]', e);
-                  res.json({ reply: "Error al procesar respuesta de Gemini." });
-              }
-          } else {
-              // Si falla, loguear detalle
-              console.warn(`[AI WARN] Fallo API (${response.statusCode}). Data: ${data}`);
-
-              if (lastAiResponse.includes("Modo Respaldo")) {
-                  const localAnalysis = generateLocalFallback(message);
-                  lastAiResponse = localAnalysis;
-                  res.json({ reply: localAnalysis + " ⚠️ (API Error)" });
-              } else {
-                  res.json({ reply: lastAiResponse + " 💤 (Cache)" });
-              }
-          }
+      const chat = model.startChat({
+        history: [
+            {
+                role: "user",
+                parts: [{ text: systemContext }],
+            },
+            {
+                role: "model",
+                parts: [{ text: "Entendido. Soy el asistente agrónomo de PKGrower. Estoy listo para analizar los datos del cultivo en tiempo real y dar recomendaciones." }],
+            },
+        ],
+        generationConfig: {
+            maxOutputTokens: 1000,
+        },
       });
-  });
 
-  request.on('error', (e) => {
-      console.error('[AI REQUEST ERROR]', e);
-      // Fallback network error too
-      res.json({ reply: lastAiResponse + " (Sin conexión)" });
-  });
+      const result = await chat.sendMessage(message);
+      const response = await result.response;
+      const reply = response.text();
 
-  request.write(postData);
-  request.end();
+      // GUARDAR EN CACHE
+      lastAiResponse = reply;
+      lastAiCallTimestamp = Date.now();
+
+      console.log('[AI SUCCESS] Gemini respondió:', reply.substring(0, 50) + '...');
+      res.json({ reply });
+
+  } catch (error) {
+      console.warn(`[AI WARN] Fallo SDK: ${error.message}`);
+
+      if (lastAiResponse && lastAiResponse.includes("Modo Respaldo")) {
+          // Fallback logic if needed, or just return error
+          res.json({ reply: "Error conectando con Gemini. " + error.message });
+      } else {
+          // Serve cached response if available
+          res.json({ reply: (lastAiResponse || "Servicio no disponible") + " ⚠️ (Cache/Error)" });
+      }
+  }
 });
 
 // Endpoint de diagnóstico (para verificar estado de dispositivos)
@@ -2325,6 +2317,16 @@ app.post('/api/irrigation/log', async (req, res) => {
       console.log('[MANUAL REFRESH] Sincronizando dispositivos...');
       await initTuyaDevices();
       res.json({ success: true, message: 'Dispositivos actualizados' });
+  });
+
+  // --- SERVE FRONTEND STATIC FILES ---
+  // Serve static files from the React app build directory
+  app.use(express.static(path.join(__dirname, '../dist')));
+
+  // The "catchall" handler: for any request that doesn't
+  // match one above, send back React's index.html file.
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../dist/index.html'));
   });
 
 app.listen(PORT, '0.0.0.0', async () => { // Escuchar en 0.0.0.0 para acceso LAN

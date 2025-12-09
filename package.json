@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "start": "node backend/index.js",
     "dev:backend": "npm run dev --prefix backend",
     "dev:all": "concurrently \"npm run dev:backend\" \"npm run dev\"",
     "build": "vite build",
