@@ -132,89 +132,91 @@ export const VPDStageChart: React.FC<VPDStageChartProps> = ({ data = [] }) => {
             </ToggleButtonGroup>
         }
       />
-      <CardContent sx={{ flexGrow: 1, pt: 0, pb: '16px !important' }}>
-        <ResponsiveContainer width="100%" height={350}>
-          <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-            <defs>
-              <linearGradient id="colorVpd" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#a78bfa" stopOpacity={0.6}/>
-                <stop offset="95%" stopColor="#a78bfa" stopOpacity={0.05}/>
-              </linearGradient>
-            </defs>
-            <XAxis
-                dataKey="timeStr"
-                stroke="rgba(255,255,255,0.3)"
-                fontSize={11}
-                tickLine={false}
-                axisLine={false}
-                minTickGap={30}
-            />
-            <YAxis
-                yAxisId="left"
-                stroke="rgba(255,255,255,0.3)"
-                fontSize={11}
-                tickLine={false}
-                axisLine={false}
-                domain={[0, 4]}
-                unit=" kPa"
-            />
-             <YAxis
-                yAxisId="right"
-                orientation="right"
-                stroke="rgba(255,255,255,0.2)"
-                fontSize={11}
-                tickLine={false}
-                axisLine={false}
-                domain={['auto', 'auto']}
-            />
-            <Tooltip content={<CustomTooltip />} />
-            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
+      <CardContent sx={{ flexGrow: 1, pt: 0, pb: '16px !important', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+        <Box sx={{ flexGrow: 1, width: '100%', minHeight: 0 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="colorVpd" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#a78bfa" stopOpacity={0.6}/>
+                    <stop offset="95%" stopColor="#a78bfa" stopOpacity={0.05}/>
+                  </linearGradient>
+                </defs>
+                <XAxis
+                    dataKey="timeStr"
+                    stroke="rgba(255,255,255,0.3)"
+                    fontSize={11}
+                    tickLine={false}
+                    axisLine={false}
+                    minTickGap={30}
+                />
+                <YAxis
+                    yAxisId="left"
+                    stroke="rgba(255,255,255,0.3)"
+                    fontSize={11}
+                    tickLine={false}
+                    axisLine={false}
+                    domain={[0, 4]}
+                    unit=" kPa"
+                />
+                 <YAxis
+                    yAxisId="right"
+                    orientation="right"
+                    stroke="rgba(255,255,255,0.2)"
+                    fontSize={11}
+                    tickLine={false}
+                    axisLine={false}
+                    domain={['auto', 'auto']}
+                />
+                <Tooltip content={<CustomTooltip />} />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
 
-            {/* Target VPD Range Zone */}
-            <ReferenceArea
-                yAxisId="left"
-                y1={currentStage.minVpd}
-                y2={currentStage.maxVpd}
-                fill={currentStage.color}
-                fillOpacity={0.15}
-            />
+                {/* Target VPD Range Zone */}
+                <ReferenceArea
+                    yAxisId="left"
+                    y1={currentStage.minVpd}
+                    y2={currentStage.maxVpd}
+                    fill={currentStage.color}
+                    fillOpacity={0.15}
+                />
 
-            {/* Optimal Temp/Hum Lines (Optional, maybe too cluttered? Let's add reference lines for min/max if needed, but Area is better) */}
+                {/* Optimal Temp/Hum Lines (Optional, maybe too cluttered? Let's add reference lines for min/max if needed, but Area is better) */}
 
-            <Area
-                yAxisId="left"
-                type="monotone"
-                dataKey="vpd"
-                name="VPD"
-                stroke="#a78bfa"
-                strokeWidth={3}
-                fillOpacity={1}
-                fill="url(#colorVpd)"
-                animationDuration={1000}
-            />
-            <Line
-                yAxisId="right"
-                type="monotone"
-                dataKey="temperature"
-                name="Temp"
-                stroke="#ef4444"
-                strokeWidth={2}
-                dot={false}
-                strokeOpacity={0.8}
-            />
-            <Line
-                yAxisId="right"
-                type="monotone"
-                dataKey="humidity"
-                name="Humedad"
-                stroke="#3b82f6"
-                strokeWidth={2}
-                dot={false}
-                strokeOpacity={0.8}
-                strokeDasharray="5 5"
-            />
-          </AreaChart>
-        </ResponsiveContainer>
+                <Area
+                    yAxisId="left"
+                    type="monotone"
+                    dataKey="vpd"
+                    name="VPD"
+                    stroke="#a78bfa"
+                    strokeWidth={3}
+                    fillOpacity={1}
+                    fill="url(#colorVpd)"
+                    animationDuration={1000}
+                />
+                <Line
+                    yAxisId="right"
+                    type="monotone"
+                    dataKey="temperature"
+                    name="Temp"
+                    stroke="#ef4444"
+                    strokeWidth={2}
+                    dot={false}
+                    strokeOpacity={0.8}
+                />
+                <Line
+                    yAxisId="right"
+                    type="monotone"
+                    dataKey="humidity"
+                    name="Humedad"
+                    stroke="#3b82f6"
+                    strokeWidth={2}
+                    dot={false}
+                    strokeOpacity={0.8}
+                    strokeDasharray="5 5"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+        </Box>
       </CardContent>
     </Card>
   );
