@@ -45,9 +45,22 @@ const Irrigation: React.FC = () => {
     let active = true;
     const fetchData = async () => {
         try {
-            // 1. Settings
-            const setData = await apiClient.getSettings();
-            if (active && setData && setData.irrigation) setSettings(setData.irrigation);
+            // 1. Settings (Resilient)
+            let loadedSettings: IrrigationSettings | null = null;
+            try {
+                const setData = await apiClient.getSettings();
+                if (setData && setData.irrigation) loadedSettings = setData.irrigation;
+            } catch (e) { console.warn("Settings load failed, using defaults"); }
+
+            // Default Fallback
+            if (!loadedSettings) {
+                loadedSettings = {
+                    enabled: true, mode: 'auto',
+                    potSize: 11, pumpRate: 60,
+                    targetVWC: 45, drybackTarget: 15
+                };
+            }
+            if (active) setSettings(loadedSettings);
 
             // 2. Devices
             const devs = await apiClient.getDeviceStates();
@@ -60,7 +73,11 @@ const Irrigation: React.FC = () => {
                 dp: h.temperature - ((100 - h.humidity) / 5)
             }));
             if (active) setSensorHistory(processedHist);
-            if (processedHist.length > 0) setLatestVWC(processedHist[processedHist.length - 1].substrateHumidity || 0);
+            if (active) setSensorHistory(processedHist);
+            if (processedHist.length > 0) {
+                 const last = processedHist[processedHist.length - 1];
+                 setLatestVWC(last?.substrateHumidity || 0);
+            }
 
         } catch (e) { console.error(e); } finally { if (active) setLoading(false); }
     };
