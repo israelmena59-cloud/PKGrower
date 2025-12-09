@@ -294,6 +294,12 @@ const fs = require('fs');
 const SETTINGS_FILE = path.join(__dirname, 'settings.json');
 // ... (loadSettings/saveSettings stay same)
 
+// --- HEALTH CHECK (PUBLIC) ---
+// Must be defined BEFORE Security Middleware to allow Render/Uptime checks
+app.get('/health', (req, res) => {
+    res.status(200).send('OK');
+});
+
 // --- SECURITY MIDDLEWARE ---
 // Protect all routes with API Key
 const API_KEY = process.env.API_KEY;
@@ -2334,10 +2340,7 @@ app.post('/api/irrigation/log', async (req, res) => {
     res.sendFile(path.join(__dirname, '../dist/index.html'));
   });
 
-  // Health Check for Render
-  app.get('/health', (req, res) => {
-      res.status(200).send('OK');
-  });
+
 
 app.listen(PORT, '0.0.0.0', async () => { // Escuchar en 0.0.0.0 para acceso LAN
   console.log(`\n╔════════════════════════════════════════════════════════╗`);
