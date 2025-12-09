@@ -1,7 +1,8 @@
+
 import React, { useState, useEffect } from 'react';
 import { Box, Typography, Card, CardContent, CardHeader, Grid, TextField, Button, Avatar, List, ListItem, ListItemAvatar, ListItemText, Paper, Divider, CircularProgress, IconButton, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
 import { Bot, Send, Sparkles, CheckCircle, Key, AlertTriangle } from 'lucide-react';
-import { apiClient } from '../api/client';
+import { API_BASE_URL } from '../api/client';
 
 interface Message {
     id: number;
@@ -28,7 +29,7 @@ const AIAssistant: React.FC = () => {
       const init = async () => {
           setLoading(true);
           try {
-              const settings = await (await fetch('http://localhost:3000/api/settings')).json();
+              const settings = await (await fetch(`${API_BASE_URL}/api/settings`)).json();
               setAppSettings(settings);
               if (settings.ai?.apiKey) setApiKey(settings.ai.apiKey);
 
@@ -47,7 +48,7 @@ const AIAssistant: React.FC = () => {
       try {
           // Update AI settings
           const newAiSettings = { ...appSettings.ai, apiKey };
-          await fetch('http://localhost:3000/api/settings', {
+          await fetch(`${API_BASE_URL}/api/settings`, {
               method: 'POST', headers: {'Content-Type': 'application/json'},
               body: JSON.stringify({ ai: newAiSettings }) // Fix: Correct structure
           });
@@ -67,7 +68,7 @@ const AIAssistant: React.FC = () => {
       try {
           // Gather Context
           const devices = await apiClient.getDeviceStates();
-          const soil = await (await fetch('http://localhost:3000/api/sensors/soil')).json(); // simplified
+          const soil = await (await fetch(`${API_BASE_URL}/api/sensors/soil`)).json(); // simplified
 
           const context = {
               phase: 'Vegetativo', // Start dynamic phase later
@@ -79,7 +80,7 @@ const AIAssistant: React.FC = () => {
               vwc: 45
           };
 
-          const res = await fetch('http://localhost:3000/api/chat', {
+          const res = await fetch(`${API_BASE_URL}/api/chat`, {
               method: 'POST', headers: {'Content-Type': 'application/json'},
               body: JSON.stringify({ message: userMsg.text, context })
           });

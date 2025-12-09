@@ -40,7 +40,7 @@ async function saveSensorRecord(data) {
     };
 
     await db.collection(COLLECTION_NAME).add(record);
-    // console.log('[FIRESTORE] Registro guardado.'); // Verbose
+    console.log('[FIRESTORE] ✓ Registro guardado (para gráficas).'); // Verbose confirmed
   } catch (error) {
     console.error('[FIRESTORE] Error guardando registro:', error.message);
   }
@@ -78,7 +78,73 @@ async function getSensorHistory(limit = 100) {
   }
 }
 
+/**
+ * Get sensor history within a date range
+ * @param {string} start - Start date ISO string
+ * @param {string} end - End date ISO string
+ * @returns {Promise<Array>} Array of sensor data objects
+ */
+async function getSensorHistoryRange(start, end) {
+  if (!db) return [];
+
+  try {
+    const snapshot = await db.collection(COLLECTION_NAME)
+      .where('timestamp', '>=', start)
+      .where('timestamp', '<=', end)
+      .orderBy('timestamp', 'asc')
+      .get();
+
+    if (snapshot.empty) return [];
+
+    return snapshot.docs.map(doc => doc.data());
+  } catch (error) {
+    console.error('[FIRESTORE] Error leyendo rango:', error.message);
+    return [];
+  }
+}
+
 module.exports = {
   saveSensorRecord,
-  getSensorHistory
+  getSensorHistory,
+  getSensorHistoryRange,
+  saveIrrigationLog,
+  getLastIrrigationLog
 };
+
+/**
+ * Save an irrigation/runoff log to Firestore
+ * @param {Object} data - The irrigation log object
+ */
+async function saveIrrigationLog(data) {
+  if (!db) return;
+  try {
+    const record = {
+      ...data,
+      timestamp: data.timestamp || new Date().toISOString(),
+      createdAt: admin.firestore.FieldValue.serverTimestamp()
+    };
+    await db.collection('irrigation_logs').add(record);
+    console.log('[FIRESTORE] ✓ Bitácora de riego guardada.');
+  } catch (error) {
+    console.error('[FIRESTORE] Error guardando bitácora:', error.message);
+  }
+}
+
+/**
+ * Get the last irrigation log
+ * @returns {Promise<Object|null>}
+ */
+async function getLastIrrigationLog() {
+  if (!db) return null;
+  try {
+    const snapshot = await db.collection('irrigation_logs')
+      .orderBy('timestamp', 'desc')
+      .limit(1)
+      .get();
+    if (snapshot.empty) return null;
+    return snapshot.docs[0].data();
+  } catch (error) {
+    console.error('[FIRESTORE] Error getting last log:', error.message);
+    return null;
+  }
+}

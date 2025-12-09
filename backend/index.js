@@ -506,63 +506,51 @@ async function initXiaomiDevices() {
 
 
 
-// Helper to filter and map Tuya devices strictly
+// Helper to filter and map Tuya devices strictly + DYNAMICALLY
 function processTuyaDevices(cloudDevices) {
-  // Clear previous dynamic devices, keep only mapped ones temporarily if needed or rebuild
-  // Better to rebuild tuyaDevices from scratch based on map + cloud status
   const newTuyaDevices = {};
+  const mappedIds = new Set(); // Track IDs we have already processed via the strict map
 
-  // 1. First Pass: Map known devices
+  // 1. First Pass: Map known devices (preserve custom names/config)
   for (const [key, mapDef] of Object.entries(TUYA_DEVICES_MAP)) {
     // Find this device in cloud list
     const cloudDevice = cloudDevices.find(d => d.id === mapDef.id);
 
     if (cloudDevice) {
+      mappedIds.add(cloudDevice.id);
+
       // Mapeo detallado de propiedades
       let temperature = null;
       let humidity = null;
       let isOn = false;
-      let switchCode = mapDef.switchCode || 'switch_1'; // Use config or default to standard switch_1
+      let switchCode = mapDef.switchCode || 'switch_1';
 
       if (cloudDevice.status) {
          // Temperatura y Humedad (Sensores)
          const tempStatus = cloudDevice.status.find(s => s.code === 'va_temperature' || s.code === 'temp_current' || s.code === 'temperature' || s.code === 'T');
-         if (tempStatus) temperature = tempStatus.value / 10; // Tuya suele enviar 240 para 24.0
+         if (tempStatus) temperature = tempStatus.value / 10;
 
          const humStatus = cloudDevice.status.find(s => s.code === 'va_humidity' || s.code === 'humidity_value' || s.code === 'humidity' || s.code === 'rh');
          if (humStatus) humidity = humStatus.value;
 
           // Interruptores (Enchufes, Luces)
           // Aggressive Switch Discovery
-          // We look for ANY known switch code to determine state
           let switchStatus = cloudDevice.status.find(s => s.code === mapDef.switchCode);
-
           if (!switchStatus) {
-              // Fallback to common codes
               switchStatus = cloudDevice.status.find(s => ['switch_1', 'switch', 'switch_led', 'led_switch'].includes(s.code));
-              if (switchStatus) {
-                   switchCode = switchStatus.code; // Update the code we found
-              }
+              if (switchStatus) switchCode = switchStatus.code;
           }
 
           if (switchStatus) {
               isOn = switchStatus.value === true;
               console.log(`[DEBUG-STATE] ${key}: ON=${isOn} (via ${switchCode})`);
-          } else if (mapDef.deviceType !== 'sensor') {
-              // Only log missing switch for non-sensors
-              console.log(`[DEBUG-STATE] ${key}: No switch code found. Assumed OFF.`);
           }
-
-          // Debug Sensor Values
-          if (temperature !== null) console.log(`[DEBUG-SENSOR] ${key}: Temp Raw=${temperature * 10} -> ${temperature}`);
-
        }
 
        newTuyaDevices[key] = {
         ...mapDef,
         cloudDevice: cloudDevice,
         status: cloudDevice.online ? 'online' : 'offline',
-        // Propiedades mapeadas para uso fácil
         temperature: temperature,
         humidity: humidity,
         on: isOn,
@@ -570,20 +558,70 @@ function processTuyaDevices(cloudDevices) {
         lastUpdate: new Date(),
       };
 
-      console.log(`[✓ MAPPED] ${mapDef.name} (${mapDef.id}) - ONLINE [T:${temperature}°C, H:${humidity}%, ON:${isOn}]`);
+      console.log(`[✓ MAPPED] ${mapDef.name} (${mapDef.id}) - ONLINE`);
     } else {
       newTuyaDevices[key] = {
         ...mapDef,
         status: 'offline',
         lastUpdate: new Date(),
       };
-      console.log(`[? MISSING] ${mapDef.name} (${mapDef.id}) - No encontrado en Cloud`);
     }
   }
 
+  // 2. Second Pass: DYNAMIC DISCOVERY
+  // Add any cloud device that wasn't in our manual map
+  cloudDevices.forEach(cloudDevice => {
+      if (!mappedIds.has(cloudDevice.id)) {
+          const autoKey = `auto_${cloudDevice.id}`;
 
-  // 2. Second Pass: (Optional) Add unknown devices if requested, but user wanted NO duplicates/ghosts
-  // so we skip adding dynamic devices that are not in the map.
+          // Basic category inference
+          let category = 'unknown';
+          if (cloudDevice.category) {
+              if (cloudDevice.category.includes('cz') || cloudDevice.category.includes('switch')) category = 'switch';
+              else if (cloudDevice.category.includes('ws') || cloudDevice.category.includes('sensor')) category = 'sensor';
+              else if (cloudDevice.category.includes('dj') || cloudDevice.category.includes('light')) category = 'light';
+          }
+
+          // Basic Status Extraction
+          let temperature = null;
+          let humidity = null;
+          let isOn = false;
+          let switchCode = 'switch_1';
+
+          if (cloudDevice.status) {
+              const tempStatus = cloudDevice.status.find(s => s.code === 'va_temperature' || s.code === 'temp_current');
+              if (tempStatus) temperature = tempStatus.value / 10;
+
+              const humStatus = cloudDevice.status.find(s => s.code === 'va_humidity' || s.code === 'humidity_value');
+              if (humStatus) humidity = humStatus.value;
+
+              const switchStatus = cloudDevice.status.find(s => ['switch_1', 'switch', 'switch_led'].includes(s.code));
+              if (switchStatus) {
+                  isOn = switchStatus.value === true;
+                  switchCode = switchStatus.code;
+              }
+          }
+
+          newTuyaDevices[autoKey] = {
+              key: autoKey,
+              name: cloudDevice.name, // Use name from Tuya Cloud
+              id: cloudDevice.id,
+              platform: 'tuya',
+              deviceType: category === 'sensor' ? 'sensor' : (category === 'light' ? 'light' : 'switch'), // Simple inference
+              category: category,
+              cloudDevice: cloudDevice,
+              status: cloudDevice.online ? 'online' : 'offline',
+              temperature: temperature,
+              humidity: humidity,
+              on: isOn,
+              switchCode: switchCode,
+              lastUpdate: new Date(),
+              isDynamic: true // Flag to identify auto-discovered devices
+          };
+
+          console.log(`[★ AUTO-DISCOVERED] ${cloudDevice.name} (${cloudDevice.id})`);
+      }
+  });
 
   return newTuyaDevices;
 }
@@ -1012,7 +1050,7 @@ let lastAiResponse = "🌿 Todo se ve nominal. Los parámetros están estables. 
 let lastAiCallTimestamp = 0;
 const AI_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutos de cache
 
-app.post('/api/chat', (req, res) => {
+app.post('/api/chat', async (req, res) => {
   const { message, context } = req.body;
   const apiKey = appSettings.ai?.apiKey || process.env.GEMINI_API_KEY;
 
@@ -1033,7 +1071,24 @@ app.post('/api/chat', (req, res) => {
   console.log('[AI] Enviando consulta a Gemini (HTTPS)...');
 
   // ... (context logic unchanged) ...
-  let systemContext = "Eres un experto agrónomo asistente para el sistema PKGrower. ";
+  let systemContext = "Eres un experto agrónomo asistente para el sistema PKGrower. Tienes acceso a los datos del cultivo en tiempo real.";
+
+  // Inject Irrigation Data
+  try {
+      const lastIrrigation = await firestore.getLastIrrigationLog();
+      if (lastIrrigation) {
+          systemContext += `\n\n[DATOS DE ÚLTIMO RIEGO/RUNOFF - ${new Date(lastIrrigation.timestamp).toLocaleString()}]:
+          - Riego (Entrada): pH ${lastIrrigation.inputPh || '?'}, EC ${lastIrrigation.inputEc || '?'}
+          - Runoff (Salida): pH ${lastIrrigation.runoffPh || '?'}, EC ${lastIrrigation.runoffEc || '?'}
+          - Volumen: ${lastIrrigation.volume || '?'} L
+
+          Evalúa estos valores si el usuario pregunta sobre nutrición o estado del suelo.
+          `;
+      }
+  } catch (e) {
+      console.warn('Error injecting irrigation context:', e.message);
+  }
+
   if (context) {
        // ...
   }
@@ -2202,15 +2257,18 @@ app.post('/api/ai/analyze-image', upload.single('image'), async (req, res) => {
 });
 
 // ===== IRRIGATION LOG =====
-app.post('/api/irrigation/log', (req, res) => {
+app.post('/api/irrigation/log', async (req, res) => {
     try {
         const logEntry = {
-            id: Date.now(),
+            // id: Date.now(), // Firestore generates ID, or we keep it for frontend ref?
             timestamp: new Date().toISOString(),
             ...req.body
         };
-        // TODO: Save to Firestore 'irrigation_logs'
-        console.log('[LOG] Irrigation Entry:', logEntry);
+
+        // Save to Firestore 'irrigation_logs'
+        await firestore.saveIrrigationLog(logEntry);
+
+        console.log('[LOG] Irrigation Entry Saved:', logEntry);
         res.json({ success: true, entry: logEntry });
     } catch (e) {
         res.status(500).json({ error: e.message });

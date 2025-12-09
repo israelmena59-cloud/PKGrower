@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, Card, CardContent, CardHeader, Grid, Button, TextField, Divider, List, ListItem, ListItemText, ListItemIcon, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, Select, MenuItem, InputLabel, FormControl } from '@mui/material';
-import { Calendar as CalIcon, Plus, Droplet, Sun, Scissors, AlertCircle } from 'lucide-react';
+import { Box, Typography, Grid, Card, CardHeader, CardContent, Divider, List, ListItem, ListItemIcon, ListItemText, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
+import { Droplet, Sun, Scissors, AlertCircle, Calendar as CalIcon, Plus } from 'lucide-react';
+import { API_BASE_URL } from '../api/client';
 
 interface CalendarEvent {
-    id: number;
+    id?: string;
     title: string;
-    type: 'water' | 'light' | 'prune' | 'issue' | 'other';
     date: string;
+    type: 'water' | 'light' | 'prune' | 'issue' | 'other';
     description?: string;
 }
 
@@ -16,7 +17,7 @@ const Calendar: React.FC = () => {
   const [newEvent, setNewEvent] = useState({ title: '', type: 'water', description: '' });
 
   useEffect(() => {
-      fetch('http://localhost:3000/api/calendar')
+      fetch(`${API_BASE_URL}/api/calendar`)
         .then(res => res.json())
         .then(data => setEvents(data.reverse())) // Show newest first
         .catch(console.error);
@@ -28,7 +29,7 @@ const Calendar: React.FC = () => {
           date: new Date().toISOString()
       };
 
-      const res = await fetch('http://localhost:3000/api/calendar', {
+      const res = await fetch(`${API_BASE_URL}/api/calendar`, {
           method: 'POST', headers: {'Content-Type': 'application/json'},
           body: JSON.stringify(payload)
       });

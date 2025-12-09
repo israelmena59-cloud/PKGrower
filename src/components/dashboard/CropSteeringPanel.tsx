@@ -43,7 +43,7 @@ export const CropSteeringPanel: React.FC<CropSteeringPanelProps> = ({ phase, cur
   const targetMorningVWC = p1TargetVWC - (phase === 'vegetative' ? 18 : 28); // Estimado
 
   return (
-    <Card sx={{ mt: 3, boxShadow: 3, borderRadius: 2 }}>
+    <Card sx={{ boxShadow: 3, borderRadius: 2 }}>
       <CardHeader
         title={
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>

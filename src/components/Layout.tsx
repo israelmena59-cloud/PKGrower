@@ -97,13 +97,18 @@ const Layout: React.FC<LayoutProps> = ({ children, onNavigate, activePage }) => 
       <>
         <Box sx={{ p: 4, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <Box sx={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: '12px',
-                    background: 'linear-gradient(135deg, #22c55e 0%, #06b6d4 100%)',
-                    boxShadow: '0 0 15px rgba(34, 197, 94, 0.4)'
-                }} />
+                <Box
+                    component="img"
+                    src="/logo.png"
+                    alt="PKGrower Logo"
+                    sx={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: '12px',
+                        boxShadow: '0 0 15px rgba(34, 197, 94, 0.4)',
+                        objectFit: 'contain'
+                    }}
+                />
                 <Box>
                     <Typography variant="h6" fontWeight="800" sx={{ color: mode === 'dark' ? 'white' : 'text.primary', letterSpacing: 0.5 }}>PKGrower</Typography>
                     <Typography variant="caption" sx={{ color: mode === 'dark' ? 'rgba(255,255,255,0.5)' : 'text.secondary', letterSpacing: 1 }}>SYMBIOSIS OS</Typography>

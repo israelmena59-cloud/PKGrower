@@ -24,38 +24,37 @@ const Lighting: React.FC = () => {
 
   // Fetch initial data
   useEffect(() => {
+    let active = true;
     const loadData = async () => {
       try {
-        // Use relative path for Cloud compatibility (or apiClient base)
-        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/settings`);
-        const data = await res.json();
-        setSettings(data.lighting);
+        const data = await apiClient.getSettings();
+        if (active && data && data.lighting) {
+            setSettings(data.lighting);
+        }
 
         const devs = await apiClient.getDeviceStates();
-        setDevices(devs);
+        if (active) setDevices(devs);
       } catch (err) {
         console.error("Error loading lighting data", err);
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
     };
     loadData();
     const interval = setInterval(async () => {
-         const devs = await apiClient.getDeviceStates();
-         setDevices(devs);
+         try {
+            const devs = await apiClient.getDeviceStates();
+            if (active) setDevices(devs);
+         } catch(e) {}
     }, 5000);
-    return () => clearInterval(interval);
+    return () => { active = false; clearInterval(interval); };
   }, []);
 
   const handleSave = async () => {
     if (!settings) return;
     setSaving(true);
     try {
-       await fetch(`${import.meta.env.VITE_API_URL}/api/settings`, {
-           method: 'POST',
-           headers: { 'Content-Type': 'application/json' },
-           body: JSON.stringify({ lighting: settings })
-       });
+       await apiClient.saveSettings({ lighting: settings });
        setSuccessMsg('Configuración guardada correctamente');
        setTimeout(() => setSuccessMsg(''), 3000);
     } catch (err) {

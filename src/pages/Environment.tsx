@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, Card, CardContent, CardHeader, Grid, Button, TextField, Divider, Alert, Switch, CircularProgress } from '@mui/material';
-import { Thermometer, Fan, Droplet, Save, Wind } from 'lucide-react';
+import { Box, Typography, Grid, CardHeader, CardContent, CircularProgress, Alert, Divider, TextField, Switch, Button } from '@mui/material';
+import { Thermometer, Droplet, Wind, Fan, Save } from 'lucide-react';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
+import { API_BASE_URL, apiClient } from '../api/client';
 import DeviceSwitch from '../components/dashboard/DeviceSwitch';
-import { apiClient } from '../api/client';
-import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ReferenceLine } from 'recharts';
+import HistoryChart from '../components/dashboard/HistoryChart';
 
 interface EnvironmentSettings {
     enabled: boolean;
@@ -45,7 +46,7 @@ const Environment: React.FC = () => {
                 extractorCycleOn: 15, extractorCycleOff: 15
             };
             try {
-                const setRes = await fetch('http://localhost:3000/api/settings');
+                const setRes = await fetch(`${API_BASE_URL}/api/settings`);
                 if (setRes.ok) {
                     const setData = await setRes.json();
                     if (setData.environment) settingsData = setData.environment;
@@ -60,7 +61,7 @@ const Environment: React.FC = () => {
             if (active) setDevices(devs);
 
             // 3. Real Sensor Data
-            const sensorsRes = await fetch('http://localhost:3000/api/sensors/latest');
+            const sensorsRes = await fetch(`${API_BASE_URL}/api/sensors/latest`);
             const sensorsData = await sensorsRes.json();
 
             // ... Logic continues ...
@@ -99,7 +100,7 @@ const Environment: React.FC = () => {
     const interval = setInterval(async () => {
         try {
             const devs = await apiClient.getDeviceStates();
-            const sensorsRes = await fetch('http://localhost:3000/api/sensors/latest');
+            const sensorsRes = await fetch(`${API_BASE_URL}/api/sensors/latest`);
             const sensorsData = await sensorsRes.json();
 
             if (active) {
@@ -123,7 +124,7 @@ const Environment: React.FC = () => {
       if (!settings) return;
       setSaving(true);
       try {
-        await fetch('http://localhost:3000/api/settings', {
+        await fetch(`${API_BASE_URL}/api/settings`, {
             method: 'POST', headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({ environment: settings })
         });
@@ -303,6 +304,7 @@ const Environment: React.FC = () => {
                 </CardContent>
             </Box>
 
+
             {/* HUMIDITY CONFIG */}
             <Box className="glass-panel" sx={{
                 borderRadius: 'var(--squircle-radius)',
@@ -336,6 +338,11 @@ const Environment: React.FC = () => {
             </Box>
         </Grid>
       </Grid>
+
+      {/* HISTORICAL CHART */}
+      <Box sx={{ mt: 3 }}>
+          <HistoryChart type="environment" title="Historial Climático" />
+      </Box>
     </Box>
   );
 };

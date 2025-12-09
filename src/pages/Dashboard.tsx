@@ -226,7 +226,7 @@ const Dashboard: React.FC = () => {
 
           {/* Sidebar / Controls */}
           <Grid item xs={12} lg={4}>
-               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, height: 'fit-content' }}>
 
                     {/* Camera */}
                     <Box sx={{ borderRadius: 3, overflow: 'hidden', boxShadow: 3 }}>
@@ -242,7 +242,9 @@ const Dashboard: React.FC = () => {
                         bgcolor: 'var(--glass-bg)',
                         backdropFilter: 'var(--backdrop-blur)',
                         border: 'var(--glass-border)',
-                        boxShadow: 'var(--glass-shadow)'
+                        boxShadow: 'var(--glass-shadow)',
+                        flexGrow: 0,
+                        height: 'auto'
                     }}>
                         <CardHeader title="Actuadores" subheader="Control Manual Directo" titleTypographyProps={{ color: 'white', fontWeight: 'bold' }} subheaderTypographyProps={{ color: 'rgba(255,255,255,0.5)' }} />
                         <CardContent>

@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Paper, Typography, Skeleton } from '@mui/material';
 import { VideoOff } from 'lucide-react';
-// apiClient unused for now as we construct URL manually
-// import { apiClient } from '../../api/client';
+import { API_BASE_URL } from '../../api/client';
 
 interface CameraViewProps {
   online: boolean;
@@ -27,12 +26,7 @@ export const CameraView: React.FC<CameraViewProps> = ({ online }) => {
   useEffect(() => {
     if (!online) return;
 
-    // In a real scenario, this would be a snapshot URL from the backend
-    // For now, we point to the mock snapshot endpoint or placeholder
-    // The query param prevents browser caching
-    const url = `${(window as any).__API_BASE_URL__ || 'http://localhost:3000'}/api/camera/snapshot?t=${Date.now()}`;
-
-    // Preload image to avoid flickering
+    const url = `${API_BASE_URL}/api/camera/snapshot?t=${Date.now()}`;
     const img = new Image();
     img.src = url;
     img.onload = () => {
@@ -40,10 +34,8 @@ export const CameraView: React.FC<CameraViewProps> = ({ online }) => {
       setError(false);
     };
     img.onerror = () => {
-      // If snapshot fails, maybe use a placeholder or keep previous
       setError(true);
     };
-
   }, [refreshKey, online]);
 
   if (!online) {
