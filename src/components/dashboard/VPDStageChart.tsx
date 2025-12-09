@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceArea, ReferenceLine, Line } from 'recharts';
+import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceArea, Line } from 'recharts';
 import { Card, CardHeader, CardContent, ToggleButton, ToggleButtonGroup, Box, Typography, useTheme, useMediaQuery } from '@mui/material';
 import { Droplets, Sprout, Flower, Wind } from 'lucide-react';
 import { SensorData } from '../../api/client';
