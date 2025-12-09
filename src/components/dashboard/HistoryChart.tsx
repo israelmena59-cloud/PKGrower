@@ -83,8 +83,8 @@ const HistoryChart: React.FC<HistoryChartProps> = ({ type, title, targets }) => 
 
       let histData = histDataRaw;
 
-      // Filter invalid data
-      histData = histData.filter((d: any) => d && d.timestamp);
+      // Filter invalid data and zeros (Artifacts)
+      histData = histData.filter((d: any) => d && d.timestamp && (Number(d.temperature) > 0 || Number(d.substrateHumidity) > 0));
 
       // Process dates for easier chart reading
       histData = histData.map((d: any) => ({
@@ -271,10 +271,10 @@ const HistoryChart: React.FC<HistoryChartProps> = ({ type, title, targets }) => 
 
                         {type === 'environment' && (
                             <>
-                                <Area yAxisId="left" type="monotone" dataKey="temperature" name="Temp" stroke="#ef4444" strokeWidth={2} fill="url(#colorTemp)" unit="°C" />
-                                <Area yAxisId="left" type="monotone" dataKey="humidity" name="RH" stroke="#3b82f6" strokeWidth={2} fill="url(#colorHum)" unit="%" />
-                                <Area yAxisId="left" type="monotone" dataKey="dp" name="DP" stroke="#8b5cf6" strokeWidth={2} fill="none" unit="°C" />
-                                <Area yAxisId="right" type="monotone" dataKey="vpd" name="VPD" stroke="#10b981" strokeWidth={2} fill="url(#colorVpd)" unit=" kPa" />
+                                <Area yAxisId="left" type="monotone" dataKey="temperature" name="Temp" stroke="#ef4444" strokeWidth={2} fill="url(#colorTemp)" unit="°C" connectNulls />
+                                <Area yAxisId="left" type="monotone" dataKey="humidity" name="RH" stroke="#3b82f6" strokeWidth={2} fill="url(#colorHum)" unit="%" connectNulls />
+                                <Area yAxisId="left" type="monotone" dataKey="dp" name="DP" stroke="#8b5cf6" strokeWidth={2} fill="none" unit="°C" connectNulls />
+                                <Area yAxisId="right" type="monotone" dataKey="vpd" name="VPD" stroke="#10b981" strokeWidth={2} fill="url(#colorVpd)" unit=" kPa" connectNulls />
                             </>
                         )}
 
