@@ -20,6 +20,7 @@
     "express": "^5.2.1",
     "firebase-admin": "^13.6.0",
     "miio": "^0.15.6",
+    "multer": "^2.0.2",
     "node-fetch": "^2.7.0",
     "node-mihome": "^0.0.32",
     "puppeteer": "^24.32.1",
