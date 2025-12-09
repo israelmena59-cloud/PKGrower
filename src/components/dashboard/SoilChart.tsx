@@ -58,7 +58,7 @@ export const SoilChart: React.FC<SoilChartProps> = ({ data, phase }) => {
           {(!data || data.length === 0) ? (
                <Box sx={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
                      <Typography variant="body2" color="text.secondary">Esperando lecturas de sensores...</Typography>
-                     <Typography variant="caption" color="text.disabled">(Aparecerán aquí en < 1 min)</Typography>
+                     <Typography variant="caption" color="text.disabled">(Aparecerán aquí en menos de 1 min)</Typography>
                </Box>
           ) : (
           <ResponsiveContainer width="100%" height="100%">
