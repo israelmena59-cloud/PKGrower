@@ -119,7 +119,18 @@ const Irrigation: React.FC = () => {
       }
   };
 
-  if (loading || !settings) return <Box sx={{ p: 4 }}><CircularProgress /></Box>;
+  if (loading) return <Box sx={{ p: 4, display: 'flex', justifyContent: 'center' }}><CircularProgress /></Box>;
+
+  if (!settings) return (
+      <Box sx={{ p: 4 }}>
+          <Alert severity="error" sx={{ mb: 2 }}>
+              No se pudo cargar la configuración de Riego.
+              <br/>
+              Verifica que el Backend esté corriendo y que la conexión HTTPS sea segura.
+          </Alert>
+          <Button variant="outlined" onClick={() => window.location.reload()}>Reintentar</Button>
+      </Box>
+  );
 
   // Calc Pump Time 1%
   const volume1Pct = settings.potSize * 10; // 1% of X Liters * 1000ml / 100 = X * 10
