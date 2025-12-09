@@ -2383,18 +2383,19 @@ setInterval(() => {
             let soilCount = 0;
             let sh1 = 0, sh2 = 0, sh3 = 0;
 
-            if (tuyaDevices[process.env.TUYA_SENSOR_SUSTRATO_1_ID]) {
-                sh1 = tuyaDevices[process.env.TUYA_SENSOR_SUSTRATO_1_ID].value || 0;
+            if (tuyaDevices['sensorSustrato1']) {
+                sh1 = tuyaDevices['sensorSustrato1'].value || tuyaDevices['sensorSustrato1'].humidity || 0;
+                // Some sensors map humidity to 'value' or 'humidity', handle both
                 soilHumSum += sh1;
                 soilCount++;
             }
-            if (tuyaDevices[process.env.TUYA_SENSOR_SUSTRATO_2_ID]) {
-                sh2 = tuyaDevices[process.env.TUYA_SENSOR_SUSTRATO_2_ID].value || 0;
+            if (tuyaDevices['sensorSustrato2']) {
+                sh2 = tuyaDevices['sensorSustrato2'].value || tuyaDevices['sensorSustrato2'].humidity || 0;
                 soilHumSum += sh2;
                 soilCount++;
             }
-            if (tuyaDevices[process.env.TUYA_SENSOR_SUSTRATO_3_ID]) {
-                sh3 = tuyaDevices[process.env.TUYA_SENSOR_SUSTRATO_3_ID].value || 0;
+            if (tuyaDevices['sensorSustrato3']) {
+                sh3 = tuyaDevices['sensorSustrato3'].value || tuyaDevices['sensorSustrato3'].humidity || 0;
                 soilHumSum += sh3;
                 soilCount++;
             }
