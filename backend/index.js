@@ -197,7 +197,12 @@ const PORT = process.env.PORT || 3000;
 let tuyaClient = null;
 let tuyaConnected = false;
 
-if (!MODO_SIMULACION) {
+// Función para inicializar conectores de sistema (Tuya API)
+// Se invoca solo en modo REAL y de forma asíncrona para no bloquear el inicio del servidor
+async function initSystemConnectors() {
+  if (MODO_SIMULACION) return;
+
+  console.log('[INIT] Iniciando conexión con Tuya Cloud API...');
   try {
     // Solo crear TuyaOpenApiClient si tenemos credenciales
     if (TUYA_CONFIG.accessKey && TUYA_CONFIG.secretKey) {
@@ -209,7 +214,8 @@ if (!MODO_SIMULACION) {
 
       // Inicializar el cliente
       if (tuyaClient.init) {
-        tuyaClient.init();
+        // En algunas versiones esto puede ser sincrono o asincrono, lo tratamos con cuidado
+        await tuyaClient.init();
       }
 
       // Verificar que tuyaClient está disponible
@@ -227,7 +233,6 @@ if (!MODO_SIMULACION) {
     }
   } catch (error) {
     console.error('[ERROR] No se pudo inicializar TuyaOpenApiClient:', error.message);
-    console.log('[HINT] Verifica tus credenciales de Tuya en backend/.env');
     tuyaConnected = false;
   }
 }
@@ -2348,7 +2353,13 @@ app.listen(PORT, '0.0.0.0', async () => { // Escuchar en 0.0.0.0 para acceso LAN
     // Defer initialization to allow Render to pass health checks immediately
     setTimeout(async () => {
         try {
+        try {
             console.log('📱 [BACKGROUND] Iniciando conexión con Tuya/Xiaomi...');
+
+            // 1. Conectar Cliente Tuya (Core)
+            await initSystemConnectors();
+
+            // 2. Descubrir Dispositivos
             await initTuyaDevices();
             await initXiaomiDevices();
             console.log('📱 [BACKGROUND] Dispositivos inicializados.');
