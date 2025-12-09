@@ -2329,6 +2329,11 @@ app.post('/api/irrigation/log', async (req, res) => {
     res.sendFile(path.join(__dirname, '../dist/index.html'));
   });
 
+  // Health Check for Render
+  app.get('/health', (req, res) => {
+      res.status(200).send('OK');
+  });
+
 app.listen(PORT, '0.0.0.0', async () => { // Escuchar en 0.0.0.0 para acceso LAN
   console.log(`\n╔════════════════════════════════════════════════════════╗`);
   console.log(`║     🌱 PKGrower Backend - Servidor iniciado           ║`);
@@ -2336,17 +2341,25 @@ app.listen(PORT, '0.0.0.0', async () => { // Escuchar en 0.0.0.0 para acceso LAN
   console.log(`✓ Backend running on http://localhost:${PORT}`);
   console.log(`✓ Modo: ${MODO_SIMULACION ? '🟢 SIMULACIÓN' : '🔴 MODO REAL'}`);
 
-  // Inicializar dispositivos
+  // Inicializar dispositivos (BACKGROUND)
   if (!MODO_SIMULACION) {
-    console.log('\n📱 Inicializando dispositivos reales...');
-    // Inicializar dispositivos (Tuya se traen de la nube)
-    await initTuyaDevices();
-    await initXiaomiDevices();
+    console.log('\n📱 (Async) Programando inicialización de dispositivos en segundo plano...');
 
-    // Iniciar Polling de Tuya (Cada 15 segundos para mejor respuesta)
-    setInterval(async () => {
-        console.log('[POLLING] Actualizando estados de Tuya...');
-        await initTuyaDevices();
+    // Defer initialization to allow Render to pass health checks immediately
+    setTimeout(async () => {
+        try {
+            console.log('📱 [BACKGROUND] Iniciando conexión con Tuya/Xiaomi...');
+            await initTuyaDevices();
+            await initXiaomiDevices();
+            console.log('📱 [BACKGROUND] Dispositivos inicializados.');
+
+            // Iniciar Polling de Tuya (Cada 15 segundos)
+            setInterval(async () => {
+                console.log('[POLLING] Actualizando estados de Tuya...');
+                await initTuyaDevices();
+
+                // ... (polling logic continues) ...
+
 
         // --- ACTUALIZAR HISTORIAL DE SENSORES (REAL) ---
         // Extraemos los datos frescos de tuyaDevices para alimentar la gráfica
