@@ -1146,7 +1146,13 @@ app.post('/api/chat', async (req, res) => {
           const vpdMatch = text.match(/VPD: (\d+\.?\d*)/);
 
           let analysis = "";
-          if (vpdMatch) {
+          // Debug Soil Sensors
+    if (cloudDevice.category === 'soil_sensor' || cloudDevice.name.includes('Sustrato')) {
+         console.log(`[DEBUG_SOIL] Device: ${cloudDevice.name} (${cloudDevice.id})`);
+         console.log(`[DEBUG_SOIL] Status Codes:`, JSON.stringify(cloudDevice.status));
+    }
+
+    if (vpdMatch) {
               const vpd = parseFloat(vpdMatch[1]);
               if (vpd < 0.4) analysis += "VPD muy bajo (riesgo hongos). ";
               else if (vpd > 1.6) analysis += "VPD alto (estrés). ";
