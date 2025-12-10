@@ -10,7 +10,7 @@ import {
   ReferenceLine,
   Legend
 } from 'recharts';
-import { Card, CardContent, CardHeader, Typography, useTheme, Box } from '@mui/material';
+import { Card, CardContent, CardHeader, Typography, Box } from '@mui/material';
 
 interface SoilChartProps {
   data: any[];

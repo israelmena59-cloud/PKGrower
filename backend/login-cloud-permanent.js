@@ -40,11 +40,37 @@ puppeteer.use(StealthPlugin());
     let foundServiceToken = false;
     let foundUserId = false;
 
-    // 1. Network Listener
+    // 1. Network Listener (DUMP MODE)
+    const dumpPath = path.join(__dirname, 'network_dump.txt');
+    try { fs.writeFileSync(dumpPath, '--- START NETWORK DUMP ---\n'); } catch(e) {}
+
     page.on('response', async response => {
         const url = response.url();
 
-        // Filter for relevant endpoints
+        // DUMP EVERYTHING RELEVANT
+        if (url.includes('mi.com') || url.includes('xiaomi')) {
+             try {
+                 const headers = response.headers();
+                 const type = headers['content-type'] || '';
+                 fs.appendFileSync(dumpPath, `\n\nURL: ${url}\nTYPE: ${type}\n`);
+
+                 if (type.includes('json') || type.includes('text') || type.includes('javascript') || type.includes('html')) {
+                      const text = await response.text();
+                      fs.appendFileSync(dumpPath, `BODY_START\n${text.substring(0, 5000)}\nBODY_END\n`);
+
+                      // Live Search
+                      if (text.includes('ssecurity') || text.includes('security')) {
+                           console.log('🔥 FOUND SECURITY KEYWORD IN DUMP!');
+                           console.log('Source URL:', url);
+                           // Try Regex
+                           const match = text.match(/"ssecurity":"([^"]+)"/);
+                           if (match) updateEnv('XIAOMI_SSECURITY', match[1]);
+                      }
+                 }
+             } catch(e) {}
+        }
+
+        // Filter for relevant endpoints (Original Logic Preserved)
         if (url.includes('serviceLoginAuth2') || url.includes('mi.com') || url.includes('account')) {
             try {
                 // Ignore large assets
@@ -53,9 +79,12 @@ puppeteer.use(StealthPlugin());
 
                 const text = await response.text();
 
-                if (text.includes('ssecurity') && text.includes('userId')) {
+                // RELAXED CHECK: Look for ANY ssecurity occurrence
+                if (text.includes('ssecurity')) {
                      console.log('🎯 POTENTIAL TOKEN SOURCE:', url);
-                     const cleanText = text.replace('&&&START&&&', '');
+                     // Clean common Xiaomi prefixes
+                     let cleanText = text.replace('&&&START&&&', '');
+
                      try {
                          const json = JSON.parse(cleanText);
                          if (json.ssecurity) {
@@ -68,8 +97,27 @@ puppeteer.use(StealthPlugin());
                              updateEnv('XIAOMI_USER_ID', json.userId);
                              foundUserId = true;
                          }
+                         // If we found ssecurity but no userId, try to find userId in cookies or just proceed
+                         if (json.location) {
+                             // Sometimes userId is in the redirect URL location query params
+                             const match = json.location.match(/userId=(\d+)/);
+                             if (match) {
+                                  console.log('👤 FOUND USERID IN URL:', match[1]);
+                                  updateEnv('XIAOMI_USER_ID', match[1]);
+                                  foundUserId = true;
+                             }
+                         }
                          checkDone(browser);
-                     } catch(e) {}
+                     } catch(e) {
+                         console.log('⚠️ Failed to parse JSON, trying Regex...');
+                         // Fallback Regex
+                         const matchSec = text.match(/"ssecurity":"([^"]+)"/);
+                         if (matchSec) {
+                              console.log('🔐 FOUND SSECURITY (Regex):', matchSec[1]);
+                              updateEnv('XIAOMI_SSECURITY', matchSec[1]);
+                              foundSsecurity = true;
+                         }
+                     }
                 }
             } catch(e) {}
         }
