@@ -311,10 +311,10 @@ app.use('/api', (req, res, next) => {
     // EXEMPTIONS: Allow Dashboard Read-Only access without strict Key (Fixes 401 on refresh)
     // Only apply for GET requests to specific data endpoints
     if (req.method === 'GET' && (
-        req.path.startsWith('/api/sensors') ||
-        req.path.startsWith('/api/devices') ||
-        req.path.startsWith('/api/settings') ||
-        req.path.startsWith('/api/history')
+        req.path.startsWith('/sensors') ||
+        req.path.startsWith('/devices') ||
+        req.path.startsWith('/settings') ||
+        req.path.startsWith('/history')
     )) {
         return next();
     }
@@ -2441,11 +2441,11 @@ setInterval(() => {
                     vpdVal = parseFloat((svp * (1 - (hum / 100))).toFixed(2));
             }
 
-            // CRITICAL FIX: Temporarily Allow Zeros to debug "Missing Info" vs "Zero Info"
-            // if (temp === 0 && hum === 0 && avgSoil === 0) {
-            //      console.log('[HISTORY] 跳过无效数据 (Zero readings)');
-            //      return;
-            // }
+            // CRITICAL FIX: Do not log invalid zero data to history (prevents "Drastic Curves")
+            if (temp === 0 && hum === 0 && avgSoil === 0) {
+                 console.log('[HISTORY] 跳过无效数据 (Zero readings)');
+                 return;
+            }
 
             const newRecord = {
                 timestamp: new Date().toISOString(),
