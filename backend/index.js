@@ -2449,18 +2449,20 @@ setInterval(() => {
 
             const newRecord = {
                 timestamp: new Date().toISOString(),
-                temperature: temp,
-                humidity: hum,
-                substrateHumidity: parseFloat(avgSoil.toFixed(1)),
-                sh1: sh1, // Individual sensors for SoilChart
-                sh2: sh2,
-                sh3: sh3,
-                vpd: vpdVal
+                temperature: Number(temp),
+                humidity: Number(hum),
+                substrateHumidity: parseFloat(Number(avgSoil).toFixed(1)),
+                sh1: Number(sh1), // Force Number type
+                sh2: Number(sh2),
+                sh3: Number(sh3),
+                vpd: Number(vpdVal)
             };
 
-            // Push to in-memory history
+            // Enhanced Logging
+            console.log(`[HISTORY] Recorded: T${temp} H${hum} VPD${vpdVal} Soil${avgSoil}% | SH1:${sh1} SH2:${sh2} SH3:${sh3}`);
+
+            if (sensorHistory.length > 2880) sensorHistory.shift();
             sensorHistory.push(newRecord);
-            if (sensorHistory.length > MAX_HISTORY_LENGTH) sensorHistory.shift();
 
             // Persist to Firestore (Every 2 mins to build history faster for user)
             if (new Date().getMinutes() % 2 === 0) {
