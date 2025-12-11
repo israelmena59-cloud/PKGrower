@@ -451,9 +451,8 @@ app.get('/api/devices/list', (req, res) => {
         res.status(500).json({ error: e.message });
     }
 });
-
 // --- PERSISTENCIA ---
-const fs = require('fs');
+// const fs = require('fs'); // Removed duplicate
 
 const SETTINGS_FILE = path.join(__dirname, 'settings.json');
 // ... (loadSettings/saveSettings stay same)
