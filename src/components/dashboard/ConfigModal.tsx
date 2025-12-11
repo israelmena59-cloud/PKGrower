@@ -66,9 +66,15 @@ export const ConfigModal: React.FC<ConfigModalProps> = ({ open, onClose }) => {
   const fetchDevices = async () => {
        try {
            const data = await apiClient.request<any[]>('/api/devices/list');
-           setAvailableDevices(data);
+           if (Array.isArray(data)) {
+                setAvailableDevices(data);
+           } else {
+                console.warn("Invalid device list format:", data);
+                setAvailableDevices([]);
+           }
        } catch (e) {
            console.error("Error fetching devices list", e);
+           setAvailableDevices([]); // Fallback to avoid map error
        }
   };
 
