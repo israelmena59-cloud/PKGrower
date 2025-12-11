@@ -14,6 +14,20 @@ interface HistoryChartProps {
   data?: any[]; // Optional external data
 }
 
+const calculateDP = (T: number, RH: number) => {
+    // Magnus formula
+    const a = 17.27;
+    const b = 237.7;
+    const alpha = ((a * T) / (b + T)) + Math.log(RH / 100.0);
+    return (b * alpha) / (a - alpha);
+};
+
+const calculateVPD = (T: number, RH: number) => {
+    // VPD = SVP * (1 - RH/100)
+    const svp = 0.6108 * Math.exp((17.27 * T) / (T + 237.3));
+    return svp * (1 - (RH / 100));
+};
+
 const HistoryChart: React.FC<HistoryChartProps> = ({ type, title, targets, data: externalData }) => {
   const { mode } = useTheme();
   const [range, setRange] = useState<'day' | 'week' | 'month'>('day');
@@ -80,19 +94,7 @@ const HistoryChart: React.FC<HistoryChartProps> = ({ type, title, targets, data:
       } catch (e) { console.error("Error fetching lighting settings", e); }
   }
 
-  const calculateDP = (T: number, RH: number) => {
-      // Magnus formula
-      const a = 17.27;
-      const b = 237.7;
-      const alpha = ((a * T) / (b + T)) + Math.log(RH / 100.0);
-      return (b * alpha) / (a - alpha);
-  };
 
-  const calculateVPD = (T: number, RH: number) => {
-      // VPD = SVP * (1 - RH/100)
-      const svp = 0.6108 * Math.exp((17.27 * T) / (T + 237.3));
-      return svp * (1 - (RH / 100));
-  };
 
   const fetchHistory = async () => {
     try {
