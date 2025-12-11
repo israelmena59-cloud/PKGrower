@@ -19,12 +19,33 @@ const DEFAULT_WIDGETS_CONFIG = [
     { id: 'light_main', type: 'control', title: 'Luz Principal' }
 ];
 
+// Dashboard-level Error Boundary to catch layout crashes
+class DashboardErrorBoundary extends React.Component<{ children: React.ReactNode, onReset: () => void }, { hasError: boolean }> {
+    constructor(props: any) {
+        super(props);
+        this.state = { hasError: false };
+    }
+    static getDerivedStateFromError() { return { hasError: true }; }
+    componentDidCatch(error: any) { console.error("Critical Dashboard Crash:", error); }
+    render() {
+        if (this.state.hasError) {
+            return (
+                <Box sx={{ height: '90vh', display: 'flex', flexDirection: 'column', items: 'center', justifyContent: 'center', textAlign: 'center' }}>
+                    <Typography variant="h5" color="error" gutterBottom>Algo salió mal en el Dashboard</Typography>
+                    <Button variant="contained" color="error" onClick={this.props.onReset}>
+                        Reestablecer Todo (Factory Reset)
+                    </Button>
+                </Box>
+            );
+        }
+        return this.props.children;
+    }
+}
+
 const Dashboard: React.FC = () => {
     // DATA STATE
     const [latestSensors, setLatestSensors] = useState<SensorData | null>(null);
     const [sensorHistory, setSensorHistory] = useState<SensorData[]>([]);
-    const [devices, setDevices] = useState<DeviceStates | null>(null);
-    const [deviceMeta, setDeviceMeta] = useState<any[]>([]);
 
     // UI END STATE
     const [loading, setLoading] = useState(true);
