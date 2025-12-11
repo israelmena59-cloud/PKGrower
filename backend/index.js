@@ -1,5 +1,16 @@
 ﻿const express = require('express');
 const cors = require('cors');
+// DEBUG: Check file system in Render
+const fs = require('fs');
+const path = require('path');
+const distPath = path.join(__dirname, '../dist');
+console.log('[DEBUG] Checking dist path:', distPath);
+if (fs.existsSync(distPath)) {
+    console.log('[DEBUG] dist folder EXISTS. Contents:', fs.readdirSync(distPath));
+} else {
+    console.error('[DEBUG] dist folder DOES NOT EXIST. Build failed or path wrong.');
+}
+
 const { TuyaOpenApiClient } = require('@tuya/tuya-connector-nodejs');
 // const miio = require('miio'); // REMOVED: User requested Cloud Only
 const miHome = require('node-mihome'); // Instancia Ãºnica para Cloud Protocol
