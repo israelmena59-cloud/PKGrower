@@ -172,12 +172,30 @@ const Dashboard: React.FC = () => {
                 isOn: devices?.['luzPanel1'] ?? false
             };
 
-            // Dynamic Device Mapping
+            // Dynamic Device Mapping (Controls)
             if (w.type === 'control' && !['light_main'].includes(w.id)) {
                  const dev = devices?.[w.id];
                  const meta = deviceMeta.find(d => d.id === w.id);
                  props = {
                      id: w.id,
+                     icon: meta?.type === 'light' ? <Lightbulb/> : <RefreshCw/>,
+                     name: meta?.name || w.title,
+                     isOn: !!dev
+                 };
+            }
+
+            // Dynamic Sensor Mapping
+            if (w.type === 'sensor' && !['temp', 'hum', 'vpd', 'sub'].includes(w.id)) {
+                const val = latestSensors?.[w.id];
+                const meta = deviceMeta.find(d => d.id === w.id);
+                props = {
+                    icon: <RefreshCw/>, // Default icon
+                    name: meta?.name || w.title || w.id,
+                    value: typeof val === 'number' ? val.toFixed(1) : (val ?? '--'),
+                    unit: '', // Unknown unit
+                    color: '#64748b'
+                };
+            }
                      icon: meta?.type === 'light' ? <Lightbulb/> : <RefreshCw/>,
                      name: meta?.name || w.title,
                      isOn: !!dev
