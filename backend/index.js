@@ -101,14 +101,14 @@ const TUYA_DEVICES_MAP = {
     deviceType: 'light',
     category: 'led_panel',
   },
-  luzPanel3: {
-    name: 'Bandeja Izq Adelante', // Updated Name
-    id: process.env.TUYA_LUZ_PANEL_3_ID || 'ebb361hhi0cei8xb', // Updated to Bandeja Izq Adelante
-    platform: 'tuya',
-    deviceType: 'light',
-    category: 'led_panel',
-    switchCode: 'switch_1',
-  },
+  // luzPanel3: {
+  //   name: 'Bandeja Izq Adelante', // Updated Name
+  //   id: process.env.TUYA_LUZ_PANEL_3_ID || 'ebb361hhi0cei8xb', // Updated to Bandeja Izq Adelante
+  //   platform: 'tuya',
+  //   deviceType: 'light',
+  //   category: 'led_panel',
+  //   switchCode: 'switch_1',
+  // },
   luzPanel4: {
     name: 'Bandeja Izq Atrás', // Updated Name
     id: process.env.TUYA_LUZ_PANEL_4_ID || 'ebf84afaludhei1x', // Updated to Bandeja Izq Atrás
@@ -1037,6 +1037,15 @@ app.get('/api/devices', async (req, res) => {
              realDeviceStates[deviceName] = false;
          }
       }
+    }
+
+    // ADD DYNAMIC TUYA DEVICES (Auto-Discovered)
+    for (const [tKey, tDev] of Object.entries(tuyaDevices)) {
+        // Skip if already in DEVICE_MAP (static)
+        if (DEVICE_MAP[tKey]) continue;
+
+        // Add to response
+        realDeviceStates[tKey] = tDev.on === true;
     }
 
     // ADD MEROSS DEVICES TO RESPONSE

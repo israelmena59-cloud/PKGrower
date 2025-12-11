@@ -256,9 +256,9 @@ const Dashboard: React.FC = () => {
                                 <Grid item xs={6} md={3}>
                                     <DeviceSwitch icon={<Lightbulb />} name="Panel 2" isOn={devices.luzPanel2 || false} onToggle={() => handleToggle('luzPanel2')} />
                                 </Grid>
-                                <Grid item xs={6} md={3}>
-                                    <DeviceSwitch icon={<Lightbulb />} name="Panel 3" isOn={devices.luzPanel3 || false} onToggle={() => handleToggle('luzPanel3')} />
-                                </Grid>
+                                {/* <Grid item xs={6} md={3}>
+                                    <DeviceSwitch icon={<Lightbulb />} name="Panel 3 (Old)" isOn={devices.luzPanel3 || false} onToggle={() => handleToggle('luzPanel3')} />
+                                </Grid> */}
                                 <Grid item xs={6} md={3}>
                                     <DeviceSwitch icon={<Lightbulb />} name="Panel 4" isOn={devices.luzPanel4 || false} onToggle={() => handleToggle('luzPanel4')} />
                                 </Grid>
