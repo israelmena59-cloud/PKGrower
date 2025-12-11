@@ -282,11 +282,42 @@ const Dashboard: React.FC = () => {
         }
     };
 
+// Dashboard-level Error Boundary to catch layout crashes
+class DashboardErrorBoundary extends React.Component<{ children: React.ReactNode, onReset: () => void }, { hasError: boolean }> {
+    constructor(props: any) {
+        super(props);
+        this.state = { hasError: false };
+    }
+    static getDerivedStateFromError() { return { hasError: true }; }
+    componentDidCatch(error: any) { console.error("Critical Dashboard Crash:", error); }
+    render() {
+        if (this.state.hasError) {
+            return (
+                <Box sx={{ height: '90vh', display: 'flex', flexDirection: 'column', items: 'center', justifyContent: 'center', textAlign: 'center' }}>
+                    <Typography variant="h5" color="error" gutterBottom>Algo salió mal en el Dashboard</Typography>
+                    <Button variant="contained" color="error" onClick={this.props.onReset}>
+                        Reestablecer Todo (Factory Reset)
+                    </Button>
+                </Box>
+            );
+        }
+        return this.props.children;
+    }
+}
+
     if (loading && !latestSensors) {
          return <Box sx={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><CircularProgress /></Box>;
     }
 
+    const triggerReset = () => {
+         localStorage.removeItem('dashboard_pages');
+         localStorage.removeItem('dashboard_layouts');
+         localStorage.removeItem('known_devices');
+         window.location.reload();
+    };
+
     return (
+        <DashboardErrorBoundary onReset={triggerReset}>
         <Box sx={{ maxWidth: 1800, mx: 'auto', p: 2 }}>
              {/* HEADER */}
              <Paper elevation={0} sx={{ p: 3, mb: 3, borderRadius: 'var(--squircle-radius)', background: 'var(--glass-bg)', backdropFilter: 'var(--backdrop-blur)', border: 'var(--glass-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
@@ -389,6 +420,7 @@ const Dashboard: React.FC = () => {
                 onRemoveWidget={handleRemoveWidget}
             />
         </Box>
+        </DashboardErrorBoundary>
     );
 };
 
