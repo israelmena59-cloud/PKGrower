@@ -1233,6 +1233,96 @@ app.get('/api/devices', async (req, res) => {
   }
 });
 
+// Endpoint EXPLICITO de control (ON/OFF) - Requerido por Dashboard actualizado
+app.post('/api/device/:id/control', async (req, res) => {
+  try {
+    const deviceId = req.params.id;
+    const { action } = req.body; // 'on' or 'off'
+    const targetState = action === 'on';
+
+    // 1. MEROSS
+    if (merossDevices[deviceId]) {
+        try {
+            const mDev = merossDevices[deviceId];
+            console.log(`[MEROSS] Setting ${mDev.name} to ${action.toUpperCase()}`);
+
+            // Try standard controlToggleX (Channel 0 is usually main)
+            if (mDev.deviceInstance.controlToggleX) {
+                mDev.deviceInstance.controlToggleX(0, targetState, (err, result) => {
+                     if (err) {
+                         console.error('[MEROSS] Control Error:', err);
+                         // Don't fail response immediately, maybe it worked?
+                     }
+                });
+                // Optimistic response
+                if (merossDevices[deviceId]) merossDevices[deviceId].online = true; // Assume online if controlling
+                return res.json({ success: true, state: targetState });
+            }
+
+            // Fallback for some plugs
+            if (mDev.deviceInstance.setPower) {
+                 mDev.deviceInstance.setPower(targetState);
+                 return res.json({ success: true, state: targetState });
+            }
+
+            return res.json({ success: false, message: "Device driver control method not found" });
+
+        } catch (e) {
+            return res.status(500).json({ error: e.message });
+        }
+    }
+
+    // 2. TUYA
+    const config = DEVICE_MAP[deviceId];
+    if (config && config.platform === 'tuya') {
+        if (!tuyaConnected) return res.status(503).json({ error: 'Tuya offline' });
+
+        // Use logic similar to toggle but with explicit value
+        const tuyaId = config.id;
+        const switchCode = (tuyaDevices[deviceId] && tuyaDevices[deviceId].switchCode) ? tuyaDevices[deviceId].switchCode : (config.switchCode || 'switch_1');
+
+        const cmd = {
+             commands: [{ code: switchCode, value: targetState }]
+        };
+
+        const ret = await tuyaClient.request({ method: 'POST', path: `/v1.0/iot-03/devices/${tuyaId}/commands`, body: cmd });
+        if (ret.success || ret.result === true) {
+             if (tuyaDevices[deviceId]) tuyaDevices[deviceId].on = targetState;
+             return res.json({ success: true, state: targetState });
+        } else {
+             return res.status(500).json({ error: 'Tuya API returned fail', details: ret });
+        }
+    }
+
+    // 3. XIAOMI
+    if (config && config.platform === 'xiaomi') {
+         if (xiaomiClients[deviceId]) {
+             if (deviceId === 'humidifier' || deviceId === 'pump' || config.deviceType === 'light') {
+                  const dev = xiaomiClients[deviceId];
+                  if (dev.setPower) await dev.setPower(targetState);
+                  else if (dev.setPowerOn && targetState) await dev.setPowerOn(); // Some miio devices
+                  else if (dev.setPowerOff && !targetState) await dev.setPowerOff();
+             } else {
+                  // Generic miot
+                  await xiaomiClients[deviceId].call('set_power', [targetState ? 'on' : 'off']);
+             }
+             return res.json({ success: true, state: targetState });
+         }
+    }
+
+    // 4. SIMULATION
+    if (MODO_SIMULACION) {
+        deviceStates[deviceId] = targetState;
+        return res.json({ success: true, state: targetState });
+    }
+
+    res.status(404).json({ error: 'Device not found or not controllable' });
+  } catch(e) {
+      console.error('[CONTROL] Error:', e);
+      res.status(500).json({ error: e.message });
+  }
+});
+
 // FIX: Use native 'https' to avoid dependency issues with fetch in older Node versions
 const https = require('https');
 
