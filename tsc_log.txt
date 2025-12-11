@@ -1,0 +1,52 @@
+src/api/client.ts(8,41): error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+src/api/client.ts(8,74): error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+src/api/client.ts(80,34): error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+src/components/camera/CameraViewer.tsx(34,10): error TS6133: 'fullscreen' is declared but its value is never read.
+src/components/camera/CameraViewer.tsx(47,44): error TS2339: Property 'get' does not exist on type 'APIClient'.
+src/components/camera/CameraViewer.tsx(51,48): error TS2339: Property 'get' does not exist on type 'APIClient'.
+src/components/camera/CameraViewer.tsx(55,46): error TS2339: Property 'get' does not exist on type 'APIClient'.
+src/components/camera/CameraViewer.tsx(67,40): error TS2339: Property 'get' does not exist on type 'APIClient'.
+src/components/camera/CameraViewer.tsx(79,23): error TS2339: Property 'post' does not exist on type 'APIClient'.
+src/components/camera/CameraViewer.tsx(116,40): error TS2339: Property 'post' does not exist on type 'APIClient'.
+src/components/camera/CameraViewer.tsx(371,40): error TS2322: Type '{ children: string; severity: "info"; size: string; }' is not assignable to type 'IntrinsicAttributes & AlertProps'.
+  Property 'size' does not exist on type 'IntrinsicAttributes & AlertProps'.
+src/components/dashboard/AICopilotWidget.tsx(3,25): error TS6133: 'AlertTriangle' is declared but its value is never read.
+src/components/dashboard/AICopilotWidget.tsx(3,40): error TS2724: '"lucide-react"' has no exported member named 'check'. Did you mean 'Check'?
+src/components/dashboard/AICopilotWidget.tsx(3,40): error TS6133: 'check' is declared but its value is never read.
+src/components/dashboard/AICopilotWidget.tsx(14,20): error TS6133: 'setExpanded' is declared but its value is never read.
+src/components/dashboard/ConfigModal.tsx(5,40): error TS6133: 'Link' is declared but its value is never read.
+src/components/dashboard/CropSteeringPanel.tsx(2,80): error TS6133: 'Chip' is declared but its value is never read.
+src/components/dashboard/CropSteeringPanel.tsx(3,18): error TS6133: 'Timer' is declared but its value is never read.
+src/components/dashboard/CropSteeringPanel.tsx(3,25): error TS6133: 'Droplets' is declared but its value is never read.
+src/components/dashboard/CropSteeringPanel.tsx(137,32): error TS2322: Type '"secondary"' is not assignable to type 'OverridableStringUnion<AlertColor, AlertPropsColorOverrides> | undefined'.
+src/components/dashboard/SoilSensorsGrid.tsx(6,3): error TS6133: 'CardHeader' is declared but its value is never read.
+src/components/widgets/BaseWidgetWrapper.tsx(3,13): error TS6133: 'Maximize2' is declared but its value is never read.
+src/components/widgets/BaseWidgetWrapper.tsx(3,24): error TS6133: 'Minimize2' is declared but its value is never read.
+src/components/widgets/ChartWidget.tsx(2,15): error TS6133: 'Typography' is declared but its value is never read.
+src/components/widgets/DashboardLayout.tsx(1,27): error TS6133: 'useEffect' is declared but its value is never read.
+src/components/widgets/DashboardLayout.tsx(2,22): error TS2614: Module '"react-grid-layout"' has no exported member 'WidthProvider'. Did you mean to use 'import WidthProvider from "react-grid-layout"' instead?
+src/components/widgets/DashboardLayout.tsx(7,23): error TS6133: 'IconButton' is declared but its value is never read.
+src/components/widgets/DashboardLayout.tsx(8,10): error TS6133: 'Plus' is declared but its value is never read.
+src/components/widgets/DashboardLayout.tsx(31,53): error TS6133: 'allLayouts' is declared but its value is never read.
+src/components/widgets/WidgetRegistry.tsx(21,16): error TS6133: 'props' is declared but its value is never read.
+src/context/ThemeContext.tsx(1,54): error TS6133: 'useEffect' is declared but its value is never read.
+src/pages/AIAssistant.tsx(3,27): error TS6133: 'Card' is declared but its value is never read.
+src/pages/AIAssistant.tsx(3,171): error TS6133: 'IconButton' is declared but its value is never read.
+src/pages/AIAssistant.tsx(4,10): error TS6133: 'Bot' is declared but its value is never read.
+src/pages/AIAssistant.tsx(70,33): error TS2304: Cannot find name 'apiClient'.
+src/pages/AIAssistant.tsx(71,17): error TS6133: 'soil' is declared but its value is never read.
+src/pages/Dashboard.tsx(3,28): error TS6133: 'getDefaultSize' is declared but its value is never read.
+src/pages/Dashboard.tsx(6,59): error TS6133: 'Fan' is declared but its value is never read.
+src/pages/Dashboard.tsx(6,64): error TS6133: 'Activity' is declared but its value is never read.
+src/pages/Dashboard.tsx(6,74): error TS6133: 'Sprout' is declared but its value is never read.
+src/pages/Dashboard.tsx(6,82): error TS6133: 'Leaf' is declared but its value is never read.
+src/pages/Dashboard.tsx(6,109): error TS6133: 'Router' is declared but its value is never read.
+src/pages/Dashboard.tsx(6,117): error TS6133: 'Plus' is declared but its value is never read.
+src/pages/Dashboard.tsx(7,46): error TS6133: 'Chip' is declared but its value is never read.
+src/pages/Dashboard.tsx(27,12): error TS6133: 'phase' is declared but its value is never read.
+src/pages/Dashboard.tsx(27,19): error TS6133: 'setPhase' is declared but its value is never read.
+src/pages/Environment.tsx(27,9): error TS6133: 'calculateVPD' is declared but its value is never read.
+src/pages/Environment.tsx(107,29): error TS6133: 'prev' is declared but its value is never read.
+src/pages/Irrigation.tsx(5,1): error TS6133: 'SoilChart' is declared but its value is never read.
+src/pages/Irrigation.tsx(198,18): error TS2741: Property 'title' is missing in type '{ type: "substrate"; data: SensorData[]; }' but required in type 'HistoryChartProps'.
+src/pages/Lighting.tsx(2,27): error TS6133: 'Card' is declared but its value is never read.

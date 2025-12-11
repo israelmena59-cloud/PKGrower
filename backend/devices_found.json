@@ -1,0 +1,121 @@
+[
+  {
+    "name": "Deshumidificador",
+    "id": "eb3721ifgjlrdknj",
+    "key": "1nd<@;p#gtL]<W(K",
+    "category": "cz",
+    "online": true
+  },
+  {
+    "name": "Water timer",
+    "id": "eb50dd4bggxac9zz",
+    "key": "mJPE|4sTTzz_qVgP",
+    "category": "sfkzq",
+    "online": true
+  },
+  {
+    "name": "RH/TH",
+    "id": "eb000c93f43edd0cbbjkcs",
+    "key": "t@^.:r*r1-GX}1ik",
+    "category": "wsdcg",
+    "online": true
+  },
+  {
+    "name": "Sensor 3",
+    "id": "ebe398e4908b4437f0bjuv",
+    "key": ".6I<w@n0mq-p*UTZ",
+    "category": "wsdcg",
+    "online": true
+  },
+  {
+    "name": "Ventilador Derecha",
+    "id": "ebbb230txodu6jik",
+    "key": "1nd<@;p#gtL]<W(K",
+    "category": "cz",
+    "online": true
+  },
+  {
+    "name": "Ventilador izquierda",
+    "id": "eb974ezlyixtw3gj",
+    "key": "1nd<@;p#gtL]<W(K",
+    "category": "cz",
+    "online": true
+  },
+  {
+    "name": "Sensor 1",
+    "id": "eb33e6b487314c81cdkc1g",
+    "key": "/vv4p}[[QCkTx/_#",
+    "category": "wsdcg",
+    "online": true
+  },
+  {
+    "name": "Bandeja der atrás",
+    "id": "eb2182339420bb6701wu4q",
+    "key": "U')|$OhV9;/1EwHS",
+    "category": "tdq",
+    "online": true
+  },
+  {
+    "name": "Bandeja der adelante",
+    "id": "eba939ccdda8167e71fh7u",
+    "key": ">~'pz/kOUoSRnCEV",
+    "category": "tdq",
+    "online": true
+  },
+  {
+    "name": "Extractor",
+    "id": "eb0e121ux4rrtjkf",
+    "key": "1nd<@;p#gtL]<W(K",
+    "category": "cz",
+    "online": true
+  },
+  {
+    "name": "Sensor 2",
+    "id": "eb60f46a8dc4f7af11hgp9",
+    "key": "k<:>2EllTA5@SG:;",
+    "category": "wsdcg",
+    "online": true
+  },
+  {
+    "name": "Bluetooth Gateway",
+    "id": "ebf51e207ba1359b93wbz9",
+    "key": "mJPE|4sTTzz_qVgP",
+    "category": "cz",
+    "online": true
+  },
+  {
+    "name": "Bandeja Izq Atrás",
+    "id": "ebf84afaludhei1x",
+    "key": "1nd<@;p#gtL]<W(K",
+    "category": "cz",
+    "online": true
+  },
+  {
+    "name": "Bandeja Izq Adelante",
+    "id": "ebb361hhi0cei8xb",
+    "key": "1nd<@;p#gtL]<W(K",
+    "category": "cz",
+    "online": true
+  },
+  {
+    "name": "Bomba",
+    "id": "ebf427eih6oxomiv",
+    "key": "1nd<@;p#gtL]<W(K",
+    "category": "cz",
+    "online": true
+  },
+  {
+    "name": "Red",
+    "id": "ebc50c11rda7ug9j",
+    "key": "1nd<@;p#gtL]<W(K",
+    "category": "cz",
+    "online": true
+  },
+  {
+    "name": "Smart Wired Zigbee Gateway Pro",
+    "id": "ebfad3e7bddeaf7660yn4f",
+    "key": "1nd<@;p#gtL]<W(K",
+    "category": "wg2",
+    "online": true
+  }
+]

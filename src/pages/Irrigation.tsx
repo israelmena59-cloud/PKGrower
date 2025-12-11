@@ -195,7 +195,7 @@ const Irrigation: React.FC = () => {
           {/* LEFT: Charts & Strategy */}
           <Grid item xs={12} lg={8}>
               <Box sx={{ mb: 3 }}>
-                <HistoryChart type="substrate" data={sensorHistory} />
+                <HistoryChart type="substrate" title="Historial Sustrato" data={sensorHistory} />
               </Box>
               <CropSteeringPanel phase={phase} currentVWC={latestVWC} />
 

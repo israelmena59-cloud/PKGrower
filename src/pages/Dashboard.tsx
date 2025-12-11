@@ -1,239 +1,347 @@
-// src/pages/Dashboard.tsx
-import React, { useEffect, useState } from 'react';
-import SensorCard from '../components/dashboard/SensorCard';
-import DeviceSwitch from '../components/dashboard/DeviceSwitch';
-import HistoryChart from '../components/dashboard/HistoryChart';
-import { SoilSensorsGrid } from '../components/dashboard/SoilSensorsGrid';
-import { CameraControl } from '../components/camera/CameraControl';
-import { HumidifierExtractorControl } from '../components/environment/HumidifierExtractorControl';
-import { Thermometer, Droplet, Wind, Lightbulb, Fan, Droplets, Settings, RefreshCw, Sprout, Leaf, Activity, Router } from 'lucide-react'; // Added Router
-import { Card, CardHeader, CardContent, Typography, Grid, Box, IconButton, ToggleButton, ToggleButtonGroup, Chip, Paper } from '@mui/material';
-import { apiClient, type SensorData, type DeviceStates } from '../api/client'
+
+import React, { useEffect, useState, useMemo } from 'react';
+import { DashboardLayout } from '../components/widgets/DashboardLayout';
+import { WidgetDefinition } from '../components/widgets/WidgetRegistry';
+import { apiClient, type SensorData, type DeviceStates } from '../api/client';
 import ConfigModal from '../components/dashboard/ConfigModal';
-import { SoilChart } from '../components/dashboard/SoilChart';
-import { CropSteeringPanel } from '../components/dashboard/CropSteeringPanel';
-import AICopilotWidget from '../components/dashboard/AICopilotWidget';
-import { VPDStageChart } from '../components/dashboard/VPDStageChart';
+import { Thermometer, Droplet, Wind, Droplets, Lightbulb, RefreshCw, Settings, Plus, X } from 'lucide-react';
+import { Box, Paper, Typography, IconButton, CircularProgress, Button, Tabs, Tab, TextField, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
+import _ from 'lodash';
+
+// Initial default layout for a fresh start
+const DEFAULT_WIDGETS_CONFIG = [
+    { id: 'temp', type: 'sensor', title: 'Temperatura' },
+    { id: 'hum', type: 'sensor', title: 'Humedad' },
+    { id: 'vpd', type: 'sensor', title: 'D.P.V' },
+    { id: 'sub', type: 'sensor', title: 'Sustrato' },
+    { id: 'chart_vpd', type: 'chart', title: 'Historial Ambiental' },
+    { id: 'chart_soil', type: 'chart', title: 'Historial Sustrato' },
+    { id: 'light_main', type: 'control', title: 'Luz Principal' }
+];
 
 const Dashboard: React.FC = () => {
-  const [latestSensors, setLatestSensors] = useState<SensorData | null>(null);
-  const [sensorHistory, setSensorHistory] = useState<SensorData[]>([]);
-  const [devices, setDevices] = useState<DeviceStates | null>(null);
-  const [isConfigOpen, setIsConfigOpen] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
-  const [phase, setPhase] = useState<'vegetative' | 'generative'>('vegetative');
+    // DATA STATE
+    const [latestSensors, setLatestSensors] = useState<SensorData | null>(null);
+    const [sensorHistory, setSensorHistory] = useState<SensorData[]>([]);
+    const [devices, setDevices] = useState<DeviceStates | null>(null);
+    const [deviceMeta, setDeviceMeta] = useState<any[]>([]);
 
-  // NEW STATE
-  const [deviceMeta, setDeviceMeta] = useState<any[]>([]);
+    // UI END STATE
+    const [loading, setLoading] = useState(true);
+    const [isConfigOpen, setIsConfigOpen] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    // const hour = new Date().getHours();
-    // setTimeOfDay(hour >= 6 && hour < 18 ? 'Día' : 'Noche');
-  }, []);
+    // PAGE STATE
+    const [activePage, setActivePage] = useState('General');
+    const [pages, setPages] = useState<Record<string, WidgetDefinition[]>>({ 'General': DEFAULT_WIDGETS_CONFIG });
+    const [layouts, setLayouts] = useState<Record<string, any[]>>({});
+    const [isAddPageOpen, setIsAddPageOpen] = useState(false);
+    const [newPageName, setNewPageName] = useState('');
 
-  const handlePhaseChange = (
-    _: React.MouseEvent<HTMLElement>,
-    newPhase: 'vegetative' | 'generative',
-  ) => {
-    if (newPhase !== null) setPhase(newPhase);
-  };
+    // --- DATA FETCHING ---
+    const fetchData = async () => {
+        try {
+            const [sensors, history, devs, meta] = await Promise.allSettled([
+                apiClient.getLatestSensors(),
+                apiClient.getSensorHistory(),
+                apiClient.getDeviceStates(),
+                apiClient.request<any[]>('/api/devices/list')
+            ]);
 
-  // NEW FUNCTION
-  const fetchMeta = async () => {
-       try {
-           const res = await fetch('http://localhost:3000/api/devices/list');
-           if (res.ok) {
-               const json = await res.json();
-               setDeviceMeta(json);
-           }
-       } catch (e) {
-           console.error("Meta fetch error", e);
-       }
-  };
+            if (sensors.status === 'fulfilled') setLatestSensors(sensors.value);
+            if (history.status === 'fulfilled') setSensorHistory(history.value);
+            if (devs.status === 'fulfilled') setDevices(devs.value);
+            if (meta.status === 'fulfilled' && Array.isArray(meta.value)) setDeviceMeta(meta.value);
 
-  const fetchData = async () => {
-    try {
-      let latestSensorsData: SensorData | null = null;
-      let historyData: SensorData[] = [];
-      let devicesData: Partial<DeviceStates> = {};
+            setLoading(false);
+        } catch (e) {
+            console.error("Fetch error", e);
+        }
+    };
 
-      try { latestSensorsData = await apiClient.getLatestSensors(); } catch(e) { console.warn('Diff sensors', e); }
-      try { historyData = await apiClient.getSensorHistory(); } catch(e) { console.warn('Diff history', e); }
-      try { devicesData = await apiClient.getDeviceStates(); } catch(e) { console.warn('Diff devices', e); }
-
-      setLatestSensors(latestSensorsData || { temperature: 0, humidity: 0, substrateHumidity: 0, vpd: 0 } as any);
-      setSensorHistory(historyData || []);
-      setDevices((devicesData || {}) as DeviceStates);
-      setSensorHistory(historyData || []);
-      setDevices((devicesData || {}) as DeviceStates);
-    } catch (globalError) {
-      console.error("Critical failure fetching data:", globalError);
-    }
-  };
-
-  const handleRefresh = async () => {
-      setRefreshing(true);
-      try {
-          await apiClient.refreshDevices();
-          await fetchData();
-      } catch (e) {
-          console.error('Refresh failed', e);
-      } finally {
-          setTimeout(() => setRefreshing(false), 800);
-      }
-  };
-
-  useEffect(() => {
-    fetchData();
-    fetchMeta(); // NEW
-    const interval = setInterval(() => {
+    useEffect(() => {
         fetchData();
-        if (Math.random() > 0.8) fetchMeta(); // Occasional refresh
-    }, 10000);
-    return () => clearInterval(interval);
-  }, []);
+        const interval = setInterval(fetchData, 5000);
+        return () => clearInterval(interval);
+    }, []);
 
-  const handleToggle = async (deviceId: keyof DeviceStates) => {
-      const currentState = devices?.[deviceId] || false;
-      const action = currentState ? 'off' : 'on';
-      await apiClient.controlDevice(deviceId as string, action);
-      setDevices(prev => prev ? ({ ...prev, [deviceId]: !currentState }) : null);
-      fetchData();
-  };
+    // --- AUTO-DISCOVERY ---
+    useEffect(() => {
+        if (!devices) return;
 
-  if (!devices) {
-    return <Box sx={{ display: 'flex', justifyContent: 'center', p: 10 }}><RefreshCw className="animate-spin" size={40} /></Box>
-  }
+        const knownDevices = JSON.parse(localStorage.getItem('known_devices') || '[]');
+        const newKnownDevices = [...knownDevices];
+        const addedWidgets: WidgetDefinition[] = [];
+        let hasChanges = false;
 
-  return (
-    <Box sx={{ maxWidth: 1600, mx: 'auto', p: 1, '& > *': { mb: 3 } }}>
-      <Paper elevation={0} sx={{ p: 3, borderRadius: 'var(--squircle-radius)', background: 'var(--glass-bg)', backdropFilter: 'var(--backdrop-blur)', border: 'var(--glass-border)', boxShadow: 'var(--glass-shadow)', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative', overflow: 'hidden' }}>
-        <Box sx={{ position: 'relative', zIndex: 1 }}>
-            <Typography variant="overline" sx={{ opacity: 0.7, letterSpacing: 2 }}>SYSTEM STATUS: ACTIVE</Typography>
-            <Typography variant="h3" fontWeight="900" sx={{ background: 'linear-gradient(45deg, #fff 30%, #a5f3fc 90%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', letterSpacing: -1 }}>PKGrower 3.0</Typography>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 1 }}>
-                <Chip icon={<Activity size={14} />} label="Online" color="success" size="small" variant="outlined" sx={{ color: '#4ade80',  borderColor: '#4ade80' }} />
-                <Chip icon={phase === 'vegetative' ? <Sprout size={14}/> : <Leaf size={14}/>} label={`${phase === 'vegetative' ? 'Vegetativa' : 'Floración'}`} color={phase === 'vegetative' ? 'primary' : 'secondary'} size="small" variant="filled" />
-            </Box>
-        </Box>
-        <Box sx={{ zIndex: 1, display: 'flex', gap: 1 }}>
-            <IconButton onClick={handleRefresh} sx={{ color: 'white', bgcolor: 'rgba(255,255,255,0.05)', '&:hover': { bgcolor: 'rgba(255,255,255,0.1)' } }}><RefreshCw className={refreshing ? "animate-spin" : ""} /></IconButton>
-            <IconButton onClick={() => setIsConfigOpen(true)} sx={{ color: 'white', bgcolor: 'rgba(255,255,255,0.05)', '&:hover': { bgcolor: 'rgba(255,255,255,0.1)' } }}><Settings /></IconButton>
-        </Box>
-      </Paper>
+        Object.keys(devices).forEach(deviceId => {
+            if (['temperature', 'humidity'].includes(deviceId)) return;
 
-      <ConfigModal open={isConfigOpen} onClose={() => setIsConfigOpen(false)} />
+            if (!knownDevices.includes(deviceId)) {
+                console.log(`Auto-discovering new device: ${deviceId}`);
+                const meta = deviceMeta.find(d => d.id === deviceId);
+                const type = meta?.type === 'sensor' ? 'sensor' : 'control';
+                const title = meta?.name || deviceId;
 
-      <Grid container spacing={2}>
-        <Grid item xs={12} md={6} lg={3}><SensorCard icon={<Thermometer />} name="Temp. Aire" value={latestSensors?.temperature ?? '--'} unit="°C" color="#ef4444" description="Temperatura óptima: 22-26°C." /></Grid>
-        <Grid item xs={12} md={6} lg={3}><SensorCard icon={<Droplet />} name="Humedad" value={latestSensors?.humidity ?? '--'} unit="%" color="#3b82f6" description="Humedad Relativa." /></Grid>
-        <Grid item xs={12} md={6} lg={3}><SensorCard icon={<Wind />} name="D.P.V." value={latestSensors?.vpd ?? '--'} unit="kPa" color="#8b5cf6" description="Déficit de Presión de Vapor." /></Grid>
-        <Grid item xs={12} md={6} lg={3}><SensorCard icon={<Droplets />} name="Sustrato" value={latestSensors?.substrateHumidity ?? '--'} unit="%" color="#f59e0b" description="Humedad volumétrica prom." /></Grid>
-      </Grid>
+                addedWidgets.push({ id: deviceId, type: type as any, title: title });
+                newKnownDevices.push(deviceId);
+                hasChanges = true;
+            }
+        });
 
-      <Grid container spacing={3}>
-        <Grid item xs={12} lg={4} sx={{ display: 'flex' }}><Box sx={{ width: '100%' }}><AICopilotWidget sensors={latestSensors} phase={phase} /></Box></Grid>
-        <Grid item xs={12} lg={8}><VPDStageChart data={sensorHistory} /></Grid>
-      </Grid>
+        if (hasChanges) {
+            // Add new widgets to the ACTIVE page
+            setPages(prev => ({
+                ...prev,
+                [activePage]: [...(prev[activePage] || []), ...addedWidgets]
+            }));
+            localStorage.setItem('known_devices', JSON.stringify(newKnownDevices));
+        }
 
-      <HumidifierExtractorControl />
+    }, [devices, deviceMeta, activePage]);
 
-      <Grid container spacing={3}>
-          <Grid item xs={12} lg={8}>
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                  <SoilSensorsGrid />
-                  <Card sx={{ borderRadius: 'var(--squircle-radius)', overflow: 'hidden', bgcolor: 'var(--glass-bg)', backdropFilter: 'var(--backdrop-blur)', border: 'var(--glass-border)', boxShadow: 'var(--glass-shadow)' }}>
-                    <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: 1, borderColor: 'rgba(255,255,255,0.05)' }}>
-                        <Typography variant="h6" fontWeight="bold" color="white">Análisis de Historial</Typography>
-                        <ToggleButtonGroup value={phase} exclusive onChange={handlePhaseChange} size="small" sx={{ bgcolor: 'rgba(255,255,255,0.05)' }}>
-                            <ToggleButton value="vegetative" sx={{ color: 'white' }}>Vegetativo</ToggleButton>
-                            <ToggleButton value="generative" sx={{ color: 'white' }}>Generativo</ToggleButton>
-                        </ToggleButtonGroup>
-                    </Box>
-                    <CardContent>
-                        <SoilChart data={sensorHistory} phase={phase} />
-                        <Box sx={{ mt: 3 }}>
-                            <Grid container spacing={2}>
-                                <Grid item xs={12} md={6}><HistoryChart type="substrate" title="Sustrato (Humedad)" targets={{ vwc: 45, dryback: 15 }} data={sensorHistory} /></Grid>
-                                <Grid item xs={12} md={6}><HistoryChart type="environment" title="Ambiente (Temp/Hum/VPD)" data={sensorHistory} /></Grid>
-                            </Grid>
-                        </Box>
-                    </CardContent>
-                  </Card>
-              </Box>
-          </Grid>
+    // --- INIT & MIGRATION ---
+    useEffect(() => {
+        // Load Pages (Widgets)
+        const savedPages = localStorage.getItem('dashboard_pages');
+        if (savedPages) {
+            setPages(JSON.parse(savedPages));
+        } else {
+            // Migration check: did we have a flat list? - No separate storage for widgets before, just hardcoded default + add logic
+            // But we might have stored it if we implemented full persistence for widgets list.
+            // Currently my previous code did: setRegisteredWidgets(DEFAULT) and added to it.
+            // I did NOT implement persisting registeredWidgets to LS in previous step, only layout.
+            // So widgets reset on reload except for layout positions?
+            // WAIT - if widgets reset, but layout persists, RGL might show empty boxes or nothing?
+            // Let's assume we start fresh or from default for widgets, but check layouts.
+        }
 
-          <Grid item xs={12} lg={4}>
-               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, height: 'fit-content' }}>
-                    <Box sx={{ borderRadius: 3, overflow: 'hidden', boxShadow: 3 }}><CameraControl /></Box>
-                    <CropSteeringPanel phase={phase} currentVWC={latestSensors?.substrateHumidity ?? 0} />
+        // Load Layouts
+        const savedLayouts = localStorage.getItem('dashboard_layouts');
+        if (savedLayouts) {
+            setLayouts(JSON.parse(savedLayouts));
+        } else {
+            // Migration: Check old single layout
+            const oldLayout = localStorage.getItem('dashboard_layout');
+            if (oldLayout) {
+                const parsed = JSON.parse(oldLayout);
+                // Assign old layout to 'General'
+                setLayouts({ 'General': parsed });
+            } else {
+                // Generate default layout for General
+                const initialLayout = DEFAULT_WIDGETS_CONFIG.map((w, i) => ({
+                    i: w.id,
+                    x: (i * 2) % 4,
+                    y: Math.floor(i / 2) * 2,
+                    w: w.type === 'chart' ? 4 : 1,
+                    h: w.type === 'chart' ? 3 : 1
+                }));
+                setLayouts({ 'General': initialLayout });
+            }
+        }
+    }, []);
 
-                    <Card sx={{ borderRadius: 'var(--squircle-radius)', bgcolor: 'var(--glass-bg)', backdropFilter: 'var(--backdrop-blur)', border: 'var(--glass-border)', boxShadow: 'var(--glass-shadow)', flexGrow: 0, height: 'auto' }}>
-                        <CardHeader title="Actuadores" subheader="Control Manual Directo" titleTypographyProps={{ color: 'white', fontWeight: 'bold' }} subheaderTypographyProps={{ color: 'rgba(255,255,255,0.5)' }} />
-                        <CardContent>
-                            <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.5)', mb: 1, display: 'block', fontWeight: 'bold' }}>ILUMINACIÓN</Typography>
-                            <Grid container spacing={2} sx={{ mb: 3 }}>
-                                <Grid item xs={6} md={3}><DeviceSwitch icon={<Lightbulb />} name="Panel 1" isOn={devices.luzPanel1 || false} onToggle={() => handleToggle('luzPanel1')} /></Grid>
-                                <Grid item xs={6} md={3}><DeviceSwitch icon={<Lightbulb />} name="Panel 2" isOn={devices.luzPanel2 || false} onToggle={() => handleToggle('luzPanel2')} /></Grid>
-                                <Grid item xs={6} md={3}><DeviceSwitch icon={<Lightbulb />} name="Panel 4" isOn={devices.luzPanel4 || false} onToggle={() => handleToggle('luzPanel4')} /></Grid>
-                                <Grid item xs={12}><DeviceSwitch icon={<Lightbulb color="#ef4444" />} name="Luz Roja (Emerson)" isOn={devices.controladorLuzRoja || false} onToggle={() => handleToggle('controladorLuzRoja')} /></Grid>
-                            </Grid>
-                            <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.5)', mb: 1, display: 'block', fontWeight: 'bold' }}>RIEGO & CLIMA</Typography>
-                            <Grid container spacing={2}>
-                                <Grid item xs={6}><DeviceSwitch icon={<Fan />} name="Extractor" isOn={devices.extractorControlador || false} onToggle={() => handleToggle('extractorControlador')} /></Grid>
-                                <Grid item xs={6}><DeviceSwitch icon={<Droplets />} name="Bomba" isOn={devices.bombaControlador || false} onToggle={() => handleToggle('bombaControlador')} /></Grid>
-                                <Grid item xs={12}><DeviceSwitch icon={<Droplet />} name="Humidificador" isOn={devices.humidifier || false} onToggle={() => handleToggle('humidifier')} /></Grid>
-                            </Grid>
-                        </CardContent>
-                    </Card>
+    // Persist Pages whenever they change
+    useEffect(() => {
+        localStorage.setItem('dashboard_pages', JSON.stringify(pages));
+    }, [pages]);
 
-                    {/* DYNAMIC DEVICES (Meross / Others) */}
-                    {devices && Object.keys(devices).filter(key =>
-                        !['luzPanel1', 'luzPanel2', 'luzPanel3', 'luzPanel4', 'controladorLuzRoja',
-                          'extractorControlador', 'bombaControlador', 'humidifier', 'camera'].includes(key)
-                    ).length > 0 && (
-                        <Card sx={{ borderRadius: 'var(--squircle-radius)', bgcolor: 'var(--glass-bg)', backdropFilter: 'var(--backdrop-blur)', border: 'var(--glass-border)', boxShadow: 'var(--glass-shadow)', flexGrow: 0, height: 'auto' }}>
-                            <CardHeader
-                                title="Detectados"
-                                subheader="Tuya & Meross (Configurables)"
-                                titleTypographyProps={{ color: 'white', fontWeight: 'bold' }}
-                                subheaderTypographyProps={{ color: 'rgba(255,255,255,0.5)' }}
-                                action={
-                                    <IconButton onClick={() => setIsConfigOpen(true)} size="small" sx={{ color: 'rgba(255,255,255,0.5)' }}>
-                                        <Settings size={16} />
-                                    </IconButton>
+    // --- HYDRATION (For Active Page) ---
+    const hydratedWidgets = useMemo(() => {
+        const currentWidgets = pages[activePage] || [];
+        const widgets: WidgetDefinition[] = [];
+
+        currentWidgets.forEach(w => {
+            let props = {};
+
+            // Sensor Mapping
+            if (w.id === 'temp') props = { icon: <Thermometer/>, name: 'Temp', value: latestSensors?.temperature?.toFixed(1) ?? '--', unit: '°C', color: '#ef4444' };
+            if (w.id === 'hum') props = { icon: <Droplet/>, name: 'Humedad', value: latestSensors?.humidity?.toFixed(0) ?? '--', unit: '%', color: '#3b82f6' };
+            if (w.id === 'vpd') props = { icon: <Wind/>, name: 'D.P.V', value: latestSensors?.vpd?.toFixed(2) ?? '--', unit: 'kPa', color: '#8b5cf6' };
+            if (w.id === 'sub') props = { icon: <Droplets/>, name: 'Sustrato', value: latestSensors?.substrateHumidity?.toFixed(0) ?? '--', unit: '%', color: '#f59e0b' };
+
+            // Chart Mapping
+            if (w.id === 'chart_vpd') props = { data: sensorHistory, dataKey: 'vpd', color: '#8b5cf6', unit: 'kPa' };
+            if (w.id === 'chart_soil') props = { data: sensorHistory, dataKey: 'substrateHumidity', color: '#f59e0b', unit: '%' };
+
+            // Manual Device Mapping
+            if (w.id === 'light_main') props = {
+                id: 'luzPanel1',
+                icon: <Lightbulb/>,
+                name: 'Panel 1',
+                isOn: devices?.['luzPanel1'] ?? false
+            };
+
+            // Dynamic Device Mapping
+            if (w.type === 'control' && !['light_main'].includes(w.id)) {
+                 const dev = devices?.[w.id];
+                 const meta = deviceMeta.find(d => d.id === w.id);
+                 props = {
+                     id: w.id,
+                     icon: meta?.type === 'light' ? <Lightbulb/> : <RefreshCw/>,
+                     name: meta?.name || w.title,
+                     isOn: !!dev
+                 };
+            }
+
+            widgets.push({ ...w, props });
+        });
+
+        return widgets;
+    }, [pages, activePage, latestSensors, sensorHistory, devices, deviceMeta]);
+
+    // --- HANDLERS ---
+    const handleLayoutChange = (newLayout: any[]) => {
+        const updated = { ...layouts, [activePage]: newLayout };
+        setLayouts(updated);
+        localStorage.setItem('dashboard_layouts', JSON.stringify(updated));
+    };
+
+    const handleAddWidget = (type: string) => {
+        const id = `widget_${Date.now()}`;
+        const newWidget = { id, type: type as any, title: 'Nuevo Widget' };
+        setPages(prev => ({
+            ...prev,
+            [activePage]: [...(prev[activePage] || []), newWidget]
+        }));
+    };
+
+    const handleRemoveWidget = (id: string) => {
+        setPages(prev => ({
+            ...prev,
+            [activePage]: prev[activePage].filter(w => w.id !== id)
+        }));
+        // Clean layout
+        /* const currentLayout = layouts[activePage] || [];
+        const newLayout = currentLayout.filter((l: any) => l.i !== id);
+        handleLayoutChange(newLayout); */
+    };
+
+    const handleRefresh = async () => {
+        setRefreshing(true);
+        await fetchData();
+        setTimeout(() => setRefreshing(false), 500);
+    };
+
+    const handleAddPage = () => {
+        if (newPageName && !pages[newPageName]) {
+            setPages(prev => ({ ...prev, [newPageName]: [] }));
+            setLayouts(prev => ({ ...prev, [newPageName]: [] }));
+            setActivePage(newPageName);
+            setNewPageName('');
+            setIsAddPageOpen(false);
+        }
+    };
+
+    const handleDeletePage = (e: React.MouseEvent, page: string) => {
+        e.stopPropagation();
+        if (page === 'General') return;
+        if (confirm(`Eliminar página "${page}" y sus widgets?`)) {
+            const newPages = { ...pages };
+            delete newPages[page];
+            setPages(newPages);
+
+            const newLayouts = { ...layouts };
+            delete newLayouts[page];
+            setLayouts(newLayouts);
+            localStorage.setItem('dashboard_layouts', JSON.stringify(newLayouts));
+
+            if (activePage === page) setActivePage('General');
+        }
+    };
+
+    if (loading && !latestSensors) {
+         return <Box sx={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><CircularProgress /></Box>;
+    }
+
+    return (
+        <Box sx={{ maxWidth: 1800, mx: 'auto', p: 2 }}>
+             {/* HEADER */}
+             <Paper elevation={0} sx={{ p: 3, mb: 3, borderRadius: 'var(--squircle-radius)', background: 'var(--glass-bg)', backdropFilter: 'var(--backdrop-blur)', border: 'var(--glass-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
+                <Box>
+                    <Typography variant="overline" sx={{ opacity: 0.7 }}>SISTEMA ONLINE</Typography>
+                    <Typography variant="h4" fontWeight="900" sx={{ background: 'linear-gradient(45deg, #fff, #a5f3fc)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                        PKGrower OS
+                    </Typography>
+                </Box>
+
+                {/* TABS */}
+                <Box sx={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
+                     <Tabs
+                        value={activePage}
+                        onChange={(_, val) => setActivePage(val)}
+                        textColor="inherit"
+                        indicatorColor="secondary"
+                        variant="scrollable"
+                        scrollButtons="auto"
+                     >
+                        {Object.keys(pages).map(page => (
+                            <Tab
+                                key={page}
+                                value={page}
+                                label={
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                        {page}
+                                        {page !== 'General' && (
+                                            <X size={14} onClick={(e) => handleDeletePage(e, page)} style={{ opacity: 0.6, cursor: 'pointer' }} />
+                                        )}
+                                    </Box>
                                 }
                             />
-                            <CardContent>
-                                <Grid container spacing={2}>
-                                    {Object.keys(devices).filter(key =>
-                                        !['luzPanel1', 'luzPanel2', 'luzPanel3', 'luzPanel4', 'controladorLuzRoja',
-                                          'extractorControlador', 'bombaControlador', 'humidifier', 'camera'].includes(key)
-                                    ).map(key => {
-                                        const meta = deviceMeta.find(d => d.key === key || d.id === key);
-                                        const name = meta ? meta.name : (key.length > 15 ? key.substring(0, 12) + '...' : key);
-                                        const icon = meta?.type === 'light' ? <Lightbulb /> : (meta?.type === 'fan' ? <Fan /> : (meta?.type === 'pump' ? <Droplets /> : <Router size={20}/>));
+                        ))}
+                     </Tabs>
+                     <IconButton size="small" onClick={() => setIsAddPageOpen(true)} sx={{ ml: 1, bgcolor: 'rgba(255,255,255,0.05)' }}>
+                        <Plus size={16} />
+                     </IconButton>
+                </Box>
 
-                                        return (
-                                            <Grid item xs={6} key={key}>
-                                                <DeviceSwitch
-                                                    icon={icon}
-                                                    name={name}
-                                                    isOn={devices[key]}
-                                                    onToggle={() => handleToggle(key)}
-                                                />
-                                            </Grid>
-                                        );
-                                    })}
-                                </Grid>
-                            </CardContent>
-                        </Card>
-                    )}
-               </Box>
-          </Grid>
-      </Grid>
-    </Box>
-  );
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                     <Button
+                        startIcon={<RefreshCw className={refreshing ? 'animate-spin' : ''} />}
+                        onClick={handleRefresh}
+                        sx={{ color: 'white', borderColor: 'rgba(255,255,255,0.2)' }}
+                        variant="outlined"
+                    >
+                        Refrescar
+                    </Button>
+                    <IconButton onClick={() => setIsConfigOpen(true)} sx={{ color: 'white', bgcolor: 'rgba(255,255,255,0.1)' }}>
+                        <Settings />
+                    </IconButton>
+                </Box>
+            </Paper>
+
+            <ConfigModal open={isConfigOpen} onClose={() => setIsConfigOpen(false)} />
+
+            {/* NEW PAGE MODAL */}
+            <Dialog open={isAddPageOpen} onClose={() => setIsAddPageOpen(false)}>
+                <DialogTitle>Nueva Página</DialogTitle>
+                <DialogContent>
+                    <TextField
+                        autoFocus
+                        margin="dense"
+                        label="Nombre de la página"
+                        fullWidth
+                        value={newPageName}
+                        onChange={(e) => setNewPageName(e.target.value)}
+                    />
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setIsAddPageOpen(false)}>Cancelar</Button>
+                    <Button onClick={handleAddPage} variant="contained">Crear</Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* DYNAMIC GRID */}
+            <DashboardLayout
+                key={activePage} // Force remount on page switch
+                widgets={hydratedWidgets}
+                layout={layouts[activePage] || []}
+                onLayoutChange={handleLayoutChange}
+                onAddWidget={handleAddWidget}
+                onRemoveWidget={handleRemoveWidget}
+            />
+        </Box>
+    );
 };
 
 export default Dashboard;

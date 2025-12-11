@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Typography, Card, CardContent, CardHeader, Grid, TextField, Button, Avatar, List, ListItem, ListItemAvatar, ListItemText, Paper, Divider, CircularProgress, IconButton, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
 import { Bot, Send, Sparkles, CheckCircle, Key, AlertTriangle } from 'lucide-react';
-import { API_BASE_URL } from '../api/client';
+import { apiClient, SensorData } from '../api/client';
 
 interface Message {
     id: number;
