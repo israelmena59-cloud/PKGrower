@@ -220,7 +220,7 @@ const DEVICE_MAP = {
 
 // --- INICIALIZACIÃ“N DE LA APP Y CONECTORES ---
 const app = express();
-const path = require('path'); // Import path
+// Import path removed (duplicate)
 app.use(cors()); // Safe toggle
 const PORT = process.env.PORT || 3000;
 // Inicializar TuyaOpenApiClient con manejo de errores
