@@ -3,7 +3,7 @@ services:
     name: pkgrower-backend
     env: node
     plan: free
-    buildCommand: cd backend && npm install
+    buildCommand: npm install && npm run build && cd backend && npm install
     startCommand: cd backend && node index.js
     envVars:
       - key: VITE_API_URL
