@@ -4,6 +4,10 @@ import App from './App.tsx'
 import './index.css'
 import { ThemeProvider, createTheme } from '@mui/material/styles'
 import CssBaseline from '@mui/material/CssBaseline'
+import { initGlobalLogger } from './utils/debugLogger'
+
+// Initialize critical error monitoring immediately
+initGlobalLogger();
 
 // Detect if the document has the `dark` class (shadcn style) and map CSS variables.
 const prefersDark = typeof document !== 'undefined' && document.documentElement.classList.contains('dark')
