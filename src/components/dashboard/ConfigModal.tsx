@@ -59,9 +59,7 @@ export const ConfigModal: React.FC<ConfigModalProps> = ({ open, onClose }) => {
 
   useEffect(() => {
     if (open) {
-    if (open) {
-      // Init logic if needed
-      if (tabValue === 4) fetchDevices(); // Auto-fetch if opened directly to devices (unlikely initial value but good practice)
+      if (tabValue === 4) fetchDevices();
     }
   }, [open, tabValue]);
 
