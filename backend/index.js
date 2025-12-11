@@ -2311,6 +2311,13 @@ app.post('/api/settings', async (req, res) => {
         }
     }
 
+    // MEROSS CONFIG
+    const { meross } = req.body;
+    if (meross) {
+        if (meross.email) envChanges['MEROSS_EMAIL'] = meross.email;
+        if (meross.password) envChanges['MEROSS_PASSWORD'] = meross.password;
+    }
+
     // Persistir cambios en .env
     const fs = require('fs');
     let envContent = fs.readFileSync('.env', 'utf8');

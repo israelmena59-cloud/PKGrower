@@ -44,6 +44,7 @@ export const ConfigModal: React.FC<ConfigModalProps> = ({ open, onClose }) => {
     humidifierToken: '', humidifierIp: '',
     cameraToken: '', cameraIp: ''
   });
+  const [merossConfig, setMerossConfig] = useState({ email: '', password: '' });
 
   // 2FA State
   const [showOTP, setShowOTP] = useState(false);
@@ -84,6 +85,9 @@ export const ConfigModal: React.FC<ConfigModalProps> = ({ open, onClose }) => {
         if (xiaomiConfig.humidifierToken || xiaomiConfig.humidifierIp || xiaomiConfig.cameraToken || xiaomiConfig.cameraIp) {
              if (!payload.xiaomi) payload.xiaomi = {};
              Object.assign(payload.xiaomi, xiaomiConfig);
+        }
+        if (merossConfig.email) {
+            payload.meross = { ...merossConfig };
         }
 
         const res: any = await apiClient.saveSettings(payload);
@@ -136,6 +140,7 @@ export const ConfigModal: React.FC<ConfigModalProps> = ({ open, onClose }) => {
               <Tab icon={<Cloud size={20} />} label="Xiaomi Cloud / 2FA" />
               <Tab icon={<Key size={20} />} label="Xiaomi Tokens (Manual)" />
               <Tab icon={<Router size={20} />} label="Tuya Smart" />
+              <Tab icon={<Cloud size={20} />} label="Meross" />
             </Tabs>
 
             {/* XIAOMI CLOUD TAB */}
@@ -223,6 +228,28 @@ export const ConfigModal: React.FC<ConfigModalProps> = ({ open, onClose }) => {
                       fullWidth
                       value={tuyaConfig.secretKey}
                       onChange={(e) => setTuyaConfig({ ...tuyaConfig, secretKey: e.target.value })}
+                    />
+                </Box>
+            </TabPanel>
+
+            {/* MEROSS TAB */}
+            <TabPanel value={tabValue} index={3}>
+                <Typography variant="body2" sx={{ mb: 2 }}>
+                    Credenciales de Meross Cloud (Email/Password).
+                </Typography>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    <TextField
+                      label="Email"
+                      fullWidth
+                      value={merossConfig.email}
+                      onChange={(e) => setMerossConfig({ ...merossConfig, email: e.target.value })}
+                    />
+                    <TextField
+                      label="Password"
+                      type="password"
+                      fullWidth
+                      value={merossConfig.password}
+                      onChange={(e) => setMerossConfig({ ...merossConfig, password: e.target.value })}
                     />
                 </Box>
             </TabPanel>
