@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions,
   Button, TextField, Tabs, Tab, Box, Typography,
-  Alert, AlertTitle, CircularProgress, Link
+  Alert, AlertTitle, CircularProgress, Link,
+  Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
+  IconButton, Select, MenuItem, Chip
 } from '@mui/material';
-import { Settings, Cloud, Router, Key, Info } from 'lucide-react';
+import { Settings, Cloud, Router, Key, Info, Smartphone, Save, RefreshCw } from 'lucide-react';
 import { apiClient } from '../../api/client';
 
 interface ConfigModalProps {
@@ -46,6 +48,10 @@ export const ConfigModal: React.FC<ConfigModalProps> = ({ open, onClose }) => {
   });
   const [merossConfig, setMerossConfig] = useState({ email: '', password: '' });
 
+  // Custom Devices State
+  const [availableDevices, setAvailableDevices] = useState<any[]>([]);
+  const [scanning, setScanning] = useState(false);
+
   // 2FA State
   const [showOTP, setShowOTP] = useState(false);
   const [otpCode, setOtpCode] = useState('');
@@ -53,9 +59,67 @@ export const ConfigModal: React.FC<ConfigModalProps> = ({ open, onClose }) => {
 
   useEffect(() => {
     if (open) {
+    if (open) {
       // Init logic if needed
+      if (tabValue === 4) fetchDevices(); // Auto-fetch if opened directly to devices (unlikely initial value but good practice)
     }
-  }, [open]);
+  }, [open, tabValue]);
+
+  const fetchDevices = async () => {
+       try {
+           const data = await apiClient.get('/api/devices/list'); // We need to expose a generic get or add method to client.ts
+           // Since client.ts might not have generic get, we assume we need to add it or use fetch directly.
+           // For safety, I'll use fetch here or add to client.ts later.
+           // Let's assume we can add a method to apiClient or use a direct fetch.
+           // Given I can't easily see client.ts fully right now without context switch, I'll use fetch.
+           const res = await fetch('http://localhost:3000/api/devices/list');
+           const json = await res.json();
+           setAvailableDevices(json);
+       } catch (e) {
+           console.error("Error fetching devices list", e);
+       }
+  };
+
+  const handleScan = async () => {
+      setScanning(true);
+      try {
+          await fetch('http://localhost:3000/api/devices/scan', { method: 'POST' });
+          await fetchDevices();
+          setSuccessMsg("Escaneo completado. Revisa la lista.");
+      } catch (e) {
+          setErrorMsg("Error al escanear.");
+      } finally {
+          setScanning(false);
+      }
+  };
+
+  const handleSaveDevice = async (device: any) => {
+      try {
+           const res = await fetch('http://localhost:3000/api/devices/configure', {
+               method: 'POST',
+               headers: {'Content-Type': 'application/json'},
+               body: JSON.stringify({
+                   id: device.id,
+                   name: device.name,
+                   type: device.type,
+                   category: device.category,
+                   platform: device.platform
+               })
+           });
+           if (res.ok) {
+               setSuccessMsg(`Dispositivo ${device.name} guardado.`);
+               fetchDevices(); // Refresh
+           } else {
+               throw new Error('Failed');
+           }
+      } catch (e) {
+           setErrorMsg("Error guardando dispositivo.");
+      }
+  };
+
+  const updateDeviceLocal = (id: string, field: string, value: any) => {
+      setAvailableDevices(prev => prev.map(d => d.id === id ? { ...d, [field]: value } : d));
+  };
 
   const handleSave = async () => {
     setLoading(true);
@@ -141,6 +205,7 @@ export const ConfigModal: React.FC<ConfigModalProps> = ({ open, onClose }) => {
               <Tab icon={<Key size={20} />} label="Xiaomi Tokens (Manual)" />
               <Tab icon={<Router size={20} />} label="Tuya Smart" />
               <Tab icon={<Cloud size={20} />} label="Meross" />
+              <Tab icon={<Smartphone size={20} />} label="Gestionar Dispositivos" />
             </Tabs>
 
             {/* XIAOMI CLOUD TAB */}
@@ -252,6 +317,91 @@ export const ConfigModal: React.FC<ConfigModalProps> = ({ open, onClose }) => {
                       onChange={(e) => setMerossConfig({ ...merossConfig, password: e.target.value })}
                     />
                 </Box>
+            </TabPanel>
+
+            {/* MANAGE DEVICES TAB */}
+            <TabPanel value={tabValue} index={4}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                    <Typography variant="body2">
+                        Detecta, renombra y categoriza tus dispositivos Tuya y Meross.
+                    </Typography>
+                    <Button
+                        startIcon={<RefreshCw className={scanning ? 'animate-spin' : ''} />}
+                        variant="outlined"
+                        onClick={handleScan}
+                        disabled={scanning}
+                    >
+                        {scanning ? 'Escaneando...' : 'Escanear Nubes'}
+                    </Button>
+                </Box>
+
+                <TableContainer component={Box} sx={{ maxHeight: 400, overflow: 'auto' }}>
+                    <Table size="small" stickyHeader>
+                        <TableHead>
+                            <TableRow>
+                                <TableCell>Plataforma</TableCell>
+                                <TableCell>Nombre (Editable)</TableCell>
+                                <TableCell>Tipo</TableCell>
+                                <TableCell>Estado</TableCell>
+                                <TableCell align="right">Acción</TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            {availableDevices.map((dev) => (
+                                <TableRow key={dev.id} hover>
+                                    <TableCell>
+                                        <Chip
+                                            label={dev.platform}
+                                            size="small"
+                                            color={dev.platform === 'tuya' ? 'error' : dev.platform === 'meross' ? 'info' : 'default'}
+                                            variant="outlined"
+                                        />
+                                        <div style={{fontSize: '0.7em', color: '#888', marginTop: 4}}>{dev.id.substring(0,8)}...</div>
+                                    </TableCell>
+                                    <TableCell>
+                                        <TextField
+                                            size="small"
+                                            value={dev.name}
+                                            onChange={(e) => updateDeviceLocal(dev.id, 'name', e.target.value)}
+                                            fullWidth
+                                        />
+                                    </TableCell>
+                                    <TableCell>
+                                        <Select
+                                            size="small"
+                                            value={dev.type || 'switch'}
+                                            onChange={(e) => updateDeviceLocal(dev.id, 'type', e.target.value)}
+                                            sx={{ minWidth: 100 }}
+                                        >
+                                            <MenuItem value="switch">Switch</MenuItem>
+                                            <MenuItem value="light">Luz</MenuItem>
+                                            <MenuItem value="fan">Ventilador</MenuItem>
+                                            <MenuItem value="pump">Bomba</MenuItem>
+                                            <MenuItem value="sensor">Sensor</MenuItem>
+                                        </Select>
+                                    </TableCell>
+                                    <TableCell>
+                                        {dev.configured ? <Chip label="Guardado" size="small" color="success" /> : <Chip label="Nuevo" size="small" />}
+                                    </TableCell>
+                                    <TableCell align="right">
+                                        <IconButton color="primary" onClick={() => handleSaveDevice(dev)}>
+                                            <Save size={18} />
+                                        </IconButton>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                            {availableDevices.length === 0 && (
+                                <TableRow>
+                                    <TableCell colSpan={5} align="center">
+                                        <Typography sx={{ py: 4, color: 'text.secondary' }}>
+                                            No se encontraron dispositivos. Intenta "Escanear Nubes".
+                                        </Typography>
+                                    </TableCell>
+                                </TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                </TableContainer>
             </TabPanel>
         </>
     );

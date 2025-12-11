@@ -273,6 +273,141 @@ let appSettings = {
     logLevel: 'info',
   },
   tuya: {
+    // ...
+  },
+  // ...
+};
+
+// --- CUSTOM DEVICES MANAGEMENT ---
+// Devices configured by user in Frontend (persisted in Firestore)
+let customDeviceConfigs = {};
+
+async function loadCustomDevices() {
+    try {
+        customDeviceConfigs = await firestore.getDeviceConfigs();
+        console.log(`[INIT] Custom devices loaded: ${Object.keys(customDeviceConfigs).length}`);
+    } catch(e) {
+        console.warn('[WARN] Failed to load custom devices:', e.message);
+    }
+}
+
+// ENDPOINTS DE GESTIÓN DE DISPOSITIVOS
+
+// 1. SCAN: Forzar búsqueda en nubes
+app.post('/api/devices/scan', async (req, res) => {
+    try {
+        if (MODO_SIMULACION) return res.json({ success: true, message: "Simulation Mode: Scan fake complete." });
+
+        console.log('[SCAN] Starting manual device scan...');
+
+        // Parallel scan
+        await Promise.allSettled([
+            initTuyaDevices(),
+            initMerossDevices()
+        ]);
+
+        res.json({ success: true, message: "Scan completed. Check device list." });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// 2. CONFIGURE: Guardar metadatos (Nombre, Tipo)
+app.post('/api/devices/configure', async (req, res) => {
+    try {
+        const { id, name, type, category, platform } = req.body;
+        if (!id) return res.status(400).json({ error: "Missing ID" });
+
+        const config = {
+            id,
+            name: name || 'Unnamed Device',
+            type: type || 'switch',
+            category: category || 'other',
+            platform: platform || 'unknown',
+            configured: true
+        };
+
+        // Save to DB
+        await firestore.saveDeviceConfig(config);
+
+        // Update local cache
+        customDeviceConfigs[id] = config;
+
+        res.json({ success: true, config });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// 3. LIST: Retornar TODOS los dispositivos (Estáticos + Dinámicos + Custom) con metadatos completos
+app.get('/api/devices/list', (req, res) => {
+    try {
+        const allDevices = [];
+        const seenIds = new Set();
+
+        // 1. Static Devices (DEVICE_MAP)
+        // Convert to array
+        for (const [key, def] of Object.entries(DEVICE_MAP)) {
+            // Check override
+            const custom = customDeviceConfigs[def.id] || customDeviceConfigs[key];
+            const finalName = custom ? custom.name : def.name;
+
+            allDevices.push({
+                id: def.id || key, // Some rely on key as ID in simulation
+                key: key,
+                name: finalName,
+                type: def.deviceType,
+                platform: def.platform,
+                source: 'static',
+                configured: true
+            });
+            seenIds.add(def.id || key);
+        }
+
+        // 2. Tuya Dynamic
+        for (const [key, tDev] of Object.entries(tuyaDevices)) {
+             // If key matches a static entry (e.g. luzPanel1), we already added it.
+             // But check ID.
+             if (seenIds.has(tDev.id) || seenIds.has(key)) continue;
+
+             // Check custom config
+             const custom = customDeviceConfigs[tDev.id];
+
+             allDevices.push({
+                 id: tDev.id,
+                 key: key,
+                 name: custom ? custom.name : tDev.name,
+                 type: custom ? custom.type : (tDev.deviceType || 'switch'),
+                 platform: 'tuya',
+                 source: 'dynamic',
+                 configured: !!custom,
+                 category: tDev.category
+             });
+             seenIds.add(tDev.id);
+        }
+
+        // 3. Meross Dynamic
+        for (const [mId, mDev] of Object.entries(merossDevices)) {
+             if (seenIds.has(mId)) continue;
+
+             const custom = customDeviceConfigs[mId];
+
+             allDevices.push({
+                 id: mId,
+                 name: custom ? custom.name : mDev.name,
+                 type: custom ? custom.type : (mDev.type || 'switch'),
+                 platform: 'meross',
+                 source: 'dynamic',
+                 configured: !!custom
+             });
+             seenIds.add(mId);
+        }
+
+        res.json(allDevices);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
     accessKey: process.env.TUYA_ACCESS_KEY || '',
     secretKey: process.env.TUYA_SECRET_KEY || '',
     apiHost: process.env.TUYA_API_HOST || 'https://openapi.tuyaus.com',
@@ -887,6 +1022,7 @@ async function initMerossDevices() {
 if (!MODO_SIMULACION) {
   // Esperar un poco para que el servidor esté listo, luego intentar conexión
   setTimeout(() => {
+    loadCustomDevices(); // Load custom configs first
     initXiaomiDevices().catch(err => {
       console.error('[ERROR] Fatal al inicializar Xiaomi:', err);
     });

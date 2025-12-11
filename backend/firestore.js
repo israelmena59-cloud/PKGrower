@@ -103,12 +103,52 @@ async function getSensorHistoryRange(start, end) {
   }
 }
 
+/**
+ * Save device configuration (custom name/type)
+ * @param {Object} deviceConfig - { id, name, type, ... }
+ */
+async function saveDeviceConfig(deviceConfig) {
+  if (!db || !deviceConfig.id) return;
+  try {
+    await db.collection('device_configs').doc(deviceConfig.id).set({
+        ...deviceConfig,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+    console.log(`[FIRESTORE] Device config saved: ${deviceConfig.id}`);
+  } catch (error) {
+    console.error('[FIRESTORE] Error saving device config:', error.message);
+  }
+}
+
+/**
+ * Get all custom device configurations
+ * @returns {Promise<Object>} Map of id -> config
+ */
+async function getDeviceConfigs() {
+  if (!db) return {};
+  try {
+    const snapshot = await db.collection('device_configs').get();
+    const configs = {};
+    if (snapshot.empty) return {};
+
+    snapshot.forEach(doc => {
+        configs[doc.id] = doc.data();
+    });
+    return configs;
+  } catch (error) {
+    console.error('[FIRESTORE] Error getting device configs:', error.message);
+    return {};
+  }
+}
+
 module.exports = {
   saveSensorRecord,
   getSensorHistory,
   getSensorHistoryRange,
   saveIrrigationLog,
-  getLastIrrigationLog
+  getLastIrrigationLog,
+  saveDeviceConfig,
+  getDeviceConfigs
 };
 
 /**
