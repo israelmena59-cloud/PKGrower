@@ -20,7 +20,7 @@ const joinClasses = (...args: (string | undefined | null | false)[]) => args.fil
  */
 export function WidthProvider<P extends { width: number }>(
   ComposedComponent: ComponentType<P>
-): ComponentType<Omit<P, "width"> & WidthProviderProps> {
+): ComponentType<any> {
 
   function WidthProviderWrapper(props: Omit<P, "width"> & WidthProviderProps) {
     const { measureBeforeMount = false, className, style, ...rest } = props;
