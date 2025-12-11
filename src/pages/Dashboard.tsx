@@ -46,6 +46,8 @@ const Dashboard: React.FC = () => {
     // DATA STATE
     const [latestSensors, setLatestSensors] = useState<SensorData | null>(null);
     const [sensorHistory, setSensorHistory] = useState<SensorData[]>([]);
+    const [devices, setDevices] = useState<DeviceStates | null>(null);
+    const [deviceMeta, setDeviceMeta] = useState<any[]>([]);
 
     // UI END STATE
     const [loading, setLoading] = useState(true);
