@@ -126,17 +126,28 @@ const Irrigation: React.FC = () => {
   };
 
   const handleShot = async (pct: number) => {
-      if (pulsing) return;
+      if (pulsing || !settings) return;
       setPulsing(true);
       try {
-          await apiClient.request('/api/irrigation/shot', {
-              method: 'POST',
-              body: JSON.stringify({ percentage: pct })
-          });
+          // Calculation Logic:
+          // Volume needed (ml) = (PotSize in Liters * 1000) * (Percentage / 100)
+          // Simplified: Liters * 10 * Percentage
+          const volumeMl = settings.potSize * 10 * pct;
+
+          // Time needed (min) = Volume / Rate (ml/min)
+          const minutes = volumeMl / settings.pumpRate;
+
+          // Time (ms)
+          const durationMs = Math.round(minutes * 60 * 1000);
+
+          console.log(`[PULSE] ${pct}% Shot -> ${volumeMl}ml -> ${durationMs}ms`);
+
+          await apiClient.pulseDevice('bombaControlador', durationMs);
+
       } catch (e) {
-          console.error(e);
+          console.error("Shot failed:", e);
       } finally {
-          setTimeout(() => setPulsing(false), 2000); // Cooldown visual
+          setTimeout(() => setPulsing(false), 2000); // UI Cooldown
       }
   };
 
@@ -184,7 +195,7 @@ const Irrigation: React.FC = () => {
           {/* LEFT: Charts & Strategy */}
           <Grid item xs={12} lg={8}>
               <Box sx={{ mb: 3 }}>
-                <SoilChart data={sensorHistory} phase={phase} />
+                <HistoryChart type="substrate" data={sensorHistory} />
               </Box>
               <CropSteeringPanel phase={phase} currentVWC={latestVWC} />
 

@@ -101,7 +101,7 @@ const TUYA_DEVICES_MAP = {
     category: 'led_panel',
   },
   luzPanel3: {
-    name: 'Panel LED 3 (Izq Adelante)',
+    name: 'Panel Led (izq A)',
     id: process.env.TUYA_LUZ_PANEL_3_ID,
     platform: 'tuya',
     deviceType: 'light',
@@ -163,6 +163,16 @@ const TUYA_DEVICES_MAP = {
     platform: 'tuya',
     deviceType: 'valve',
     category: 'water_valve',
+  },
+
+  // VENTILACIÓN (1 ventilador)
+  ventiladorIzq: {
+    name: 'Ventilador Izq',
+    id: process.env.TUYA_VENTILADOR_IZQ_ID,
+    platform: 'tuya',
+    deviceType: 'switch', // Fans are usually switches
+    category: 'fan_controller',
+    switchCode: 'switch_1', // Try switch_1 first (common for smart plugs used for fans)
   },
 };
 
@@ -282,7 +292,7 @@ let appSettings = {
     enabled: false,
     mode: 'manual',
     potSize: 7, // Litros
-    pumpRate: 40, // ml/segundo (Calibración default aprox)
+    pumpRate: 70, // ml/minuto (Calibración default)
     targetVWC: 60,
     drybackTarget: 20
   }
@@ -607,6 +617,15 @@ function processTuyaDevices(cloudDevices) {
   // 2. Second Pass: DYNAMIC DISCOVERY
   // Add any cloud device that wasn't in our manual map
   cloudDevices.forEach(cloudDevice => {
+      // ignore devices already mapped strictly
+      if (mappedIds.has(cloudDevice.id)) return;
+
+      // EXPLICIT FILTER: Remove old "Panel 3" specifically requested by user
+      if (cloudDevice.id === 'eb854fi6faf2sfwl') {
+          console.log('[FILTER] Ignoring old Panel 3 device (eb854fi6faf2sfwl)');
+          return;
+      }
+
       if (!mappedIds.has(cloudDevice.id)) {
           const autoKey = `auto_${cloudDevice.id}`;
 
@@ -740,8 +759,8 @@ if (data) {
       const mappedDevices = processTuyaDevices(devices);
 
       // Update global object
-      // We use Object.assign to keep reference if used elsewhere, but clearing it first is safer
-      for (const key in tuyaDevices) delete tuyaDevices[key];
+      // FIX: Do NOT clear old devices. Merge new ones. This prevents data loss if API returns partial list.
+      // for (const key in tuyaDevices) delete tuyaDevices[key];
       Object.assign(tuyaDevices, mappedDevices);
 
       console.log(`[INFO] Sincronización completada. ${Object.keys(tuyaDevices).length} dispositivos en sistema.`);
@@ -786,7 +805,8 @@ const syncTuyaDevicesIndividual = async () => {
         const mappedDevices = processTuyaDevices(fallbackDevices);
 
         // Update global object
-        for (const key in tuyaDevices) delete tuyaDevices[key];
+        // FIX: Do NOT clear old devices. Merge new ones.
+        // for (const key in tuyaDevices) delete tuyaDevices[key];
         Object.assign(tuyaDevices, mappedDevices);
 
         console.log(`[CLOUD] Procesando ${fallbackDevices.length} dispositivos Tuya.`);
@@ -1041,25 +1061,53 @@ app.get('/api/devices', async (req, res) => {
              throw new Error("Tuya Client not initialized");
         }
 
-        // Use the same endpoint as controlDevice (/v1.0/iot-03) which is proven to work
-        const cmdRes = await tuyaClient.request({
-            method: 'POST',
-            path: `/v1.0/iot-03/devices/${tuyaId}/commands`,
-            body: {
-                commands: [
-                    { code: switchCode, value: newState }
-                ]
-            }
-        });
+        const codesToTry = [
+            switchCode, // Configured primary
+            'switch',   // Standard
+            'switch_1', // Single gang
+            'switch_led', // Some dimmers
+            'led_switch'
+        ];
 
-        const success = cmdRes.success || (cmdRes.result === true);
+        // Remove duplicates
+        const uniqueCodes = [...new Set(codesToTry)];
+        let success = false;
+        let usedCode = switchCode;
+        let lastCmdRes = null; // To store the last response for error reporting
+
+        for (const code of uniqueCodes) {
+            try {
+                const cmdRes = await tuyaClient.request({
+                    method: 'POST',
+                    path: `/v1.0/iot-03/devices/${tuyaId}/commands`,
+                    body: {
+                        commands: [
+                            { code: code, value: newState }
+                        ]
+                    }
+                });
+                lastCmdRes = cmdRes; // Store the response
+
+                success = cmdRes.success || (cmdRes.result === true);
+                if (success) {
+                    usedCode = code;
+                    console.log(`[TUYA] Success with code: ${code}`);
+                    // Update cache for future speedup (optional, but good)
+                    if (tuyaDevices[deviceId]) tuyaDevices[deviceId].switchCode = code;
+                    break;
+                }
+            } catch (err) {
+                console.warn(`[TUYA] Info: Failed code ${code} for ${deviceId}: ${err.message}`);
+                // Do not rethrow, try next code
+            }
+        }
 
         if (success) {
              // Optimistically update cache
              if (tuyaDevices[deviceId]) tuyaDevices[deviceId].on = newState;
-             return res.json({ id: deviceId, newState: newState });
+             return res.json({ id: deviceId, newState: newState, codeUsed: usedCode });
         } else {
-             const msg = cmdRes.msg || 'Error desconocido';
+             const msg = lastCmdRes ? (lastCmdRes.msg || 'Error desconocido') : 'Todos los códigos de switch fallaron o no hubo respuesta';
              console.error(`[TUYA] Toggle Error: ${msg}`);
              throw new Error(msg);
         }
@@ -1977,7 +2025,75 @@ app.get('/api/devices/all', async (req, res) => {
   }
 });
 
-// ===== SETTINGS =====
+// --- PULSE ENDPOINT (Timed ON) ---
+app.post('/api/device/:id/pulse', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { duration } = req.body; // milliseconds
+
+    if (!duration || duration <= 0) {
+        return res.status(400).json({ error: 'Duration must be > 0 ms' });
+    }
+
+    if (MODO_SIMULACION) {
+        // Simulate pulse
+        console.log(`[SIM] Pulse ${id} for ${duration}ms`);
+        deviceStates[id] = true;
+        setTimeout(() => {
+            deviceStates[id] = false;
+            console.log(`[SIM] Pulse finished for ${id}`);
+        }, duration);
+        return res.json({ success: true, message: `Pulse started for ${duration}ms (Simulated)` });
+    }
+
+    const tuyaDevice = tuyaDevices[id];
+    if (!tuyaDevice) return res.status(404).json({ error: 'Device not found' });
+    if (!tuyaConnected) return res.status(400).json({ error: 'Tuya not connected' });
+
+    // 1. Turn ON
+    const cmdCode = tuyaDevice.switchCode || 'switch';
+    let codesToTry = [cmdCode, 'switch_1', 'switch'];
+    // Optimization: if we already know the code, put it first (logic from toggle endpoint could be reused as helper, but inlining for speed now)
+
+    let successOn = false;
+    for (const code of [...new Set(codesToTry)]) {
+        try {
+            const res = await tuyaClient.request({
+                method: 'POST',
+                path: `/v1.0/iot-03/devices/${tuyaDevice.id}/commands`,
+                body: { commands: [{ code: code, value: true }] }
+            });
+            if (res.success || res.result === true) {
+                successOn = true;
+                break;
+            }
+        } catch(e) {}
+    }
+
+    if (!successOn) return res.status(500).json({ error: 'Failed to turn ON device' });
+
+    console.log(`[PULSE] ${id} ON. Scheduled OFF in ${duration}ms`);
+
+    // 2. Schedule OFF
+    setTimeout(async () => {
+        console.log(`[PULSE] Timer expired. Turning OFF ${id}`);
+        for (const code of [...new Set(codesToTry)]) {
+             try {
+                await tuyaClient.request({
+                    method: 'POST',
+                    path: `/v1.0/iot-03/devices/${tuyaDevice.id}/commands`,
+                    body: { commands: [{ code: code, value: false }] }
+                });
+             } catch(e) {}
+        }
+    }, duration);
+
+    res.json({ success: true, message: `Pulse started for ${duration}ms` });
+
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 app.get('/api/settings', (req, res) => {
   try {
     res.json(appSettings);
@@ -2449,13 +2565,13 @@ setInterval(() => {
 
             const newRecord = {
                 timestamp: new Date().toISOString(),
-                temperature: Number(temp),
-                humidity: Number(hum),
-                substrateHumidity: parseFloat(Number(avgSoil).toFixed(1)),
-                sh1: Number(sh1), // Force Number type
-                sh2: Number(sh2),
-                sh3: Number(sh3),
-                vpd: Number(vpdVal)
+                temperature: temp > 0 ? Number(temp) : null,
+                humidity: hum > 0 ? Number(hum) : null,
+                substrateHumidity: avgSoil > 0 ? parseFloat(Number(avgSoil).toFixed(1)) : null,
+                sh1: sh1 > 0 ? Number(sh1) : null,
+                sh2: sh2 > 0 ? Number(sh2) : null,
+                sh3: sh3 > 0 ? Number(sh3) : null,
+                vpd: vpdVal > 0 ? Number(vpdVal) : null
             };
 
             // Enhanced Logging

@@ -130,6 +130,13 @@ class APIClient {
     })
   }
 
+  async pulseDevice(deviceId: string, duration: number): Promise<{ success: boolean; message: string }> {
+    return this.request(`/api/device/${deviceId}/pulse`, {
+      method: 'POST',
+      body: JSON.stringify({ duration }),
+    })
+  }
+
   // Tuya Devices
   async getTuyaDevices(): Promise<{ devices: TuyaDevice[]; total: number }> {
     return this.request<{ devices: TuyaDevice[]; total: number }>('/api/devices/tuya')

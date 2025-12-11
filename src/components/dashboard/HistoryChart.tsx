@@ -11,22 +11,62 @@ interface HistoryChartProps {
       vwc?: number;
       dryback?: number;
   };
+  data?: any[]; // Optional external data
 }
 
-const HistoryChart: React.FC<HistoryChartProps> = ({ type, title, targets }) => {
+const HistoryChart: React.FC<HistoryChartProps> = ({ type, title, targets, data: externalData }) => {
   const { mode } = useTheme();
   const [range, setRange] = useState<'day' | 'week' | 'month'>('day');
-  const [data, setData] = useState<any[]>([]);
+  const [internalData, setInternalData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [isLive, setIsLive] = useState(true);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [lightingSchedule, setLightingSchedule] = useState<{on: string, off: string} | null>(null);
 
+  // Use external data if provided and we are in 'day'/'live' mode, otherwise valid internal data
+  const rawData = (externalData && range === 'day' && isLive) ? externalData : internalData;
+
+  // Process data for charts (Sanitization & Formatting)
+  // This ensures BOTH externalData and internalData are cleaned of zeros.
+  const chartData = React.useMemo(() => {
+    if (!rawData) return [];
+
+    return rawData.map((d: any) => {
+        const t = Number(d.temperature);
+        const h = Number(d.humidity);
+        const s = Number(d.substrateHumidity);
+        const sh1 = Number(d.sh1);
+        const sh2 = Number(d.sh2);
+        const sh3 = Number(d.sh3);
+
+        return {
+          ...d,
+          timeStr: new Date(d.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          dateStr: new Date(d.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric' }),
+          fullDate: new Date(d.timestamp),
+
+          // Map 0 to null to prevent drops/spikes
+          temperature: t > 0 ? t : null,
+          humidity: h > 0 ? h : null,
+          substrateHumidity: s > 0 ? s : null,
+          sh1: sh1 > 0 ? sh1 : null,
+          sh2: sh2 > 0 ? sh2 : null,
+          sh3: sh3 > 0 ? sh3 : null,
+
+          dp: (t > 0 && h > 0) ? calculateDP(t, h) : null,
+          vpd: (d.vpd && Number(d.vpd) > 0) ? Number(d.vpd) : ((t > 0 && h > 0) ? calculateVPD(t, h) : null)
+        };
+    });
+  }, [rawData]);
+
   useEffect(() => {
-    fetchHistory();
+    // Only fetch if we DON'T have external data OR if we need specific range data (week/month)
+    if (!externalData || range !== 'day' || !isLive) {
+        fetchHistory();
+    }
     fetchSettings();
 // eslint-disable-next-line
-  }, [range, isLive, selectedDate]);
+  }, [range, isLive, selectedDate, externalData]);
 
   const fetchSettings = async () => {
       try {
@@ -81,26 +121,9 @@ const HistoryChart: React.FC<HistoryChartProps> = ({ type, title, targets }) => 
           histDataRaw = await apiClient.getHistoryDateRange(start.toISOString(), end.toISOString());
       }
 
-      let histData = histDataRaw;
+      // Store raw data, let usage memo handle sanitization
+      setInternalData(histDataRaw || []);
 
-      // Filter invalid data and zeros (Artifacts)
-      histData = histData.filter((d: any) => d && d.timestamp && (Number(d.temperature) > 0 || Number(d.substrateHumidity) > 0));
-
-      // Process dates for easier chart reading
-      histData = histData.map((d: any) => ({
-          ...d,
-          timeStr: new Date(d.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          dateStr: new Date(d.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric' }),
-          fullDate: new Date(d.timestamp),
-          // Ensure numbers
-          temperature: Number(d.temperature) || 0,
-          humidity: Number(d.humidity) || 0,
-          substrateHumidity: Number(d.substrateHumidity) || 0,
-          dp: calculateDP(Number(d.temperature) || 0, Number(d.humidity) || 0),
-          vpd: d.vpd ? Number(d.vpd) : calculateVPD(Number(d.temperature) || 0, Number(d.humidity) || 0)
-      }));
-
-      setData(histData);
     } catch (error) {
       console.error('Error fetching history:', error);
     } finally {
@@ -219,14 +242,14 @@ const HistoryChart: React.FC<HistoryChartProps> = ({ type, title, targets }) => 
                 <Box sx={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center' }}>
                     <CircularProgress size={30} />
                 </Box>
-            ) : data.length === 0 ? (
+            ) : chartData.length === 0 ? (
                 <Box sx={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
                      <Typography variant="body2" color="text.secondary">Esperando datos reales...</Typography>
                      <Typography variant="caption" color="text.disabled">(El historial se genera cada 60s)</Typography>
                 </Box>
             ) : (
                 <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                    <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                         <defs>
                             <linearGradient id="colorTemp" x1="0" y1="0" x2="0" y2="1">
                                 <stop offset="5%" stopColor="#ef4444" stopOpacity={0.1}/>
@@ -280,7 +303,13 @@ const HistoryChart: React.FC<HistoryChartProps> = ({ type, title, targets }) => 
 
                         {type === 'substrate' && (
                             <>
-                                <Area yAxisId="left" type="monotone" dataKey="substrateHumidity" name="Humedad Sustrato" stroke="#22c55e" strokeWidth={2} fill="url(#colorSub)" unit="%" />
+                                {/* Average (Area) */}
+                                <Area yAxisId="left" type="monotone" dataKey="substrateHumidity" name="Promedio" stroke="#22c55e" strokeWidth={3} fill="url(#colorSub)" unit="%" connectNulls />
+
+                                {/* Individual Sensors (Lines) */}
+                                <Area yAxisId="left" type="monotone" dataKey="sh1" name="Sensor 1" stroke="#06b6d4" strokeWidth={2} fill="none" unit="%" strokeDasharray="5 5" connectNulls />
+                                <Area yAxisId="left" type="monotone" dataKey="sh2" name="Sensor 2" stroke="#d946ef" strokeWidth={2} fill="none" unit="%" strokeDasharray="5 5" connectNulls />
+                                <Area yAxisId="left" type="monotone" dataKey="sh3" name="Sensor 3" stroke="#eab308" strokeWidth={2} fill="none" unit="%" strokeDasharray="5 5" connectNulls />
 
                                 {/* Dynamic Targets */}
                                 {targets?.vwc && (

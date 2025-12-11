@@ -56,19 +56,12 @@ export const SoilChart: React.FC<SoilChartProps> = ({ data, phase }) => {
       <CardContent>
         <div style={{ width: '100%', height: 400, minHeight: 400 }}>
           {(!data || data.length === 0) ? (
-               <Box sx={{ display: 'flex', height: '100%', flexDirection: 'column', p: 2, bgcolor: '#f5f5f5' }}>
-                     <Typography variant="body2" color="error" fontWeight="bold">DEBUG MODE: NO DATA</Typography>
-                     <Typography variant="caption">Length: 0</Typography>
-                     <pre style={{ fontSize: 10, overflow: 'auto' }}>{JSON.stringify(data, null, 2)}</pre>
+               <Box sx={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
+                     <Typography variant="body2" color="text.secondary">Esperando lecturas de sensores...</Typography>
+                     <Typography variant="caption" color="text.disabled">(Aparecerán aquí en menos de 1 min)</Typography>
                </Box>
           ) : (
-          <Box sx={{ height: '100%', position: 'relative' }}>
-            <Box sx={{ position: 'absolute', top: 0, right: 0, zIndex: 999, bgcolor: 'rgba(0,0,0,0.8)', color: 'lime', p: 1, fontSize: 10, maxWidth: 200, maxHeight: 100, overflow: 'auto' }}>
-                DEBUG: {data.length} pts
-                <br/>
-                Last: {JSON.stringify(data[data.length-1]).substring(0, 100)}...
-            </Box>
-            <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height="100%">
             <LineChart data={data} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
               <XAxis
@@ -100,7 +93,6 @@ export const SoilChart: React.FC<SoilChartProps> = ({ data, phase }) => {
               <Line yAxisId="right" type="monotone" dataKey="dp" name="Dew Point (DP)" stroke="#ff9800" strokeWidth={2} dot={false} strokeDasharray="3 3" connectNulls />
             </LineChart>
           </ResponsiveContainer>
-          </Box>
           )}
         </div>
       </CardContent>

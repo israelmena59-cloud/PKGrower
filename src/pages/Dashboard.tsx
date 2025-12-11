@@ -211,11 +211,11 @@ const Dashboard: React.FC = () => {
                         <SoilChart data={sensorHistory} phase={phase} />
                         <Box sx={{ mt: 3 }}>
                             <Grid container spacing={2}>
-                                <Grid item xs={12} md={6} sx={{ minHeight: 300 }}>
-                                    <HistoryChart data={sensorHistory} dataKey="temperature" stroke="#ef4444" />
+                                <Grid item xs={12} md={6}>
+                                    <HistoryChart type="substrate" title="Sustrato (Humedad)" targets={{ vwc: 45, dryback: 15 }} data={sensorHistory} />
                                 </Grid>
-                                <Grid item xs={12} md={6} sx={{ minHeight: 300 }}>
-                                    <HistoryChart data={sensorHistory} dataKey="humidity" stroke="#3b82f6" />
+                                <Grid item xs={12} md={6}>
+                                    <HistoryChart type="environment" title="Ambiente (Temp/Hum/VPD)" data={sensorHistory} />
                                 </Grid>
                             </Grid>
                         </Box>

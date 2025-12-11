@@ -66,11 +66,29 @@ export const VPDStageChart: React.FC<VPDStageChartProps> = ({ data = [] }) => {
 
   // Enrich data with calculated VPD
   const chartData = useMemo(() => {
-    return data.map(point => ({
-      ...point,
-      vpd: calculateVPD(point.temperature, point.humidity),
-      timeStr: point.timestamp ? new Date(point.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
-    }));
+    return data.map(point => {
+      const tRaw = Number(point.temperature);
+      const hRaw = Number(point.humidity);
+      // Treat 0 or very low values as invalid
+      const t = tRaw > 1 ? tRaw : null;
+      const h = hRaw > 1 ? hRaw : null;
+
+      // Prefer backend calculated VPD if available and valid (>0), otherwise calculate locally
+      const vpdVal = (point.vpd && Number(point.vpd) > 0)
+          ? Number(point.vpd)
+          : (t && h ? calculateVPD(t, h) : null);
+
+      return {
+        ...point,
+        temperature: t,
+        humidity: h,
+        vpd: vpdVal,
+        timeStr: point.timestamp ? new Date(point.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
+      };
+    })
+    // AGGRESSIVE FILTER: Remove points where Temp or Humidity is null.
+    // This removes "zero drops" by eliminating the bad data points entirely from the timeline.
+    .filter(p => p.temperature !== null && p.humidity !== null);
   }, [data]);
 
   const currentStage = STAGE_CONFIG[stage];
@@ -192,6 +210,7 @@ export const VPDStageChart: React.FC<VPDStageChartProps> = ({ data = [] }) => {
                     fillOpacity={1}
                     fill="url(#colorVpd)"
                     animationDuration={1000}
+                    connectNulls
                 />
                 <Line
                     yAxisId="right"
@@ -202,6 +221,7 @@ export const VPDStageChart: React.FC<VPDStageChartProps> = ({ data = [] }) => {
                     strokeWidth={2}
                     dot={false}
                     strokeOpacity={0.8}
+                    connectNulls
                 />
                 <Line
                     yAxisId="right"
@@ -213,6 +233,7 @@ export const VPDStageChart: React.FC<VPDStageChartProps> = ({ data = [] }) => {
                     dot={false}
                     strokeOpacity={0.8}
                     strokeDasharray="5 5"
+                    connectNulls
                 />
               </AreaChart>
             </ResponsiveContainer>
