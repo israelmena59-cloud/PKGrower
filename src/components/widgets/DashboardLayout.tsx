@@ -1,18 +1,16 @@
-import React, { useState, useEffect } from 'react';
-import * as RGL from 'react-grid-layout';
-import * as RGL from 'react-grid-layout';
-// @ts-ignore
-const WidthProvider = (RGL as any).WidthProvider || RGL.default.WidthProvider;
-// @ts-ignore
-const Responsive = (RGL as any).Responsive || RGL.default.Responsive;
-import { BaseWidgetWrapper } from './BaseWidgetWrapper';
-import { WIDGET_COMPONENTS, WidgetDefinition, WidgetType } from './WidgetRegistry';
+import React, { useState } from 'react';
+import { Responsive } from 'react-grid-layout';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
-import { Box, Button, IconButton, SpeedDial, SpeedDialIcon, SpeedDialAction } from '@mui/material';
-import { Plus, Check, Edit2 } from 'lucide-react';
+import { WidthProvider } from './WidthProvider';
+import { BaseWidgetWrapper } from './BaseWidgetWrapper';
+import { WIDGET_COMPONENTS, WidgetDefinition, WidgetType } from './WidgetRegistry';
+import { Box, Button, SpeedDial, SpeedDialIcon, SpeedDialAction } from '@mui/material';
+import { Check, Edit2 } from 'lucide-react';
 import _ from 'lodash';
 
+// Using local WidthProvider because lib export is broken in v2
+// Using standard 'Responsive' from react-grid-layout (it is exported in index.mjs)
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
 interface DashboardLayoutProps {
@@ -33,7 +31,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     const [isEditMode, setIsEditMode] = useState(false);
 
     // Map internal RGL layout handling
-    const handleLayoutChange = (currentLayout: any, allLayouts: any) => {
+    const handleLayoutChange = (currentLayout: any) => {
         onLayoutChange(currentLayout);
     };
 
