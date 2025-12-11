@@ -5,7 +5,7 @@ import { WidgetDefinition } from '../components/widgets/WidgetRegistry';
 import { apiClient, type SensorData, type DeviceStates } from '../api/client';
 import ConfigModal from '../components/dashboard/ConfigModal';
 import { Thermometer, Droplet, Wind, Droplets, Lightbulb, RefreshCw, Settings, Plus, X } from 'lucide-react';
-import { Box, Paper, Typography, IconButton, CircularProgress, Button, Tabs, Tab, TextField, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
+import { Box, Paper, Typography, IconButton, CircularProgress, Button, Tabs, Tab, TextField, Dialog, DialogTitle, DialogContent, DialogActions, Tooltip } from '@mui/material';
 import _ from 'lodash';
 
 // Initial default layout for a fresh start
