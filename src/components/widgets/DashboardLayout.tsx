@@ -60,8 +60,43 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                 margin={[16, 16]}
                 draggableHandle=".drag-handle" // Only drag from header in edit mode? OR use entire card
             >
+// Simple Error Boundary Component
+class WidgetErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
+    constructor(props: { children: React.ReactNode }) {
+        super(props);
+        this.state = { hasError: false };
+    }
+
+    static getDerivedStateFromError(error: any) {
+        return { hasError: true };
+    }
+
+    componentDidCatch(error: any, errorInfo: any) {
+        console.error("Widget Crash:", error, errorInfo);
+    }
+
+    render() {
+        if (this.state.hasError) {
+            return (
+                <Box sx={{ p: 2, height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'rgba(255,0,0,0.1)', color: 'error.main', flexDirection: 'column' }}>
+                    <Edit2 size={24} />
+                    <Box component="span" sx={{ mt: 1, fontSize: '0.75rem', fontWeight: 600 }}>Error</Box>
+                </Box>
+            );
+        }
+
+        return this.props.children;
+    }
+}
+
+// ... inside render map ...
                 {widgets.map((widget) => {
                     const Component = WIDGET_COMPONENTS[widget.type];
+                    // Fallback for unknown widget types
+                    if (!Component) {
+                         return <div key={widget.id}><BaseWidgetWrapper title="Unknown" isEditMode={isEditMode} onRemove={() => onRemoveWidget?.(widget.id)}>Unknown Type: {widget.type}</BaseWidgetWrapper></div>;
+                    }
+
                     return (
                         <div key={widget.id}>
                             <BaseWidgetWrapper
@@ -69,7 +104,9 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                                 isEditMode={isEditMode}
                                 onRemove={() => onRemoveWidget?.(widget.id)}
                             >
-                                <Component {...widget.props} />
+                                <WidgetErrorBoundary>
+                                     <Component {...widget.props} />
+                                </WidgetErrorBoundary>
                             </BaseWidgetWrapper>
                         </div>
                     );

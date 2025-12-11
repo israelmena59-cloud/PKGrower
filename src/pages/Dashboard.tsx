@@ -322,6 +322,22 @@ const Dashboard: React.FC = () => {
                     >
                         Refrescar
                     </Button>
+                    <Tooltip title="Restablecer Diseño (Si hay errores)">
+                         <Button
+                            onClick={() => {
+                                if (confirm('¿Restablecer todo el diseño? Se perderán las personalizaciones.')) {
+                                    localStorage.removeItem('dashboard_pages');
+                                    localStorage.removeItem('dashboard_layouts');
+                                    localStorage.removeItem('known_devices');
+                                    window.location.reload();
+                                }
+                            }}
+                            sx={{ color: 'white', borderColor: 'rgba(255,0,0,0.5)', '&:hover': { borderColor: 'red', bgcolor: 'rgba(255,0,0,0.1)' } }}
+                            variant="outlined"
+                        >
+                            Reset
+                        </Button>
+                    </Tooltip>
                     <IconButton onClick={() => setIsConfigOpen(true)} sx={{ color: 'white', bgcolor: 'rgba(255,255,255,0.1)' }}>
                         <Settings />
                     </IconButton>
