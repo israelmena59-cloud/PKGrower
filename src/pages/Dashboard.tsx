@@ -152,13 +152,17 @@ const Dashboard: React.FC = () => {
         const widgets: WidgetDefinition[] = [];
 
         currentWidgets.forEach(w => {
-            let props = {};
+            let props: any = {};
+
+            const handleRename = (newName: string) => {
+                handleRenameWidget(w.id, newName);
+            };
 
             // Sensor Mapping
-            if (w.id === 'temp') props = { icon: <Thermometer/>, name: 'Temp', value: latestSensors?.temperature?.toFixed(1) ?? '--', unit: '°C', color: '#ef4444' };
-            if (w.id === 'hum') props = { icon: <Droplet/>, name: 'Humedad', value: latestSensors?.humidity?.toFixed(0) ?? '--', unit: '%', color: '#3b82f6' };
-            if (w.id === 'vpd') props = { icon: <Wind/>, name: 'D.P.V', value: latestSensors?.vpd?.toFixed(2) ?? '--', unit: 'kPa', color: '#8b5cf6' };
-            if (w.id === 'sub') props = { icon: <Droplets/>, name: 'Sustrato', value: latestSensors?.substrateHumidity?.toFixed(0) ?? '--', unit: '%', color: '#f59e0b' };
+            if (w.id === 'temp') props = { icon: <Thermometer/>, name: w.title, value: latestSensors?.temperature?.toFixed(1) ?? '--', unit: '°C', color: '#ef4444', onRename: handleRename };
+            if (w.id === 'hum') props = { icon: <Droplet/>, name: w.title, value: latestSensors?.humidity?.toFixed(0) ?? '--', unit: '%', color: '#3b82f6', onRename: handleRename };
+            if (w.id === 'vpd') props = { icon: <Wind/>, name: w.title, value: latestSensors?.vpd?.toFixed(2) ?? '--', unit: 'kPa', color: '#8b5cf6', onRename: handleRename };
+            if (w.id === 'sub') props = { icon: <Droplets/>, name: w.title, value: latestSensors?.substrateHumidity?.toFixed(0) ?? '--', unit: '%', color: '#f59e0b', onRename: handleRename };
 
             // Chart Mapping
             if (w.id === 'chart_vpd') props = { data: sensorHistory, dataKey: 'vpd', color: '#8b5cf6', unit: 'kPa' };
@@ -168,8 +172,9 @@ const Dashboard: React.FC = () => {
             if (w.id === 'light_main') props = {
                 id: 'luzPanel1',
                 icon: <Lightbulb/>,
-                name: 'Panel 1',
-                isOn: devices?.['luzPanel1'] ?? false
+                name: w.title,
+                isOn: devices?.['luzPanel1'] ?? false,
+                onRename: handleRename
             };
 
             // Dynamic Device Mapping (Controls)
@@ -180,7 +185,8 @@ const Dashboard: React.FC = () => {
                      id: w.id,
                      icon: meta?.type === 'light' ? <Lightbulb/> : <RefreshCw/>,
                      name: meta?.name || w.title,
-                     isOn: !!dev
+                     isOn: !!dev,
+                     onRename: handleRename
                  };
             }
 
@@ -193,13 +199,9 @@ const Dashboard: React.FC = () => {
                     name: meta?.name || w.title || w.id,
                     value: typeof val === 'number' ? val.toFixed(1) : (val ?? '--'),
                     unit: '', // Unknown unit
-                    color: '#64748b'
+                    color: '#64748b',
+                    onRename: handleRename
                 };
-            }
-                     icon: meta?.type === 'light' ? <Lightbulb/> : <RefreshCw/>,
-                     name: meta?.name || w.title,
-                     isOn: !!dev
-                 };
             }
 
             widgets.push({ ...w, props });
@@ -213,6 +215,18 @@ const Dashboard: React.FC = () => {
         const updated = { ...layouts, [activePage]: newLayout };
         setLayouts(updated);
         localStorage.setItem('dashboard_layouts', JSON.stringify(updated));
+    };
+
+    const handleRenameWidget = (id: string, newName: string) => {
+        setPages(prev => {
+            const current = [...(prev[activePage] || [])];
+            const idx = current.findIndex(w => w.id === id);
+            if (idx !== -1) {
+                current[idx] = { ...current[idx], title: newName };
+                return { ...prev, [activePage]: current };
+            }
+            return prev;
+        });
     };
 
     const handleAddWidget = (type: string) => {
