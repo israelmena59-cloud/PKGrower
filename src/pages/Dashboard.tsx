@@ -319,7 +319,7 @@ const Dashboard: React.FC = () => {
     };
 
     return (
-        <DashboardErrorBoundary onReset={triggerReset}>
+
         <Box sx={{ maxWidth: 1800, mx: 'auto', p: 2 }}>
              {/* HEADER */}
              <Paper elevation={0} sx={{ p: 3, mb: 3, borderRadius: 'var(--squircle-radius)', background: 'var(--glass-bg)', backdropFilter: 'var(--backdrop-blur)', border: 'var(--glass-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
@@ -413,16 +413,16 @@ const Dashboard: React.FC = () => {
             </Dialog>
 
             {/* DYNAMIC GRID */}
-            <DashboardLayout
-                key={activePage} // Force remount on page switch
-                widgets={hydratedWidgets}
-                layout={layouts[activePage] || []}
-                onLayoutChange={handleLayoutChange}
-                onAddWidget={handleAddWidget}
-                onRemoveWidget={handleRemoveWidget}
-            />
+            <DashboardErrorBoundary key={activePage} onReset={triggerReset}>
+                <DashboardLayout
+                    widgets={hydratedWidgets}
+                    layout={layouts[activePage] || []}
+                    onLayoutChange={handleLayoutChange}
+                    onAddWidget={handleAddWidget}
+                    onRemoveWidget={handleRemoveWidget}
+                />
+            </DashboardErrorBoundary>
         </Box>
-        </DashboardErrorBoundary>
     );
 };
 
