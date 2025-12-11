@@ -1041,13 +1041,8 @@ app.get('/api/devices', async (req, res) => {
 
     // ADD MEROSS DEVICES TO RESPONSE
     for (const [mId, mDev] of Object.entries(merossDevices)) {
-        realDeviceStates[mId] = {
-            id: mId,
-            name: mDev.name,
-            platform: 'meross',
-            online: mDev.online,
-            // Add other props if available
-        };
+        // Return boolean to match frontend expectations (isOn)
+        realDeviceStates[mId] = mDev.online === true;
     }
 
     // Debug response
@@ -1415,21 +1410,15 @@ app.get('/api/devices/diagnostics', async (req, res) => {
 // Obtener todos los dispositivos Tuya
 app.get('/api/devices/tuya', async (req, res) => {
   try {
-    /*
-    const fs = require('fs');
-    ... writeFileSync ...
-    */
     const debugInfo = {
         scanCount: Object.keys(tuyaDevices).length,
         keys: Object.keys(tuyaDevices),
         tuyaConnected: tuyaConnected,
-        zombieCheck: "I AM THE NEW CODE"
     };
 
-    // Always return debug info to inspect state
     return res.json({
         devices: Object.entries(tuyaDevices).map(([key, device]) => ({
-            key, ...device // simplificado
+            key, ...device
         })),
         total: Object.keys(tuyaDevices).length,
         debug: debugInfo
@@ -1437,6 +1426,22 @@ app.get('/api/devices/tuya', async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
+});
+
+// NUEVO: Obtener dispositivos Meross
+app.get('/api/devices/meross', async (req, res) => {
+    try {
+        const devices = Object.values(merossDevices).map(d => ({
+            id: d.id,
+            name: d.name,
+            type: d.type,
+            online: d.online,
+            // Agregamos estado si está disponible
+        }));
+        res.json(devices);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
 });
 
 // Helper function to calculate VPD
