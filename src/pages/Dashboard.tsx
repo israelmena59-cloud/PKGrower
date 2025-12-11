@@ -305,28 +305,7 @@ const Dashboard: React.FC = () => {
         }
     };
 
-// Dashboard-level Error Boundary to catch layout crashes
-class DashboardErrorBoundary extends React.Component<{ children: React.ReactNode, onReset: () => void }, { hasError: boolean }> {
-    constructor(props: any) {
-        super(props);
-        this.state = { hasError: false };
-    }
-    static getDerivedStateFromError() { return { hasError: true }; }
-    componentDidCatch(error: any) { console.error("Critical Dashboard Crash:", error); }
-    render() {
-        if (this.state.hasError) {
-            return (
-                <Box sx={{ height: '90vh', display: 'flex', flexDirection: 'column', items: 'center', justifyContent: 'center', textAlign: 'center' }}>
-                    <Typography variant="h5" color="error" gutterBottom>Algo salió mal en el Dashboard</Typography>
-                    <Button variant="contained" color="error" onClick={this.props.onReset}>
-                        Reestablecer Todo (Factory Reset)
-                    </Button>
-                </Box>
-            );
-        }
-        return this.props.children;
-    }
-}
+
 
     if (loading && !latestSensors) {
          return <Box sx={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><CircularProgress /></Box>;
