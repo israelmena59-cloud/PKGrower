@@ -171,6 +171,7 @@ const Dashboard: React.FC = () => {
 
     // --- HYDRATION (For Active Page) ---
     const hydratedWidgets = useMemo(() => {
+        if (!pages || typeof pages !== 'object') return [];
         const currentWidgets = pages[activePage] || [];
         const widgets: WidgetDefinition[] = [];
 
