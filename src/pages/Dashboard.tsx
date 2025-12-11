@@ -280,7 +280,46 @@ const Dashboard: React.FC = () => {
                                 </Grid>
                             </Grid>
                         </CardContent>
+                        </CardContent>
                     </Card>
+
+                    {/* DYNAMIC DEVICES (Meross / Others) */}
+                    {devices && Object.keys(devices).filter(key =>
+                        !['luzPanel1', 'luzPanel2', 'luzPanel3', 'luzPanel4', 'controladorLuzRoja',
+                          'extractorControlador', 'bombaControlador', 'humidifier', 'camera'].includes(key)
+                    ).length > 0 && (
+                        <Card sx={{
+                            borderRadius: 'var(--squircle-radius)',
+                            bgcolor: 'var(--glass-bg)',
+                            backdropFilter: 'var(--backdrop-blur)',
+                            border: 'var(--glass-border)',
+                            boxShadow: 'var(--glass-shadow)',
+                            flexGrow: 0,
+                            height: 'auto'
+                        }}>
+                            <CardHeader title="Detectados" subheader="Dispositivos Adicionales (Meross/Tuya)" titleTypographyProps={{ color: 'white', fontWeight: 'bold' }} subheaderTypographyProps={{ color: 'rgba(255,255,255,0.5)' }} />
+                            <CardContent>
+                                <Grid container spacing={2}>
+                                    {Object.keys(devices).filter(key =>
+                                        !['luzPanel1', 'luzPanel2', 'luzPanel3', 'luzPanel4', 'controladorLuzRoja',
+                                          'extractorControlador', 'bombaControlador', 'humidifier', 'camera'].includes(key)
+                                    ).map(key => (
+                                        <Grid item xs={6} key={key}>
+                                            <DeviceSwitch
+                                                icon={<Router size={20}/>}
+                                                name={key.length > 15 ? key.substring(0, 12) + '...' : key}
+                                                // If we had a name map, we'd use it. For now, use ID/Key.
+                                                // Ideally backend sends meta, but devices state is simple bool map currently.
+                                                // Future improvement: Fetch device metadata list.
+                                                isOn={devices[key]}
+                                                onToggle={() => handleToggle(key)}
+                                            />
+                                        </Grid>
+                                    ))}
+                                </Grid>
+                            </CardContent>
+                        </Card>
+                    )}
                </Box>
           </Grid>
       </Grid>
