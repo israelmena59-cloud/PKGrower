@@ -58,28 +58,28 @@ const TUYA_DEVICES_MAP = {
   // SENSORES DE SUSTRATO (3 sensores de temperatura y humedad del suelo)
   sensorSustrato1: {
     name: 'Sensor Sustrato 1',
-    id: process.env.TUYA_SENSOR_SUSTRATO_1_ID,
+    id: process.env.TUYA_SENSOR_SUSTRATO_1_ID || 'eb33e6b487314c81cdkc1g', // Updated from scan
     platform: 'tuya',
     deviceType: 'sensor',
     category: 'soil_sensor',
   },
   sensorSustrato2: {
     name: 'Sensor Sustrato 2',
-    id: process.env.TUYA_SENSOR_SUSTRATO_2_ID,
+    id: process.env.TUYA_SENSOR_SUSTRATO_2_ID || 'eb60f46a8dc4f7af11hgp9', // Updated from scan
     platform: 'tuya',
     deviceType: 'sensor',
     category: 'soil_sensor',
   },
   sensorSustrato3: {
     name: 'Sensor Sustrato 3',
-    id: process.env.TUYA_SENSOR_SUSTRATO_3_ID,
+    id: process.env.TUYA_SENSOR_SUSTRATO_3_ID || 'ebe398e4908b4437f0bjuv', // Updated from scan
     platform: 'tuya',
     deviceType: 'sensor',
     category: 'soil_sensor',
   },
   sensorAmbiente: {
     name: 'Sensor Ambiente (RH/TH)',
-    id: process.env.TUYA_SENSOR_AMBIENTE_ID,
+    id: process.env.TUYA_SENSOR_AMBIENTE_ID || 'eb000c93f43edd0cbbjkcs', // Updated from scan
     platform: 'tuya',
     deviceType: 'sensor',
     category: 'environment_sensor',
@@ -136,14 +136,14 @@ const TUYA_DEVICES_MAP = {
   // CONTROLADORES DE ENCENDIDO/APAGADO (3 controladores)
   bombaControlador: {
     name: 'Controlador Bomba de Agua',
-    id: process.env.TUYA_BOMBA_CONTROLLER_ID,
+    id: process.env.TUYA_BOMBA_CONTROLLER_ID || 'ebf427eih6oxomiv', // Updated from scan
     platform: 'tuya',
     deviceType: 'switch',
     category: 'pump_controller',
   },
   extractorControlador: {
     name: 'Controlador Extractor',
-    id: process.env.TUYA_EXTRACTOR_CONTROLLER_ID,
+    id: process.env.TUYA_EXTRACTOR_CONTROLLER_ID || 'eb0e121ux4rrtjkf', // Updated from scan
     platform: 'tuya',
     deviceType: 'switch',
     category: 'extractor_controller',
@@ -168,11 +168,19 @@ const TUYA_DEVICES_MAP = {
   // VENTILACIÓN (1 ventilador)
   ventiladorIzq: {
     name: 'Ventilador Izq',
-    id: process.env.TUYA_VENTILADOR_IZQ_ID,
+    id: process.env.TUYA_VENTILADOR_IZQ_ID || 'eb974ezlyixtw3gj', // Updated from scan
     platform: 'tuya',
-    deviceType: 'switch', // Fans are usually switches
+    deviceType: 'switch',
     category: 'fan_controller',
-    switchCode: 'switch_1', // Try switch_1 first (common for smart plugs used for fans)
+    switchCode: 'switch_1',
+  },
+  ventiladorDer: {
+    name: 'Ventilador Derecha',
+    id: process.env.TUYA_VENTILADOR_DER_ID || 'ebbb230txodu6jik', // Updated from scan
+    platform: 'tuya',
+    deviceType: 'switch',
+    category: 'fan_controller',
+    switchCode: 'switch_1',
   },
 };
 
