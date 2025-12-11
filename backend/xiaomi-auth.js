@@ -99,44 +99,62 @@ class XiaomiAuthenticator {
             // For now, let's try a GET with 'Accept: application/json' just in case,
             // or assume we need to hit a specific API endpoint derived from the notification URL.
 
-            // Revert to GET but log headers to see if we get a JSON redirection
-            console.log('[AUTH] Fetching trigger page with cookies:', step2.notificationUrl);
+            // 1. Fetch the trigger page to get cookies and session state freshened
+            console.log('[AUTH] Fetching trigger page (GET) ->', step2.notificationUrl);
             const notifRes = await fetch(step2.notificationUrl, {
                 headers: {
                     'User-Agent': this.userAgent,
                     'Cookie': `sdkVersion=accountsdk-18.8.15; deviceId=${this.clientId}; ${step2.cookie}`,
-                    // 'Accept': 'application/json' // Try requesting JSON?
+                    'Referer': 'https://account.xiaomi.com/pass/serviceLogin' // Critical for some flows
                 }
             });
             const notifText = await notifRes.text();
             console.log('[AUTH] Trigger Page Status:', notifRes.status);
 
-            // If page contains "serviceLoginAuth2/step2", try hitting that endpoint with type=email
-             if (notifText.includes('serviceLoginAuth2')) {
-                  console.log('[AUTH] Detected serviceLoginAuth2... attempting explicit EMAIL trigger POST');
-                   const triggerUrl = 'https://account.xiaomi.com/pass/serviceLoginAuth2';
-                   const triggerBody = querystring.stringify({
+            // 2. Explicitly attempt to FIRE the code sending event
+            // Often just visiting the URL is not enough; we need to POST to 'serviceLoginAuth2' with specific params
+            if (notifText.includes('serviceLoginAuth2') || notifRes.status === 200) {
+                  console.log('[AUTH] Attempting explicit trigger POST (Auto-detect mode)...');
+                  const triggerUrl = 'https://account.xiaomi.com/pass/serviceLoginAuth2';
+
+                  // Common params for sending code
+                  const baseParams = {
                       _json: 'true',
                       sid: 'xiaomiio',
                       _sign: step2.sign,
                       user: step2.username,
                       qs: step2.qs || '%3Fsid%3Dxiaomiio%26_json%3Dtrue',
-                      type: 'email', // Explicitly request email code
-                      action: 'send'  // Guessing param
-                   });
+                      action: 'send'
+                  };
 
-                   const postRes = await fetch(triggerUrl, {
-                      method: 'POST',
-                      body: triggerBody,
-                      headers: {
-                        'User-Agent': this.userAgent,
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                        'Cookie': `sdkVersion=accountsdk-18.8.15; deviceId=${this.clientId}; ${step2.cookie}`
+                  // Try SMS first, then Email
+                  const typesToTry = ['phone', 'email'];
+
+                  for (const type of typesToTry) {
+                      console.log(`[AUTH] Trying to trigger code via: ${type}`);
+                      try {
+                          const body = querystring.stringify({ ...baseParams, type });
+                          const postRes = await fetch(triggerUrl, {
+                              method: 'POST',
+                              body: body,
+                              headers: {
+                                'User-Agent': this.userAgent,
+                                'Content-Type': 'application/x-www-form-urlencoded',
+                                'Cookie': `sdkVersion=accountsdk-18.8.15; deviceId=${this.clientId}; ${step2.cookie}`,
+                                'Referer': step2.notificationUrl, // Referrer must match the flow
+                                'Origin': 'https://account.xiaomi.com'
+                              }
+                          });
+                          const postText = await postRes.text();
+                          console.log(`[AUTH] Trigger ${type} Response:`, postText);
+
+                          // If successful code 0, stop
+                          if (postText.includes('"code":0')) break;
+                      } catch(e) {
+                          console.error(`[AUTH] Failed trigger ${type}:`, e.message);
                       }
-                   });
-                   const postText = await postRes.text();
-                   console.log('[AUTH] Explicit Trigger POST Response:', postText);
-             }
+                  }
+            }
 
         } catch (e) {
             console.error('[AUTH] Error solicitando envío de código:', e.message);
