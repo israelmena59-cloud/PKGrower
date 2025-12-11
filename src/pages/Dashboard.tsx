@@ -19,22 +19,20 @@ const Dashboard: React.FC = () => {
   const [latestSensors, setLatestSensors] = useState<SensorData | null>(null);
   const [sensorHistory, setSensorHistory] = useState<SensorData[]>([]);
   const [devices, setDevices] = useState<DeviceStates | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [isConfigOpen, setIsConfigOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [phase, setPhase] = useState<'vegetative' | 'generative'>('vegetative');
-  const [timeOfDay, setTimeOfDay] = useState('Día');
 
   // NEW STATE
   const [deviceMeta, setDeviceMeta] = useState<any[]>([]);
 
   useEffect(() => {
-    const hour = new Date().getHours();
-    setTimeOfDay(hour >= 6 && hour < 18 ? 'Día' : 'Noche');
+    // const hour = new Date().getHours();
+    // setTimeOfDay(hour >= 6 && hour < 18 ? 'Día' : 'Noche');
   }, []);
 
   const handlePhaseChange = (
-    event: React.MouseEvent<HTMLElement>,
+    _: React.MouseEvent<HTMLElement>,
     newPhase: 'vegetative' | 'generative',
   ) => {
     if (newPhase !== null) setPhase(newPhase);
@@ -66,10 +64,10 @@ const Dashboard: React.FC = () => {
       setLatestSensors(latestSensorsData || { temperature: 0, humidity: 0, substrateHumidity: 0, vpd: 0 } as any);
       setSensorHistory(historyData || []);
       setDevices((devicesData || {}) as DeviceStates);
-      setError(null);
+      setSensorHistory(historyData || []);
+      setDevices((devicesData || {}) as DeviceStates);
     } catch (globalError) {
       console.error("Critical failure fetching data:", globalError);
-      setError(null);
     }
   };
 
@@ -178,7 +176,7 @@ const Dashboard: React.FC = () => {
                                 <Grid item xs={6} md={3}><DeviceSwitch icon={<Lightbulb />} name="Panel 1" isOn={devices.luzPanel1 || false} onToggle={() => handleToggle('luzPanel1')} /></Grid>
                                 <Grid item xs={6} md={3}><DeviceSwitch icon={<Lightbulb />} name="Panel 2" isOn={devices.luzPanel2 || false} onToggle={() => handleToggle('luzPanel2')} /></Grid>
                                 <Grid item xs={6} md={3}><DeviceSwitch icon={<Lightbulb />} name="Panel 4" isOn={devices.luzPanel4 || false} onToggle={() => handleToggle('luzPanel4')} /></Grid>
-                                <Grid item xs={12}><DeviceSwitch icon={<Lightbulb sx={{ color: '#ef4444' }} />} name="Luz Roja (Emerson)" isOn={devices.controladorLuzRoja || false} onToggle={() => handleToggle('controladorLuzRoja')} /></Grid>
+                                <Grid item xs={12}><DeviceSwitch icon={<Lightbulb color="#ef4444" />} name="Luz Roja (Emerson)" isOn={devices.controladorLuzRoja || false} onToggle={() => handleToggle('controladorLuzRoja')} /></Grid>
                             </Grid>
                             <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.5)', mb: 1, display: 'block', fontWeight: 'bold' }}>RIEGO & CLIMA</Typography>
                             <Grid container spacing={2}>
@@ -237,7 +235,5 @@ const Dashboard: React.FC = () => {
     </Box>
   );
 };
-
-const InfoIcon = () => <Activity size={20} />;
 
 export default Dashboard;
