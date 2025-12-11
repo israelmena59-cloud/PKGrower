@@ -345,17 +345,19 @@ export const ConfigModal: React.FC<ConfigModalProps> = ({ open, onClose }) => {
                                 <TableRow key={dev.id} hover>
                                     <TableCell>
                                         <Chip
-                                            label={dev.platform}
+                                            label={dev.platform || 'Unknown'}
                                             size="small"
                                             color={dev.platform === 'tuya' ? 'error' : dev.platform === 'meross' ? 'info' : 'default'}
                                             variant="outlined"
                                         />
-                                        <div style={{fontSize: '0.7em', color: '#888', marginTop: 4}}>{dev.id.substring(0,8)}...</div>
+                                        <div style={{fontSize: '0.7em', color: '#888', marginTop: 4}}>
+                                            {dev.id ? (dev.id.length > 8 ? dev.id.substring(0,8) + '...' : dev.id) : 'No ID'}
+                                        </div>
                                     </TableCell>
                                     <TableCell>
                                         <TextField
                                             size="small"
-                                            value={dev.name}
+                                            value={dev.name || ''}
                                             onChange={(e) => updateDeviceLocal(dev.id, 'name', e.target.value)}
                                             fullWidth
                                         />
