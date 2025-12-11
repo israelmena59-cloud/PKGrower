@@ -1,8 +1,8 @@
-const express = require('express');
+﻿const express = require('express');
 const cors = require('cors');
 const { TuyaOpenApiClient } = require('@tuya/tuya-connector-nodejs');
 // const miio = require('miio'); // REMOVED: User requested Cloud Only
-const miHome = require('node-mihome'); // Instancia única para Cloud Protocol
+const miHome = require('node-mihome'); // Instancia Ãºnica para Cloud Protocol
 const xiaomiAuth = require('./xiaomi-auth'); // Nuestro autenticador custom
 const MerossCloud = require('meross-cloud'); // Meross Integration
 
@@ -10,7 +10,7 @@ const MerossCloud = require('meross-cloud'); // Meross Integration
 require('dotenv').config({ path: require('path').join(__dirname, '.env') });
 const firestore = require('./firestore');
 
-// Log para debugging - ver qué se está leyendo del .env
+// Log para debugging - ver quÃ© se estÃ¡ leyendo del .env
 console.log('\n[DEBUG] Variables de entorno cargadas:');
 console.log('  MODO_SIMULACION:', process.env.MODO_SIMULACION);
 console.log('  XIAOMI_HUMIDIFIER_ID:', process.env.XIAOMI_HUMIDIFIER_ID ? 'CONFIGURADO' : 'NO CONFIGURADO');
@@ -24,10 +24,10 @@ console.log('  TUYA_ACCESS_KEY:', process.env.TUYA_ACCESS_KEY ? 'CONFIGURADO (pr
 console.log('  TUYA_SECRET_KEY:', process.env.TUYA_SECRET_KEY ? 'CONFIGURADO (primeros 10 chars: ' + process.env.TUYA_SECRET_KEY.substring(0, 10) + '...)' : 'NO CONFIGURADO');
 console.log('');
 
-// --- CONFIGURACIÓN DE LA INTEGRACIÓN ---
+// --- CONFIGURACIÃ“N DE LA INTEGRACIÃ“N ---
 // MODO_SIMULACION =
-// - true: Usa datos simulados. La app funcionará sin necesidad de credenciales.
-// - false: Intenta conectar con la API de Tuya y Xiaomi. Necesitarás rellenar las credenciales.
+// - true: Usa datos simulados. La app funcionarÃ¡ sin necesidad de credenciales.
+// - false: Intenta conectar con la API de Tuya y Xiaomi. NecesitarÃ¡s rellenar las credenciales.
 const MODO_SIMULACION = process.env.MODO_SIMULACION === 'true';
 
 // --- CREDENCIALES XIAOMI (SOLO PARA MODO_SIMULACION = false) ---
@@ -95,8 +95,8 @@ const TUYA_DEVICES_MAP = {
     category: 'led_panel',
   },
   luzPanel2: {
-    name: 'Bandeja Der Atrás', // Updated Name
-    id: process.env.TUYA_LUZ_PANEL_2_ID || 'eb2182339420bb6701wu4q', // Updated to Bandeja Der Atrás
+    name: 'Bandeja Der AtrÃ¡s', // Updated Name
+    id: process.env.TUYA_LUZ_PANEL_2_ID || 'eb2182339420bb6701wu4q', // Updated to Bandeja Der AtrÃ¡s
     platform: 'tuya',
     deviceType: 'light',
     category: 'led_panel',
@@ -110,8 +110,8 @@ const TUYA_DEVICES_MAP = {
   //   switchCode: 'switch_1',
   // },
   luzPanel4: {
-    name: 'Bandeja Izq Atrás', // Updated Name
-    id: process.env.TUYA_LUZ_PANEL_4_ID || 'ebf84afaludhei1x', // Updated to Bandeja Izq Atrás
+    name: 'Bandeja Izq AtrÃ¡s', // Updated Name
+    id: process.env.TUYA_LUZ_PANEL_4_ID || 'ebf84afaludhei1x', // Updated to Bandeja Izq AtrÃ¡s
     platform: 'tuya',
     deviceType: 'light',
     category: 'led_panel',
@@ -157,7 +157,7 @@ const TUYA_DEVICES_MAP = {
     category: 'light_controller',
   },
 
-  // VÁLVULA DE AGUA BLUETOOTH (1 válvula)
+  // VÃLVULA DE AGUA BLUETOOTH (1 vÃ¡lvula)
   llaveAguaBluetooth: {
     name: 'Llave de Agua Bluetooth',
     id: process.env.TUYA_LLAVE_AGUA_ID,
@@ -166,7 +166,7 @@ const TUYA_DEVICES_MAP = {
     category: 'water_valve',
   },
 
-  // VENTILACIÓN (1 ventilador)
+  // VENTILACIÃ“N (1 ventilador)
   ventiladorIzq: {
     name: 'Ventilador Izq',
     id: process.env.TUYA_VENTILADOR_IZQ_ID || 'eb974ezlyixtw3gj', // Updated from scan
@@ -194,20 +194,20 @@ const XIAOMI_DEVICES_MAP = {
     config: XIAOMI_DEVICES.humidifier,
   },
   camera: {
-    name: 'Cámara Xiaomi',
+    name: 'CÃ¡mara Xiaomi',
     platform: 'xiaomi',
     deviceType: 'camera',
     config: XIAOMI_DEVICES.camera,
   },
 };
 
-// --- COMBINACIÓN DE MAPEOS ---
+// --- COMBINACIÃ“N DE MAPEOS ---
 const DEVICE_MAP = {
   ...TUYA_DEVICES_MAP,
   ...XIAOMI_DEVICES_MAP,
 };
 
-// --- INICIALIZACIÓN DE LA APP Y CONECTORES ---
+// --- INICIALIZACIÃ“N DE LA APP Y CONECTORES ---
 const app = express();
 const path = require('path'); // Import path
 app.use(cors()); // Safe toggle
@@ -216,12 +216,12 @@ const PORT = process.env.PORT || 3000;
 let tuyaClient = null;
 let tuyaConnected = false;
 
-// Función para inicializar conectores de sistema (Tuya API)
-// Se invoca solo en modo REAL y de forma asíncrona para no bloquear el inicio del servidor
+// FunciÃ³n para inicializar conectores de sistema (Tuya API)
+// Se invoca solo en modo REAL y de forma asÃ­ncrona para no bloquear el inicio del servidor
 async function initSystemConnectors() {
   if (MODO_SIMULACION) return;
 
-  console.log('[INIT] Iniciando conexión con Tuya Cloud API...');
+  console.log('[INIT] Iniciando conexiÃ³n con Tuya Cloud API...');
   try {
     // Solo crear TuyaOpenApiClient si tenemos credenciales
     if (TUYA_CONFIG.accessKey && TUYA_CONFIG.secretKey) {
@@ -237,13 +237,13 @@ async function initSystemConnectors() {
         await tuyaClient.init();
       }
 
-      // Verificar que tuyaClient está disponible
+      // Verificar que tuyaClient estÃ¡ disponible
       if (tuyaClient && tuyaClient.request) {
         tuyaConnected = true;
         console.log('[INFO] TuyaOpenApiClient inicializado correctamente');
         console.log('[INFO] API Host:', TUYA_CONFIG.apiHost);
       } else {
-        console.log('[WARN] TuyaOpenApiClient no tiene método request');
+        console.log('[WARN] TuyaOpenApiClient no tiene mÃ©todo request');
         tuyaConnected = false;
       }
     } else {
@@ -273,9 +273,41 @@ let appSettings = {
     logLevel: 'info',
   },
   tuya: {
-    // ...
+
+
+
+    accessKey: process.env.TUYA_ACCESS_KEY || '',
+    secretKey: process.env.TUYA_SECRET_KEY || '',
+    apiHost: process.env.TUYA_API_HOST || 'https://openapi.tuyaus.com',
+    region: 'US',
   },
-  // ...
+  xiaomi: {
+    humidifierToken: process.env.XIAOMI_HUMIDIFIER_TOKEN || '',
+    humidifierId: process.env.XIAOMI_HUMIDIFIER_ID || '',
+    humidifierIp: process.env.XIAOMI_HUMIDIFIER_IP || '',
+    cameraToken: process.env.XIAOMI_CAMERA_TOKEN || '',
+    cameraId: process.env.XIAOMI_CAMERA_ID || '',
+    cameraIp: process.env.XIAOMI_CAMERA_IP || '',
+  },
+  lighting: {
+    enabled: false,
+    mode: 'manual', // 'manual', 'schedule'
+    photoperiod: '18/6', // '18/6', '12/12', 'custom'
+    onTime: '06:00',
+    offTime: '00:00',
+    emerson: false, // Efecto Emerson
+    emersonOffset: 15, // Minutos
+    devices: ['luzPanel1', 'luzPanel2', 'luzPanel3', 'luzPanel4'],
+    redLightDevice: 'controladorLuzRoja'
+  },
+  irrigation: {
+    enabled: false,
+    mode: 'manual',
+    potSize: 7, // Litros
+    pumpRate: 70, // ml/minuto (CalibraciÃ³n default)
+    targetVWC: 60,
+    drybackTarget: 20
+  }
 };
 
 // --- CUSTOM DEVICES MANAGEMENT ---
@@ -408,39 +440,6 @@ app.get('/api/devices/list', (req, res) => {
         res.status(500).json({ error: e.message });
     }
 });
-    accessKey: process.env.TUYA_ACCESS_KEY || '',
-    secretKey: process.env.TUYA_SECRET_KEY || '',
-    apiHost: process.env.TUYA_API_HOST || 'https://openapi.tuyaus.com',
-    region: 'US',
-  },
-  xiaomi: {
-    humidifierToken: process.env.XIAOMI_HUMIDIFIER_TOKEN || '',
-    humidifierId: process.env.XIAOMI_HUMIDIFIER_ID || '',
-    humidifierIp: process.env.XIAOMI_HUMIDIFIER_IP || '',
-    cameraToken: process.env.XIAOMI_CAMERA_TOKEN || '',
-    cameraId: process.env.XIAOMI_CAMERA_ID || '',
-    cameraIp: process.env.XIAOMI_CAMERA_IP || '',
-  },
-  lighting: {
-    enabled: false,
-    mode: 'manual', // 'manual', 'schedule'
-    photoperiod: '18/6', // '18/6', '12/12', 'custom'
-    onTime: '06:00',
-    offTime: '00:00',
-    emerson: false, // Efecto Emerson
-    emersonOffset: 15, // Minutos
-    devices: ['luzPanel1', 'luzPanel2', 'luzPanel3', 'luzPanel4'],
-    redLightDevice: 'controladorLuzRoja'
-  },
-  irrigation: {
-    enabled: false,
-    mode: 'manual',
-    potSize: 7, // Litros
-    pumpRate: 70, // ml/minuto (Calibración default)
-    targetVWC: 60,
-    drybackTarget: 20
-  }
-};
 
 // --- PERSISTENCIA ---
 const fs = require('fs');
@@ -502,7 +501,7 @@ app.post('/api/irrigation/shot', async (req, res) => {
         // Example: 2% of 7L = 140ml. 140ml / 40ml/s = 3.5s = 3500ms.
         const durationMs = (volumeMl / config.pumpRate) * 1000;
 
-        console.log(`[IRRIGATION] 💧 Shot Request: ${percentage}% of ${config.potSize}L`);
+        console.log(`[IRRIGATION] ðŸ’§ Shot Request: ${percentage}% of ${config.potSize}L`);
         console.log(`[IRRIGATION] -> Volume: ${volumeMl}ml. Duration: ${durationMs}ms`);
 
         // 3. Ejecutar Disparo
@@ -514,7 +513,7 @@ app.post('/api/irrigation/shot', async (req, res) => {
         // Temporizador Apagado
         setTimeout(async () => {
             await setDeviceState(pumpKey, false);
-            console.log(`[IRRIGATION] ✅ Shot Complete (${durationMs}ms)`);
+            console.log(`[IRRIGATION] âœ… Shot Complete (${durationMs}ms)`);
         }, durationMs);
 
         res.json({ success: true, message: `Riego iniciado: ${volumeMl}ml (${(durationMs/1000).toFixed(1)}s)` });
@@ -531,12 +530,12 @@ function loadSettings() {
             const saved = JSON.parse(data);
             // Merge profundo basico
             appSettings = { ...appSettings, ...saved, lighting: { ...appSettings.lighting, ...(saved.lighting || {}) } };
-            console.log('[INFO] Configuración cargada de disco.');
+            console.log('[INFO] ConfiguraciÃ³n cargada de disco.');
         } else {
-            console.log('[INFO] No hay configuración guardada. Usando defaults.');
+            console.log('[INFO] No hay configuraciÃ³n guardada. Usando defaults.');
         }
     } catch (e) {
-        console.error('[ERROR] Fallo al cargar configuración:', e.message);
+        console.error('[ERROR] Fallo al cargar configuraciÃ³n:', e.message);
     }
 }
 
@@ -545,13 +544,13 @@ function saveSettings() {
         const tempFile = SETTINGS_FILE + '.tmp';
         fs.writeFileSync(tempFile, JSON.stringify(appSettings, null, 2));
         fs.renameSync(tempFile, SETTINGS_FILE);
-        console.log('[INFO] Configuración guardada en disco.');
+        console.log('[INFO] ConfiguraciÃ³n guardada en disco.');
     } catch (e) {
-        console.error('[ERROR] Fallo al guardar configuración:', e.message);
+        console.error('[ERROR] Fallo al guardar configuraciÃ³n:', e.message);
     }
 }
 
-// Cargar configuración al inicio
+// Cargar configuraciÃ³n al inicio
 loadSettings();
 
 // --- CREDENCIALES XIAOMI CLOUD (Opcional, para control fuera de casa) ---
@@ -561,7 +560,7 @@ const XIAOMI_CLOUD_CREDENTIALS = {
   region: process.env.XIAOMI_CLOUD_REGION || 'us', // us, de, si, cn
 };
 
-// Función Helper para llamadas Xiaomi seguras (Auto-Login en 401)
+// FunciÃ³n Helper para llamadas Xiaomi seguras (Auto-Login en 401)
 async function safeXiaomiCall(operationName, operationFn) {
     try {
         return await operationFn();
@@ -571,7 +570,7 @@ async function safeXiaomiCall(operationName, operationFn) {
         const isAuthError = msg.includes('401') || msg.toLowerCase().includes('unauthorized') || msg.toLowerCase().includes('token expired') || msg.includes('1001'); // 1001 a veces es auth
 
         if (isAuthError) {
-            console.log(`[XIAOMI-AUTO-REFRESH] ⚠️ Sesión expirada en ${operationName}. Renovando...`);
+            console.log(`[XIAOMI-AUTO-REFRESH] âš ï¸ SesiÃ³n expirada en ${operationName}. Renovando...`);
             try {
                 // Leer credenciales frescas (pueden haber cambiado en settings)
                 const user = process.env.XIAOMI_CLOUD_USERNAME;
@@ -583,38 +582,38 @@ async function safeXiaomiCall(operationName, operationFn) {
                 const authRes = await xiaomiAuth.login(user, pass);
 
                 if (authRes.status === 'ok') {
-                    // Inyectar en la librería
+                    // Inyectar en la librerÃ­a
                     miHome.miCloudProtocol.userId = authRes.userId;
                     miHome.miCloudProtocol.serviceToken = authRes.serviceToken;
                     miHome.miCloudProtocol.ssecurity = authRes.ssecurity;
 
-                    console.log('[XIAOMI-AUTO-REFRESH] ✓ Sesión renovada. Reintentando...');
+                    console.log('[XIAOMI-AUTO-REFRESH] âœ“ SesiÃ³n renovada. Reintentando...');
                     return await operationFn();
                 } else {
-                    console.error('[XIAOMI-AUTO-REFRESH] ❌ Renovación falló (Status: ' + authRes.status + ')');
+                    console.error('[XIAOMI-AUTO-REFRESH] âŒ RenovaciÃ³n fallÃ³ (Status: ' + authRes.status + ')');
                 }
             } catch (authErr) {
-                 console.error('[XIAOMI-AUTO-REFRESH] ❌ Error fatal renovación:', authErr.message);
+                 console.error('[XIAOMI-AUTO-REFRESH] âŒ Error fatal renovaciÃ³n:', authErr.message);
             }
         }
         throw error; // Re-lanzar si no se pudo arreglar
     }
 }
 
-// Función para conectar dispositivos Xiaomi
-// Función para conectar dispositivos Xiaomi (CLOUD ONLY)
+// FunciÃ³n para conectar dispositivos Xiaomi
+// FunciÃ³n para conectar dispositivos Xiaomi (CLOUD ONLY)
 async function initXiaomiDevices() {
   if (MODO_SIMULACION) {
-    console.log('[INFO] Modo simulación activado.');
+    console.log('[INFO] Modo simulaciÃ³n activado.');
     return;
   }
 
-  console.log('[XIAOMI-CLOUD] Inicializando conexión Cloud...');
+  console.log('[XIAOMI-CLOUD] Inicializando conexiÃ³n Cloud...');
 
   // 1. Authenticate with Captured Tokens (Priority)
   // We prefer using the captured tokens over username/password login
   if (process.env.XIAOMI_USER_ID && process.env.XIAOMI_SERVICE_TOKEN && process.env.XIAOMI_SSECURITY) {
-      console.log('[XIAOMI-CLOUD] 🔓 Usando tokens capturados (userId/serviceToken/ssecurity)');
+      console.log('[XIAOMI-CLOUD] ðŸ”“ Usando tokens capturados (userId/serviceToken/ssecurity)');
 
       // Inject into node-mihome
       miHome.miCloudProtocol.userId = process.env.XIAOMI_USER_ID;
@@ -624,16 +623,16 @@ async function initXiaomiDevices() {
       // Manually set isLoggedIn true if library allows, or just assuming calls will work
       // node-mihome doesn't have a public 'isLoggedIn' property usually, but setting tokens is enough.
   } else if (XIAOMI_CLOUD_CREDENTIALS.username && XIAOMI_CLOUD_CREDENTIALS.password) {
-       console.log('[XIAOMI-CLOUD] ⚠️ No hay tokens capturados. Intentando login Legacy (puede fallar por 2FA)...');
+       console.log('[XIAOMI-CLOUD] âš ï¸ No hay tokens capturados. Intentando login Legacy (puede fallar por 2FA)...');
        try {
           await miHome.miCloudProtocol.login(XIAOMI_CLOUD_CREDENTIALS.username, XIAOMI_CLOUD_CREDENTIALS.password);
-          console.log('[XIAOMI-CLOUD] ✓ Login Legacy exitoso.');
+          console.log('[XIAOMI-CLOUD] âœ“ Login Legacy exitoso.');
        } catch (e) {
-          console.error('[XIAOMI-CLOUD] ❌ Falló login Legacy:', e.message);
-          console.warn('👉 Por favor ejecuta "node backend/login-cloud-permanent.js" para capturar tokens nuevos.');
+          console.error('[XIAOMI-CLOUD] âŒ FallÃ³ login Legacy:', e.message);
+          console.warn('ðŸ‘‰ Por favor ejecuta "node backend/login-cloud-permanent.js" para capturar tokens nuevos.');
        }
   } else {
-      console.warn('[XIAOMI-CLOUD] ⚠️ No hay credenciales ni tokens. La conexión fallará.');
+      console.warn('[XIAOMI-CLOUD] âš ï¸ No hay credenciales ni tokens. La conexiÃ³n fallarÃ¡.');
   }
 
   // 2. Setup Devices (Cloud Only)
@@ -677,7 +676,7 @@ async function initXiaomiDevices() {
               } catch(e) { return {}; }
           }
      };
-     console.log(`  ✓ [CLOUD LISTENER] ${deviceName} ready.`);
+     console.log(`  âœ“ [CLOUD LISTENER] ${deviceName} ready.`);
   }
 }
 
@@ -748,7 +747,7 @@ function processTuyaDevices(cloudDevices) {
         lastUpdate: new Date(),
       };
 
-      console.log(`[✓ MAPPED] ${mapDef.name} (${mapDef.id}) - ONLINE`);
+      console.log(`[âœ“ MAPPED] ${mapDef.name} (${mapDef.id}) - ONLINE`);
     } else {
       newTuyaDevices[key] = {
         ...mapDef,
@@ -818,7 +817,7 @@ function processTuyaDevices(cloudDevices) {
               isDynamic: true // Flag to identify auto-discovered devices
           };
 
-          console.log(`[★ AUTO-DISCOVERED] ${cloudDevice.name} (${cloudDevice.id})`);
+          console.log(`[â˜… AUTO-DISCOVERED] ${cloudDevice.name} (${cloudDevice.id})`);
       }
   });
 
@@ -847,7 +846,7 @@ async function initTuyaDevices() {
     if (!data || !data.success || !data.result || !data.result.devices) {
         console.log('[DEBUG-TUYA-FAIL] Invalid Data Structure:', Object.keys(data || {}));
 
-        console.warn('[WARN] Tuya no devolvió lista masiva. Iniciando Plan B...');
+        console.warn('[WARN] Tuya no devolviÃ³ lista masiva. Iniciando Plan B...');
         // ... Log logic ...
 
         await syncTuyaDevicesIndividual();
@@ -856,14 +855,14 @@ async function initTuyaDevices() {
 
     const devices = data.result.devices;
 
-// Log seguro para diagnósitco
+// Log seguro para diagnÃ³sitco
 if (data) {
     console.log(`[DEBUG-TUYA] API Status: success=${data.success}, msg="${data.msg || 'OK'}"`);
 }
 
-    // FALLBACK: Si la lista masiva falla o viene vacía, consultar dispositivos individualmente
+    // FALLBACK: Si la lista masiva falla o viene vacÃ­a, consultar dispositivos individualmente
     if (!devices || devices.length === 0) {
-        console.log('[WARN] Tuya no devolvió lista masiva. Iniciando consulta individual de dispositivos (Plan B)...');
+        console.log('[WARN] Tuya no devolviÃ³ lista masiva. Iniciando consulta individual de dispositivos (Plan B)...');
         const fallbackDevices = [];
 
         for (const [key, mapDef] of Object.entries(TUYA_DEVICES_MAP)) {
@@ -883,10 +882,10 @@ if (data) {
                         console.log(`[DEBUG-TUYA-STATUS] Sample status for ${devData.name}:`, JSON.stringify(devData.status));
                      }
                 } else {
-                    // console.log(`  ✗ No datos para: ${mapDef.name}`);
+                    // console.log(`  âœ— No datos para: ${mapDef.name}`);
                 }
              } catch(e) {
-                console.log(`  ✗ Error consultando ${mapDef.name}: ${e.message}`);
+                console.log(`  âœ— Error consultando ${mapDef.name}: ${e.message}`);
              }
         }
 
@@ -907,10 +906,10 @@ if (data) {
       // for (const key in tuyaDevices) delete tuyaDevices[key];
       Object.assign(tuyaDevices, mappedDevices);
 
-      console.log(`[INFO] Sincronización completada. ${Object.keys(tuyaDevices).length} dispositivos en sistema.`);
+      console.log(`[INFO] SincronizaciÃ³n completada. ${Object.keys(tuyaDevices).length} dispositivos en sistema.`);
     }
   } catch (error) {
-    console.error('[ERROR] Fallo sincronización Tuya:', error.message);
+    console.error('[ERROR] Fallo sincronizaciÃ³n Tuya:', error.message);
   }
 }// Helper for individual fetching (Fallback)
 const syncTuyaDevicesIndividual = async () => {
@@ -938,7 +937,7 @@ const syncTuyaDevicesIndividual = async () => {
                   // }
              }
          } catch(e) {
-            console.warn(`  ✗ Error consultando ${mapDef.name}: ${e.message}`);
+            console.warn(`  âœ— Error consultando ${mapDef.name}: ${e.message}`);
          }
     }
 
@@ -954,7 +953,7 @@ const syncTuyaDevicesIndividual = async () => {
         Object.assign(tuyaDevices, mappedDevices);
 
         console.log(`[CLOUD] Procesando ${fallbackDevices.length} dispositivos Tuya.`);
-        console.log(`[INFO] Sincronización completada. ${Object.keys(tuyaDevices).length} dispositivos en sistema.`);
+        console.log(`[INFO] SincronizaciÃ³n completada. ${Object.keys(tuyaDevices).length} dispositivos en sistema.`);
     } else {
         console.warn("[Plan B] No se pudieron recuperar dispositivos.");
     }
@@ -1018,9 +1017,9 @@ async function initMerossDevices() {
   }
 }
 
-// Inicializar dispositivos Xiaomi y Tuya si no estamos en modo simulación
+// Inicializar dispositivos Xiaomi y Tuya si no estamos en modo simulaciÃ³n
 if (!MODO_SIMULACION) {
-  // Esperar un poco para que el servidor esté listo, luego intentar conexión
+  // Esperar un poco para que el servidor estÃ© listo, luego intentar conexiÃ³n
   setTimeout(() => {
     loadCustomDevices(); // Load custom configs first
     initXiaomiDevices().catch(err => {
@@ -1037,7 +1036,7 @@ if (!MODO_SIMULACION) {
 
 app.use(express.json());
 
-// --- LÓGICA DE SIMULACIÓN (SI ESTÁ ACTIVADA) ---
+// --- LÃ“GICA DE SIMULACIÃ“N (SI ESTÃ ACTIVADA) ---
 let sensorHistory = [];
 const MAX_HISTORY_LENGTH = 100;
 
@@ -1053,7 +1052,7 @@ let deviceStates = {
   extractor: false,
   bomba: false,
   humidifier: false,
-  camera: false, // Añadimos la cámara al estado de simulación
+  camera: false, // AÃ±adimos la cÃ¡mara al estado de simulaciÃ³n
 };
 
 const updateSensorData = () => {
@@ -1109,7 +1108,7 @@ app.get('/api/sensors/latest', (req, res) => {
 // Dispositivos (combinado Tuya y Xiaomi)
 app.get('/api/devices', async (req, res) => {
   try {
-    // Modo simulación
+    // Modo simulaciÃ³n
     if (MODO_SIMULACION) {
       return res.json(deviceStates);
     }
@@ -1154,7 +1153,7 @@ app.get('/api/devices', async (req, res) => {
              realDeviceStates[deviceName] = true;
           }
           else {
-            // Dispositivo genérico
+            // Dispositivo genÃ©rico
             try {
               const properties = await device.getProperties(['power']);
               const powerProp = properties.find(p => p.did === 'power' || p.name === 'power');
@@ -1168,7 +1167,7 @@ app.get('/api/devices', async (req, res) => {
           realDeviceStates[deviceName] = false;
         }
       } else {
-         // Si es xiaomi pero no cliente, o si falló el match anterior
+         // Si es xiaomi pero no cliente, o si fallÃ³ el match anterior
          if (deviceConfig.platform === 'xiaomi' && !realDeviceStates.hasOwnProperty(deviceName)) {
              realDeviceStates[deviceName] = false;
          }
@@ -1234,7 +1233,7 @@ app.get('/api/devices', async (req, res) => {
         }
     }
 
-    // Modo simulación
+    // Modo simulaciÃ³n
     if (MODO_SIMULACION) {
       if (deviceStates.hasOwnProperty(deviceId)) {
         deviceStates[deviceId] = !deviceStates[deviceId];
@@ -1261,7 +1260,7 @@ app.get('/api/devices', async (req, res) => {
         if (deviceConfig.deviceType === 'humidifier' || deviceConfig.deviceType === 'pump' || deviceConfig.deviceType === 'light') {
           currentState = await device.getPower();
         } else {
-          // Dispositivo genérico
+          // Dispositivo genÃ©rico
           const properties = await device.getProperties(['power']);
           const powerProp = properties.find(p => p.did === 'power' || p.name === 'power');
           currentState = powerProp?.value === true || powerProp?.value === 1;
@@ -1274,7 +1273,7 @@ app.get('/api/devices', async (req, res) => {
         if (deviceConfig.deviceType === 'humidifier' || deviceConfig.deviceType === 'pump' || deviceConfig.deviceType === 'light') {
           await device.setPower(newState);
         } else {
-          // Comando genérico para encender/apagar
+          // Comando genÃ©rico para encender/apagar
           await device.call('set_power', [newState ? 'on' : 'off']);
         }
 
@@ -1359,13 +1358,13 @@ app.get('/api/devices', async (req, res) => {
              if (tuyaDevices[deviceId]) tuyaDevices[deviceId].on = newState;
              return res.json({ id: deviceId, newState: newState, codeUsed: usedCode });
         } else {
-             const msg = lastCmdRes ? (lastCmdRes.msg || 'Error desconocido') : 'Todos los códigos de switch fallaron o no hubo respuesta';
+             const msg = lastCmdRes ? (lastCmdRes.msg || 'Error desconocido') : 'Todos los cÃ³digos de switch fallaron o no hubo respuesta';
              console.error(`[TUYA] Toggle Error: ${msg}`);
              throw new Error(msg);
         }
 
       } catch (e) {
-        console.error(`[ERROR TUYA] Toggle falló: ${e.message}`);
+        console.error(`[ERROR TUYA] Toggle fallÃ³: ${e.message}`);
         return res.status(500).json({ error: `Failed to toggle ${deviceId}`, details: e.message });
       }
     }
@@ -1472,7 +1471,7 @@ app.post('/api/device/:id/control', async (req, res) => {
 const https = require('https');
 
 // CACHE DE RESPALDO (In-Memory)
-let lastAiResponse = "🌿 Todo se ve nominal. Los parámetros están estables. ¡Sigue así! (Modo Respaldo)";
+let lastAiResponse = "ðŸŒ¿ Todo se ve nominal. Los parÃ¡metros estÃ¡n estables. Â¡Sigue asÃ­! (Modo Respaldo)";
 let lastAiCallTimestamp = 0;
 const AI_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutos de cache
 
@@ -1481,7 +1480,7 @@ app.post('/api/chat', async (req, res) => {
   const apiKey = appSettings.ai?.apiKey || process.env.GEMINI_API_KEY;
 
   if (!apiKey) {
-      return res.json({ reply: "⚠️ No tengo una API Key configurada. Por favor ve a 'Configuración' en esta misma pantalla y añade tu Gemini API Key." });
+      return res.json({ reply: "âš ï¸ No tengo una API Key configurada. Por favor ve a 'ConfiguraciÃ³n' en esta misma pantalla y aÃ±ade tu Gemini API Key." });
   }
 
   // CHECK CACHE TTL
@@ -1491,24 +1490,24 @@ app.post('/api/chat', async (req, res) => {
 
   if (now - lastAiCallTimestamp < AI_CACHE_TTL_MS && isAutoAnalysis) {
       console.log('[AI] Cache Hit (TTL protegido). Devolviendo respuesta anterior.');
-      return res.json({ reply: lastAiResponse + " ⏱️" });
+      return res.json({ reply: lastAiResponse + " â±ï¸" });
   }
 
   console.log('[AI] Enviando consulta a Gemini (HTTPS)...');
 
   // ... (context logic unchanged) ...
-  let systemContext = "Eres un experto agrónomo asistente para el sistema PKGrower. Tienes acceso a los datos del cultivo en tiempo real.";
+  let systemContext = "Eres un experto agrÃ³nomo asistente para el sistema PKGrower. Tienes acceso a los datos del cultivo en tiempo real.";
 
   // Inject Irrigation Data
   try {
       const lastIrrigation = await firestore.getLastIrrigationLog();
       if (lastIrrigation) {
-          systemContext += `\n\n[DATOS DE ÚLTIMO RIEGO/RUNOFF - ${new Date(lastIrrigation.timestamp).toLocaleString()}]:
+          systemContext += `\n\n[DATOS DE ÃšLTIMO RIEGO/RUNOFF - ${new Date(lastIrrigation.timestamp).toLocaleString()}]:
           - Riego (Entrada): pH ${lastIrrigation.inputPh || '?'}, EC ${lastIrrigation.inputEc || '?'}
           - Runoff (Salida): pH ${lastIrrigation.runoffPh || '?'}, EC ${lastIrrigation.runoffEc || '?'}
           - Volumen: ${lastIrrigation.volume || '?'} L
 
-          Evalúa estos valores si el usuario pregunta sobre nutrición o estado del suelo.
+          EvalÃºa estos valores si el usuario pregunta sobre nutriciÃ³n o estado del suelo.
           `;
       }
   } catch (e) {
@@ -1545,8 +1544,8 @@ app.post('/api/chat', async (req, res) => {
     if (vpdMatch) {
               const vpd = parseFloat(vpdMatch[1]);
               if (vpd < 0.4) analysis += "VPD muy bajo (riesgo hongos). ";
-              else if (vpd > 1.6) analysis += "VPD alto (estrés). ";
-              else analysis += "VPD óptimo. ";
+              else if (vpd > 1.6) analysis += "VPD alto (estrÃ©s). ";
+              else analysis += "VPD Ã³ptimo. ";
           }
           if (tempMatch) {
               const t = parseFloat(tempMatch[1]);
@@ -1554,9 +1553,9 @@ app.post('/api/chat', async (req, res) => {
           }
 
           if (!analysis) return "Sistemas nominales (Modo Local).";
-          return "🤖 (Modo Local) " + analysis + "Revisa parámetros.";
+          return "ðŸ¤– (Modo Local) " + analysis + "Revisa parÃ¡metros.";
       } catch (e) {
-          return "🌿 Todo nominal (Modo Respaldo Básico).";
+          return "ðŸŒ¿ Todo nominal (Modo Respaldo BÃ¡sico).";
       }
   };
 
@@ -1575,7 +1574,7 @@ app.post('/api/chat', async (req, res) => {
             },
             {
                 role: "model",
-                parts: [{ text: "Entendido. Soy el asistente agrónomo de PKGrower. Estoy listo para analizar los datos del cultivo en tiempo real y dar recomendaciones." }],
+                parts: [{ text: "Entendido. Soy el asistente agrÃ³nomo de PKGrower. Estoy listo para analizar los datos del cultivo en tiempo real y dar recomendaciones." }],
             },
         ],
         generationConfig: {
@@ -1591,7 +1590,7 @@ app.post('/api/chat', async (req, res) => {
       lastAiResponse = reply;
       lastAiCallTimestamp = Date.now();
 
-      console.log('[AI SUCCESS] Gemini respondió:', reply.substring(0, 50) + '...');
+      console.log('[AI SUCCESS] Gemini respondiÃ³:', reply.substring(0, 50) + '...');
       res.json({ reply });
 
   } catch (error) {
@@ -1602,12 +1601,12 @@ app.post('/api/chat', async (req, res) => {
           res.json({ reply: "Error conectando con Gemini. " + error.message });
       } else {
           // Serve cached response if available
-          res.json({ reply: (lastAiResponse || "Servicio no disponible") + " ⚠️ (Cache/Error)" });
+          res.json({ reply: (lastAiResponse || "Servicio no disponible") + " âš ï¸ (Cache/Error)" });
       }
   }
 });
 
-// Endpoint de diagnóstico (para verificar estado de dispositivos)
+// Endpoint de diagnÃ³stico (para verificar estado de dispositivos)
 app.get('/api/devices/diagnostics', async (req, res) => {
   try {
     const diagnostics = {
@@ -1619,7 +1618,7 @@ app.get('/api/devices/diagnostics', async (req, res) => {
         },
     };
 
-    // Información de dispositivos Xiaomi
+    // InformaciÃ³n de dispositivos Xiaomi
     if (DEVICE_MAP) {
         for (const [deviceName, deviceConfig] of Object.entries(DEVICE_MAP)) {
             if (deviceConfig.platform === 'xiaomi') {
@@ -1671,7 +1670,7 @@ app.get('/api/devices/meross', async (req, res) => {
             name: d.name,
             type: d.type,
             online: d.online,
-            // Agregamos estado si está disponible
+            // Agregamos estado si estÃ¡ disponible
         }));
         res.json(devices);
     } catch (e) {
@@ -1687,7 +1686,7 @@ const calculateVPD = (temp, hum) => {
     return svp * (1 - hum / 100);
 };
 
-// Obtener últimos datos de sensores (Ambiente + Sustrato)
+// Obtener Ãºltimos datos de sensores (Ambiente + Sustrato)
 app.get('/api/sensors/latest', async (req, res) => {
   try {
      let temp = 0;
@@ -1785,7 +1784,7 @@ app.get('/api/sensors/soil', async (req, res) => {
       return res.json(soilData);
     }
 
-    // En modo real, obtendría datos de Tuya
+    // En modo real, obtendrÃ­a datos de Tuya
     const soilSensors = Object.entries(tuyaDevices)
       .filter(([_, device]) => device.category === 'soil_sensor')
       .map(([key, device]) => ({
@@ -1802,9 +1801,9 @@ app.get('/api/sensors/soil', async (req, res) => {
   }
 });
 
-// --- ENDPOINTS PARA CÁMARA XIAOMI ---
+// --- ENDPOINTS PARA CÃMARA XIAOMI ---
 
-// Obtener estado de la cámara
+// Obtener estado de la cÃ¡mara
 app.get('/api/device/camera/status', async (req, res) => {
   try {
     if (MODO_SIMULACION) {
@@ -1817,7 +1816,7 @@ app.get('/api/device/camera/status', async (req, res) => {
     }
 
     if (!xiaomiClients.camera) {
-      return res.status(404).json({ error: 'Cámara no conectada' });
+      return res.status(404).json({ error: 'CÃ¡mara no conectada' });
     }
 
     const device = xiaomiClients.camera;
@@ -1833,7 +1832,7 @@ app.get('/api/device/camera/status', async (req, res) => {
   }
 });
 
-// Iniciar grabación de video
+// Iniciar grabaciÃ³n de video
 app.post('/api/device/camera/record/start', async (req, res) => {
   try {
     const { duration } = req.body;
@@ -1841,22 +1840,22 @@ app.post('/api/device/camera/record/start', async (req, res) => {
     if (MODO_SIMULACION) {
       return res.json({
         success: true,
-        message: 'Grabación iniciada (simulada)',
+        message: 'GrabaciÃ³n iniciada (simulada)',
         duration: duration || 60,
       });
     }
 
     if (!xiaomiClients.camera) {
-      return res.status(404).json({ error: 'Cámara no conectada' });
+      return res.status(404).json({ error: 'CÃ¡mara no conectada' });
     }
 
     const device = xiaomiClients.camera;
-    // Llamar al comando de grabación si está disponible
+    // Llamar al comando de grabaciÃ³n si estÃ¡ disponible
     // const result = await device.call('action', { did: 'camera', siid: 2, aiid: 1 });
 
     res.json({
       success: true,
-      message: 'Grabación iniciada',
+      message: 'GrabaciÃ³n iniciada',
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
@@ -1864,19 +1863,19 @@ app.post('/api/device/camera/record/start', async (req, res) => {
   }
 });
 
-// Detener grabación
+// Detener grabaciÃ³n
 app.post('/api/device/camera/record/stop', async (req, res) => {
   try {
     if (MODO_SIMULACION) {
       return res.json({
         success: true,
-        message: 'Grabación detenida (simulada)',
+        message: 'GrabaciÃ³n detenida (simulada)',
       });
     }
 
     res.json({
       success: true,
-      message: 'Grabación detenida',
+      message: 'GrabaciÃ³n detenida',
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
@@ -1897,7 +1896,7 @@ app.post('/api/device/camera/capture', async (req, res) => {
     }
 
     if (!xiaomiClients.camera) {
-      return res.status(404).json({ error: 'Cámara no conectada' });
+      return res.status(404).json({ error: 'CÃ¡mara no conectada' });
     }
 
     res.json({
@@ -1910,15 +1909,15 @@ app.post('/api/device/camera/capture', async (req, res) => {
   }
 });
 
-// --- ENDPOINTS PARA CÁMARA MEJORADOS ---
+// --- ENDPOINTS PARA CÃMARA MEJORADOS ---
 
-// Obtener información de la cámara
+// Obtener informaciÃ³n de la cÃ¡mara
 app.get('/api/camera/info', async (req, res) => {
   try {
     if (MODO_SIMULACION) {
       return res.json({
         id: 'xiaomi-camera',
-        name: 'Cámara Xiaomi',
+        name: 'CÃ¡mara Xiaomi',
         model: 'yczjg.camera.mjsxg13',
         status: 'online',
         power: true,
@@ -1932,7 +1931,7 @@ app.get('/api/camera/info', async (req, res) => {
 
     if (!xiaomiClients.camera) {
       return res.status(404).json({
-        error: 'Cámara no conectada',
+        error: 'CÃ¡mara no conectada',
         status: 'offline'
       });
     }
@@ -1940,7 +1939,7 @@ app.get('/api/camera/info', async (req, res) => {
     const camera = xiaomiClients.camera;
     res.json({
       id: 'xiaomi-camera',
-      name: 'Cámara Xiaomi',
+      name: 'CÃ¡mara Xiaomi',
       model: 'yczjg.camera.mjsxg13',
       status: 'online',
       power: true,
@@ -1969,10 +1968,10 @@ app.get('/api/camera/snapshot', async (req, res) => {
     }
 
     if (!xiaomiClients.camera) {
-      return res.status(404).json({ error: 'Cámara no conectada' });
+      return res.status(404).json({ error: 'CÃ¡mara no conectada' });
     }
 
-    // En una cámara real, aquí iría la lógica para obtener snapshot
+    // En una cÃ¡mara real, aquÃ­ irÃ­a la lÃ³gica para obtener snapshot
     res.json({
       success: true,
       snapshotUrl: 'https://via.placeholder.com/2304x1296?text=Xiaomi+Camera',
@@ -1996,7 +1995,7 @@ app.get('/api/camera/stream', async (req, res) => {
     }
 
     if (!xiaomiClients.camera) {
-      return res.status(404).json({ error: 'Cámara no conectada' });
+      return res.status(404).json({ error: 'CÃ¡mara no conectada' });
     }
 
     // Retornar URL del stream de video en vivo
@@ -2013,7 +2012,7 @@ app.get('/api/camera/stream', async (req, res) => {
   }
 });
 
-// Obtener estado de la cámara
+// Obtener estado de la cÃ¡mara
 app.get('/api/device/camera/status', async (req, res) => {
   try {
     if (MODO_SIMULACION) {
@@ -2021,10 +2020,10 @@ app.get('/api/device/camera/status', async (req, res) => {
     }
 
     if (!xiaomiClients.camera) {
-       return res.status(404).json({ error: 'Cámara no conectada', status: 'offline' });
+       return res.status(404).json({ error: 'CÃ¡mara no conectada', status: 'offline' });
     }
 
-    // Aquí podríamos consultar estado real si la lib lo soporta
+    // AquÃ­ podrÃ­amos consultar estado real si la lib lo soporta
     res.json({ status: 'online', recording: false });
 
   } catch (error) {
@@ -2047,7 +2046,7 @@ app.post('/api/camera/night-vision', async (req, res) => {
     }
 
     if (!xiaomiClients.camera) {
-      return res.status(404).json({ error: 'Cámara no conectada' });
+      return res.status(404).json({ error: 'CÃ¡mara no conectada' });
     }
 
     res.json({
@@ -2082,7 +2081,7 @@ app.get('/api/device/humidifier/status', async (req, res) => {
 
     const device = xiaomiClients.humidifier;
     const power = await device.getPower();
-    // Obtener otras propiedades si están disponibles
+    // Obtener otras propiedades si estÃ¡n disponibles
     const props = await device.getAll();
 
     res.json({
@@ -2111,7 +2110,7 @@ app.post('/api/automation/humidifier-extractor', async (req, res) => {
       });
     }
 
-    // Lógica de control:
+    // LÃ³gica de control:
     // - Si humedad actual < targetHumidity: activar humidificador
     // - Si humedad actual > targetHumidity: activar extractor
 
@@ -2128,7 +2127,7 @@ app.post('/api/automation/humidifier-extractor', async (req, res) => {
           // await xiaomiClients.humidifier.setPower(true);
         } else if (currentHumidity > targetHumidity) {
           extractorAction = 'on';
-          // Controlar extractor si está disponible
+          // Controlar extractor si estÃ¡ disponible
         }
       } catch (e) {
         console.error('Error al obtener humedad:', e.message);
@@ -2323,7 +2322,7 @@ app.get('/api/devices/all', async (req, res) => {
   try {
     const devices = [];
 
-    // Agregar dispositivos Tuya (desde tuyaDevices que está actualizado)
+    // Agregar dispositivos Tuya (desde tuyaDevices que estÃ¡ actualizado)
     for (const [key, device] of Object.entries(tuyaDevices)) {
       if (device && device.name) {
         devices.push({
@@ -2358,13 +2357,13 @@ app.get('/api/devices/all', async (req, res) => {
       } else if (key === 'camera' && device.config?.id) {
         devices.push({
           id: `xiaomi-camera`,
-          name: 'Cámara Xiaomi',
+          name: 'CÃ¡mara Xiaomi',
           type: 'camera',
           status: !!device,
           platform: 'xiaomi',
           value: 100,
           unit: '',
-          description: 'Cámara Xiaomi MJSXG13',
+          description: 'CÃ¡mara Xiaomi MJSXG13',
           lastUpdate: new Date().toLocaleTimeString(),
           isCloudOnly: device.isCloudOnly || false,
         });
@@ -2457,14 +2456,14 @@ app.get('/api/settings', (req, res) => {
 app.get('/api/device/humidifier/status', async (req, res) => {
   try {
     const device = DEVICE_MAP.humidifier;
-    // Intentar obtener estado real si hay conexión
+    // Intentar obtener estado real si hay conexiÃ³n
     let status = { online: false, power: false, humidity: 0, target_humidity: 40, mode: 'auto' };
 
-    // Si tenemos conexión cloud o local...
+    // Si tenemos conexiÃ³n cloud o local...
     // Por ahora devolvemos lo que tengamos en memoria o cache
     if (device && device.config && (device.config.token || device.config.username)) {
-        // Aquí podríamos llamar a device.getProps() si tuviéramos la instancia viva
-        // Como simplificación, asumimos offline si no hay instancia global
+        // AquÃ­ podrÃ­amos llamar a device.getProps() si tuviÃ©ramos la instancia viva
+        // Como simplificaciÃ³n, asumimos offline si no hay instancia global
         // TODO: Conectar con instancia real
     }
 
@@ -2506,7 +2505,7 @@ app.post('/api/settings', async (req, res) => {
     if (xiaomi) {
         Object.assign(appSettings.xiaomi, xiaomi);
 
-        // LOGIN XIAOMI CLOUD AUTOMÁTICO
+        // LOGIN XIAOMI CLOUD AUTOMÃTICO
         if (xiaomi.username && xiaomi.password) {
             // ALWAYS save basic creds for 2FA verification usage later (persisting across restarts)
             envChanges['XIAOMI_CLOUD_USERNAME'] = xiaomi.username;
@@ -2522,7 +2521,7 @@ app.post('/api/settings', async (req, res) => {
                     authContext = authResult.context;
                 } else if (authResult.status === 'ok') {
                     console.log('[AUTH] Login exitoso');
-                    // Inyectar credenciales vivas a la librería
+                    // Inyectar credenciales vivas a la librerÃ­a
                     miHome.miCloudProtocol.userId = authResult.userId;
                     miHome.miCloudProtocol.serviceToken = authResult.serviceToken;
                     miHome.miCloudProtocol.ssecurity = authResult.ssecurity;
@@ -2535,7 +2534,7 @@ app.post('/api/settings', async (req, res) => {
             }
         }
 
-        // ... (resto de lógica de tokens manuales)
+        // ... (resto de lÃ³gica de tokens manuales)
         if (xiaomi.humidifierToken) {
             envChanges['XIAOMI_HUMIDIFIER_TOKEN'] = xiaomi.humidifierToken;
             if (DEVICE_MAP['humidifier']) DEVICE_MAP['humidifier'].config.token = xiaomi.humidifierToken;
@@ -2576,7 +2575,7 @@ app.post('/api/settings', async (req, res) => {
             success: false,
             require2FA: true,
             context: authContext,
-            message: 'Se requiere verificación de código de correo/SMS'
+            message: 'Se requiere verificaciÃ³n de cÃ³digo de correo/SMS'
         });
     }
 
@@ -2586,7 +2585,7 @@ app.post('/api/settings', async (req, res) => {
     await initTuyaDevices();
     initMerossDevices(); // No await needed to avoid blocking response too long
 
-    res.json({ success: true, settings: appSettings, message: 'Configuración guardada y conexiones reiniciadas' });
+    res.json({ success: true, settings: appSettings, message: 'ConfiguraciÃ³n guardada y conexiones reiniciadas' });
   } catch (error) {
     console.error('Error saving settings:', error);
     res.status(500).json({ error: error.message });
@@ -2596,12 +2595,12 @@ app.post('/api/settings', async (req, res) => {
 app.post('/api/settings/verify-2fa', async (req, res) => {
     try {
         const { code, context } = req.body;
-        console.log('[AUTH] Verificando código 2FA...');
+        console.log('[AUTH] Verificando cÃ³digo 2FA...');
 
         const password = appSettings.xiaomi.password || process.env.XIAOMI_CLOUD_PASSWORD;
         const authResult = await xiaomiAuth.verify2FA(code, context, password);
 
-        // Si llegamos aquí sin error, es éxito
+        // Si llegamos aquÃ­ sin error, es Ã©xito
         console.log('[AUTH] 2FA Verificado. Tokens obtenidos.');
 
         // Inyectar credenciales
@@ -2613,10 +2612,10 @@ app.post('/api/settings/verify-2fa', async (req, res) => {
         // Intentar inicializar dispositivos ahora
         await initXiaomiDevices();
 
-        res.json({ success: true, message: 'Autenticación completada' });
+        res.json({ success: true, message: 'AutenticaciÃ³n completada' });
     } catch (error) {
-        console.error('[AUTH] Falló verificación 2FA:', error.message);
-        res.status(401).json({ error: 'Código incorrecto o expirado: ' + error.message });
+        console.error('[AUTH] FallÃ³ verificaciÃ³n 2FA:', error.message);
+        res.status(401).json({ error: 'CÃ³digo incorrecto o expirado: ' + error.message });
     }
 });
 
@@ -2631,14 +2630,14 @@ app.post('/api/settings/reset', (req, res) => {
       enableLogging: true,
       logLevel: 'info',
     };
-    console.log('[SETTINGS] Configuración restaurada a valores predeterminados');
-    res.json({ success: true, message: 'Configuración restaurada' });
+    console.log('[SETTINGS] ConfiguraciÃ³n restaurada a valores predeterminados');
+    res.json({ success: true, message: 'ConfiguraciÃ³n restaurada' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// --- API SETTINGS (Guardar Configuración) ---
+// --- API SETTINGS (Guardar ConfiguraciÃ³n) ---
 app.post('/api/settings', (req, res) => {
     try {
         const newSettings = req.body;
@@ -2649,7 +2648,7 @@ app.post('/api/settings', (req, res) => {
         // ... otros modulos ...
 
         saveSettings();
-        console.log('[SETTINGS] Configuración actualizada vía API');
+        console.log('[SETTINGS] ConfiguraciÃ³n actualizada vÃ­a API');
         res.json({ success: true, settings: appSettings });
     } catch (error) {
         console.error('[SETTINGS] Error saving settings:', error);
@@ -2684,23 +2683,23 @@ app.post('/api/calendar', (req, res) => {
 });
 
 
-// --- SCHEDULER ENGINE (Motor de Automatización) ---
+// --- SCHEDULER ENGINE (Motor de AutomatizaciÃ³n) ---
 setInterval(() => {
     const now = new Date();
     const currentTime = now.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', hour12: false }); // "14:30"
 
-    // --- ILUMINACIÓN ---
+    // --- ILUMINACIÃ“N ---
     const lighting = appSettings.lighting;
     if (lighting && lighting.enabled && lighting.mode === 'schedule') {
         const { onTime, offTime, devices, redLightDevice, emerson, emersonOffset } = lighting;
 
-        // Lógica Simple: ON Time -> Prender. OFF Time -> Apagar.
-        // TODO: Manejar estado "Durante", no solo el trigger exacto (para recuperación de cortes de luz)
+        // LÃ³gica Simple: ON Time -> Prender. OFF Time -> Apagar.
+        // TODO: Manejar estado "Durante", no solo el trigger exacto (para recuperaciÃ³n de cortes de luz)
         // Por ahora, Trigger Exacto para evitar flooding de comandos Tuya.
 
         // ENCENDIDO
         if (currentTime === onTime) {
-            console.log(`[SCHEDULER] 💡 LIGHTS ON TRIGGER (${currentTime})`);
+            console.log(`[SCHEDULER] ðŸ’¡ LIGHTS ON TRIGGER (${currentTime})`);
             devices.forEach(devKey => {
                 setDeviceState(devKey, true).catch(e => console.error(`[SCHEDULER] Error turning ON ${devKey}:`, e.message));
             });
@@ -2708,21 +2707,21 @@ setInterval(() => {
 
         // APAGADO
         if (currentTime === offTime) {
-            console.log(`[SCHEDULER] 🌑 LIGHTS OFF TRIGGER (${currentTime})`);
+            console.log(`[SCHEDULER] ðŸŒ‘ LIGHTS OFF TRIGGER (${currentTime})`);
             devices.forEach(devKey => {
                 setDeviceState(devKey, false).catch(e => console.error(`[SCHEDULER] Error turning OFF ${devKey}:`, e.message));
             });
         }
 
         // EMERSON EFFECT (Luz Roja)
-        // Prender 15 min Antes de ON y Apagar 15 min Después de ON?
-        // O Prender 15 min Antes de OFF y Apagar 15 min Después de OFF?
+        // Prender 15 min Antes de ON y Apagar 15 min DespuÃ©s de ON?
+        // O Prender 15 min Antes de OFF y Apagar 15 min DespuÃ©s de OFF?
         // Usualmente: Red Light ON al inicio y al final para "despertar/dormir".
-        // Simplificación: Emerson ON = Prender Red Light al inicio (OnTime - Offset) y apagar (OnTime + Offset).
+        // SimplificaciÃ³n: Emerson ON = Prender Red Light al inicio (OnTime - Offset) y apagar (OnTime + Offset).
         // Y al final: Prender Red Light (OffTime - Offset) y apagar (OffTime + Offset).
 
         if (emerson && redLightDevice) {
-             // Lógica compleja omitida por brevedad, se implementará fase avanzada si el usuario pide detalle.
+             // LÃ³gica compleja omitida por brevedad, se implementarÃ¡ fase avanzada si el usuario pide detalle.
         }
     }
 
@@ -2750,7 +2749,7 @@ app.post('/api/ai/analyze-image', upload.single('image'), async (req, res) => {
             },
         };
 
-        const prompt = "Actúa como un agrónomo experto. Analiza esta imagen del cultivo. Identifica: 1. Etapa de crecimiento probable. 2. Salud general (0-10). 3. Posibles deficiencias, plagas o estrés visible. 4. Recomendaciones rápidas. Sé conciso y directo.";
+        const prompt = "ActÃºa como un agrÃ³nomo experto. Analiza esta imagen del cultivo. Identifica: 1. Etapa de crecimiento probable. 2. Salud general (0-10). 3. Posibles deficiencias, plagas o estrÃ©s visible. 4. Recomendaciones rÃ¡pidas. SÃ© conciso y directo.";
 
         const result = await model.generateContent([prompt, imagePart]);
         const response = await result.response;
@@ -2880,7 +2879,7 @@ setInterval(() => {
         try {
             // 1. Get Ambient Data (Tuya Sensor or defaults)
             const tempSensor = tuyaDevices[process.env.TUYA_SENSOR_AMBIENTE_ID] || {};
-            // Fallback to 20°C/50% if sensor invalid, to avoid breaking charts
+            // Fallback to 20Â°C/50% if sensor invalid, to avoid breaking charts
             const temp = tempSensor.temperature || 0;
             const hum = tempSensor.humidity || 0;
 
@@ -2919,7 +2918,7 @@ setInterval(() => {
 
             // CRITICAL FIX: Do not log invalid zero data to history (prevents "Drastic Curves")
             if (temp === 0 && hum === 0 && avgSoil === 0) {
-                 console.log('[HISTORY] 跳过无效数据 (Zero readings)');
+                 console.log('[HISTORY] è·³è¿‡æ— æ•ˆæ•°æ® (Zero readings)');
                  return;
             }
 
@@ -2956,20 +2955,20 @@ setInterval(() => {
 }, 60000);
 
 app.listen(PORT, '0.0.0.0', async () => { // Escuchar en 0.0.0.0 para acceso LAN
-  console.log(`\n╔════════════════════════════════════════════════════════╗`);
-  console.log(`║     🌱 PKGrower Backend - Servidor iniciado           ║`);
-  console.log(`╚════════════════════════════════════════════════════════╝\n`);
-  console.log(`✓ Backend running on http://localhost:${PORT}`);
-  console.log(`✓ Modo: ${MODO_SIMULACION ? '🟢 SIMULACIÓN' : '🔴 MODO REAL'}`);
+  console.log(`\nâ•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—`);
+  console.log(`â•‘     ðŸŒ± PKGrower Backend - Servidor iniciado           â•‘`);
+  console.log(`â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•\n`);
+  console.log(`âœ“ Backend running on http://localhost:${PORT}`);
+  console.log(`âœ“ Modo: ${MODO_SIMULACION ? 'ðŸŸ¢ SIMULACIÃ“N' : 'ðŸ”´ MODO REAL'}`);
 
   // Inicializar dispositivos (BACKGROUND)
   if (!MODO_SIMULACION) {
-    console.log('\n📱 (Async) Programando inicialización de dispositivos en segundo plano...');
+    console.log('\nðŸ“± (Async) Programando inicializaciÃ³n de dispositivos en segundo plano...');
 
     // Defer initialization to allow Render to pass health checks immediately
     setTimeout(async () => {
         try {
-            console.log('📱 [BACKGROUND] Iniciando conexión con Tuya/Xiaomi...');
+            console.log('ðŸ“± [BACKGROUND] Iniciando conexiÃ³n con Tuya/Xiaomi...');
 
             // 1. Conectar Cliente Tuya (Core)
             await initSystemConnectors();
@@ -2977,7 +2976,7 @@ app.listen(PORT, '0.0.0.0', async () => { // Escuchar en 0.0.0.0 para acceso LAN
             // 2. Descubrir Dispositivos
             await initTuyaDevices();
             await initXiaomiDevices();
-            console.log('📱 [BACKGROUND] Dispositivos inicializados.');
+            console.log('ðŸ“± [BACKGROUND] Dispositivos inicializados.');
 
             // Iniciar Polling de Tuya (Cada 15 segundos)
             setInterval(async () => {
@@ -2988,7 +2987,7 @@ app.listen(PORT, '0.0.0.0', async () => { // Escuchar en 0.0.0.0 para acceso LAN
 
 
         // --- ACTUALIZAR HISTORIAL DE SENSORES (REAL) ---
-        // Extraemos los datos frescos de tuyaDevices para alimentar la gráfica
+        // Extraemos los datos frescos de tuyaDevices para alimentar la grÃ¡fica
         const timestamp = new Date().toISOString();
         let sh1 = null, sh2 = null, sh3 = null;
         let avgTemp = 0, countTemp = 0;
@@ -3052,7 +3051,7 @@ app.listen(PORT, '0.0.0.0', async () => { // Escuchar en 0.0.0.0 para acceso LAN
     }, 60000); // 60s (Save to DB every minute to reduce costs/bloat)
 
         } catch (err) {
-            console.error('❌ [BACKGROUND INIT ERROR]', err);
+            console.error('âŒ [BACKGROUND INIT ERROR]', err);
         }
     }, 5000); // Wait 5s before starting heavy init
   }
@@ -3060,34 +3059,34 @@ app.listen(PORT, '0.0.0.0', async () => { // Escuchar en 0.0.0.0 para acceso LAN
   // FORCE REFRESH ENDPOINT
   // (Moved out of listen callback)
 
-  console.log(`✓ Dispositivos Xiaomi conectados: ${Object.keys(xiaomiClients).length}`);
-  console.log(`✓ Dispositivos Tuya registrados: ${Object.keys(tuyaDevices).length}`);
-  console.log(`\n📡 Endpoints disponibles:`);
-  console.log(`  • GET  /api/sensors/latest`);
-  console.log(`  • GET  /api/sensors/history`);
-  console.log(`  • GET  /api/devices`);
-  console.log(`  • GET  /api/devices/all`);
-  console.log(`  • GET  /api/devices/tuya`);
-  console.log(`  • GET  /api/sensors/soil`);
-  console.log(`  • GET  /api/camera/info`);
-  console.log(`  • GET  /api/camera/snapshot`);
-  console.log(`  • GET  /api/camera/stream`);
-  console.log(`  • POST /api/camera/night-vision`);
-  console.log(`  • GET  /api/device/camera/status`);
-  console.log(`  • POST /api/device/camera/record/start`);
-  console.log(`  • POST /api/device/camera/record/stop`);
-  console.log(`  • POST /api/device/camera/capture`);
-  console.log(`  • GET  /api/device/humidifier/status`);
-  console.log(`  • POST /api/automation/humidifier-extractor`);
-  console.log(`  • POST /api/device/:id/control`);
-  console.log(`  • POST /api/device/:id/toggle`);
-  console.log(`  • POST /api/chat`);
-  console.log(`  • GET  /api/devices/diagnostics`);
-  console.log(`  • GET  /api/calendar/events`);
-  console.log(`  • POST /api/calendar/events`);
-  console.log(`  • DELETE /api/calendar/events/:id`);
-  console.log(`  • GET  /api/settings`);
-  console.log(`  • POST /api/settings`);
-  console.log(`  • POST /api/settings/reset`);
-  console.log(`\n🔗 Frontend: http://localhost:5173\n`);
+  console.log(`âœ“ Dispositivos Xiaomi conectados: ${Object.keys(xiaomiClients).length}`);
+  console.log(`âœ“ Dispositivos Tuya registrados: ${Object.keys(tuyaDevices).length}`);
+  console.log(`\nðŸ“¡ Endpoints disponibles:`);
+  console.log(`  â€¢ GET  /api/sensors/latest`);
+  console.log(`  â€¢ GET  /api/sensors/history`);
+  console.log(`  â€¢ GET  /api/devices`);
+  console.log(`  â€¢ GET  /api/devices/all`);
+  console.log(`  â€¢ GET  /api/devices/tuya`);
+  console.log(`  â€¢ GET  /api/sensors/soil`);
+  console.log(`  â€¢ GET  /api/camera/info`);
+  console.log(`  â€¢ GET  /api/camera/snapshot`);
+  console.log(`  â€¢ GET  /api/camera/stream`);
+  console.log(`  â€¢ POST /api/camera/night-vision`);
+  console.log(`  â€¢ GET  /api/device/camera/status`);
+  console.log(`  â€¢ POST /api/device/camera/record/start`);
+  console.log(`  â€¢ POST /api/device/camera/record/stop`);
+  console.log(`  â€¢ POST /api/device/camera/capture`);
+  console.log(`  â€¢ GET  /api/device/humidifier/status`);
+  console.log(`  â€¢ POST /api/automation/humidifier-extractor`);
+  console.log(`  â€¢ POST /api/device/:id/control`);
+  console.log(`  â€¢ POST /api/device/:id/toggle`);
+  console.log(`  â€¢ POST /api/chat`);
+  console.log(`  â€¢ GET  /api/devices/diagnostics`);
+  console.log(`  â€¢ GET  /api/calendar/events`);
+  console.log(`  â€¢ POST /api/calendar/events`);
+  console.log(`  â€¢ DELETE /api/calendar/events/:id`);
+  console.log(`  â€¢ GET  /api/settings`);
+  console.log(`  â€¢ POST /api/settings`);
+  console.log(`  â€¢ POST /api/settings/reset`);
+  console.log(`\nðŸ”— Frontend: http://localhost:5173\n`);
 });
