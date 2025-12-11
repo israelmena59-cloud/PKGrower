@@ -2349,6 +2349,7 @@ app.post('/api/settings', async (req, res) => {
     console.log('[SETTINGS] Reiniciando conexiones...');
     // await initXiaomiDevices(); // Ya intentamos auth arriba
     await initTuyaDevices();
+    initMerossDevices(); // No await needed to avoid blocking response too long
 
     res.json({ success: true, settings: appSettings, message: 'Configuración guardada y conexiones reiniciadas' });
   } catch (error) {
