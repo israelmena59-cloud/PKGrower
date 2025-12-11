@@ -65,14 +65,8 @@ export const ConfigModal: React.FC<ConfigModalProps> = ({ open, onClose }) => {
 
   const fetchDevices = async () => {
        try {
-           const data = await apiClient.get('/api/devices/list'); // We need to expose a generic get or add method to client.ts
-           // Since client.ts might not have generic get, we assume we need to add it or use fetch directly.
-           // For safety, I'll use fetch here or add to client.ts later.
-           // Let's assume we can add a method to apiClient or use a direct fetch.
-           // Given I can't easily see client.ts fully right now without context switch, I'll use fetch.
-           const res = await fetch('http://localhost:3000/api/devices/list');
-           const json = await res.json();
-           setAvailableDevices(json);
+           const data = await apiClient.request<any[]>('/api/devices/list');
+           setAvailableDevices(data);
        } catch (e) {
            console.error("Error fetching devices list", e);
        }
@@ -81,10 +75,11 @@ export const ConfigModal: React.FC<ConfigModalProps> = ({ open, onClose }) => {
   const handleScan = async () => {
       setScanning(true);
       try {
-          await fetch('http://localhost:3000/api/devices/scan', { method: 'POST' });
+          await apiClient.request('/api/devices/scan', { method: 'POST' });
           await fetchDevices();
           setSuccessMsg("Escaneo completado. Revisa la lista.");
       } catch (e) {
+          console.error("Scan error:", e);
           setErrorMsg("Error al escanear.");
       } finally {
           setScanning(false);
@@ -93,9 +88,8 @@ export const ConfigModal: React.FC<ConfigModalProps> = ({ open, onClose }) => {
 
   const handleSaveDevice = async (device: any) => {
       try {
-           const res = await fetch('http://localhost:3000/api/devices/configure', {
+           await apiClient.request('/api/devices/configure', {
                method: 'POST',
-               headers: {'Content-Type': 'application/json'},
                body: JSON.stringify({
                    id: device.id,
                    name: device.name,
@@ -104,12 +98,8 @@ export const ConfigModal: React.FC<ConfigModalProps> = ({ open, onClose }) => {
                    platform: device.platform
                })
            });
-           if (res.ok) {
-               setSuccessMsg(`Dispositivo ${device.name} guardado.`);
-               fetchDevices(); // Refresh
-           } else {
-               throw new Error('Failed');
-           }
+           setSuccessMsg(`Dispositivo ${device.name} guardado.`);
+           fetchDevices(); // Refresh
       } catch (e) {
            setErrorMsg("Error guardando dispositivo.");
       }
