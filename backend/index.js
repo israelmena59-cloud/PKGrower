@@ -454,7 +454,9 @@ app.get('/api/devices/list', (req, res) => {
 // --- PERSISTENCIA ---
 // const fs = require('fs'); // Removed duplicate
 
-const SETTINGS_FILE = path.join(__dirname, 'settings.json');
+// const SETTINGS_FILE = path.join(__dirname, 'settings.json'); // REMOVED: Render has no persistent disk
+// Instead, we use a global settings object maintained in memory and persisted to Firestore
+// We will load this on startup AFTER firestore init
 // ... (loadSettings/saveSettings stay same)
 
 // --- HEALTH CHECK (PUBLIC) ---
@@ -533,30 +535,75 @@ app.post('/api/irrigation/shot', async (req, res) => {
     }
 });
 
-function loadSettings() {
+/*
+async function loadSettings() {
     try {
-        if (fs.existsSync(SETTINGS_FILE)) {
-            const data = fs.readFileSync(SETTINGS_FILE, 'utf8');
-            const saved = JSON.parse(data);
-            // Merge profundo basico
-            appSettings = { ...appSettings, ...saved, lighting: { ...appSettings.lighting, ...(saved.lighting || {}) } };
-            console.log('[INFO] ConfiguraciÃ³n cargada de disco.');
+        const remoteSettings = await firestore.getGlobalSettings();
+        if (remoteSettings && Object.keys(remoteSettings).length > 0) {
+            appSettings = { ...appSettings, ...remoteSettings };
+            // Populate process.env overrides
+            if (appSettings.tuya.accessKey) process.env.TUYA_ACCESS_KEY = appSettings.tuya.accessKey;
+            if (appSettings.tuya.secretKey) process.env.TUYA_SECRET_KEY = appSettings.tuya.secretKey;
+            // Meross
+            if (appSettings.meross) {
+                if (appSettings.meross.email) process.env.MEROSS_EMAIL = appSettings.meross.email;
+                if (appSettings.meross.password) process.env.MEROSS_PASSWORD = appSettings.meross.password;
+            }
+            console.log('[SETTINGS] Loaded from Firestore.');
         } else {
-            console.log('[INFO] No hay configuraciÃ³n guardada. Usando defaults.');
+            console.log('[SETTINGS] No remote settings found. Using defaults/env.');
         }
-    } catch (e) {
-        console.error('[ERROR] Fallo al cargar configuraciÃ³n:', e.message);
+    } catch(e) {
+        console.warn('[SETTINGS] Load error:', e.message);
+    }
+}
+*/
+async function loadSettings() {
+    try {
+        const remoteSettings = await firestore.getGlobalSettings();
+        if (remoteSettings && Object.keys(remoteSettings).length > 0) {
+            // Deep merge to preserve defaults
+            if (remoteSettings.app) Object.assign(appSettings.app, remoteSettings.app);
+            if (remoteSettings.tuya) Object.assign(appSettings.tuya, remoteSettings.tuya);
+            if (remoteSettings.xiaomi) Object.assign(appSettings.xiaomi, remoteSettings.xiaomi);
+
+            // Meross Special Handling
+            if (remoteSettings.meross) {
+                 process.env.MEROSS_EMAIL = remoteSettings.meross.email;
+                 process.env.MEROSS_PASSWORD = remoteSettings.meross.password;
+                 console.log('[SETTINGS] Meross credentials restored from database.');
+                 appSettings.meross = remoteSettings.meross; // Ensure it's in appSettings structure if needed
+            }
+
+            // Sync Process Env for Tuya/Xiaomi
+            if (appSettings.tuya.accessKey) process.env.TUYA_ACCESS_KEY = appSettings.tuya.accessKey;
+            if (appSettings.tuya.secretKey) process.env.TUYA_SECRET_KEY = appSettings.tuya.secretKey;
+
+            console.log('[SETTINGS] Loaded from Firestore.');
+        } else {
+            console.log('[SETTINGS] No remote settings found. Using defaults/env.');
+        }
+    } catch(e) {
+        console.warn('[SETTINGS] Load error:', e.message);
     }
 }
 
-function saveSettings() {
+async function saveSettings() {
     try {
-        const tempFile = SETTINGS_FILE + '.tmp';
-        fs.writeFileSync(tempFile, JSON.stringify(appSettings, null, 2));
-        fs.renameSync(tempFile, SETTINGS_FILE);
-        console.log('[INFO] ConfiguraciÃ³n guardada en disco.');
-    } catch (e) {
-        console.error('[ERROR] Fallo al guardar configuraciÃ³n:', e.message);
+         // Create a clean object to save (remove secrets from logs if we were logging)
+         const toSave = {
+             app: appSettings.app,
+             tuya: appSettings.tuya,
+             xiaomi: appSettings.xiaomi,
+             meross: {
+                 email: process.env.MEROSS_EMAIL,
+                 password: process.env.MEROSS_PASSWORD
+             }
+         };
+         await firestore.saveGlobalSettings(toSave);
+         console.log('[SETTINGS] Saved to Firestore.');
+    } catch (err) {
+        console.error('[SETTINGS] Error saving settings:', err.message);
     }
 }
 
@@ -2558,14 +2605,36 @@ app.post('/api/settings', async (req, res) => {
     // MEROSS CONFIG
     const { meross } = req.body;
     if (meross) {
-        if (meross.email) envChanges['MEROSS_EMAIL'] = meross.email;
-        if (meross.password) envChanges['MEROSS_PASSWORD'] = meross.password;
+        if (meross.email) process.env.MEROSS_EMAIL = meross.email;
+        if (meross.password) process.env.MEROSS_PASSWORD = meross.password;
     }
 
-    // Persistir cambios en .env
+    // Persistir cambios en FIRESTORE (Ya no en .env ya que Render es efÃmero)
+    await saveSettings();
+
+    // Trigger Hot Reloads
+    if (envChanges['TUYA_ACCESS_KEY'] || envChanges['TUYA_SECRET_KEY']) {
+         // Re-init Tuya
+    }
+
+    /* REMOVED ENV WRITING FOR RENDER COMPATIBILITY
     const fs = require('fs');
     let envContent = fs.readFileSync('.env', 'utf8');
+    ...
+    */
 
+    // Trigger Meross Reload
+    if (meross && meross.email && meross.password) {
+        setTimeout(() => initMerossDevices(), 1000);
+    }
+
+    // Trigger 2FA flow if needed
+    if (need2FA && authContext) {
+        return res.json({ success: true, require2FA: true, context: authContext });
+    }
+
+    res.json({ success: true, message: "Settings saved to database." }); // Return early
+    /*
     Object.entries(envChanges).forEach(([key, value]) => {
         const regex = new RegExp(`^${key}=.*`, 'm');
         if (regex.test(envContent)) {
@@ -2578,6 +2647,7 @@ app.post('/api/settings', async (req, res) => {
 
     fs.writeFileSync('.env', envContent);
     console.log('[SETTINGS] .env actualizado con:', Object.keys(envChanges));
+    */
 
     // Si requerimos 2FA, respondemos especial
     if (need2FA) {

@@ -148,8 +148,44 @@ module.exports = {
   saveIrrigationLog,
   getLastIrrigationLog,
   saveDeviceConfig,
-  getDeviceConfigs
+  getDeviceConfigs,
+  saveGlobalSettings,
+  getGlobalSettings
 };
+
+/**
+ * Save global settings (credentials, etc.)
+ * @param {Object} settings - The settings object
+ */
+async function saveGlobalSettings(settings) {
+  if (!db) return;
+  try {
+    await db.collection('settings').doc('global').set({
+        ...settings,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+    console.log('[FIRESTORE] Global settings saved.');
+  } catch (error) {
+    console.error('[FIRESTORE] Error saving global settings:', error.message);
+    throw error;
+  }
+}
+
+/**
+ * Get global settings
+ * @returns {Promise<Object>}
+ */
+async function getGlobalSettings() {
+  if (!db) return {};
+  try {
+    const doc = await db.collection('settings').doc('global').get();
+    if (!doc.exists) return {};
+    return doc.data();
+  } catch (error) {
+    console.error('[FIRESTORE] Error getting global settings:', error.message);
+    return {};
+  }
+}
 
 /**
  * Save an irrigation/runoff log to Firestore
