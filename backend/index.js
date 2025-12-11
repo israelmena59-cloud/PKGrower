@@ -87,34 +87,34 @@ const TUYA_DEVICES_MAP = {
 
   // PANELES DE LUCES (2 paneles LED)
   luzPanel1: {
-    name: 'Panel LED 1',
-    id: process.env.TUYA_LUZ_PANEL_1_ID,
+    name: 'Bandeja Der Adelante', // Updated Name
+    id: process.env.TUYA_LUZ_PANEL_1_ID || 'eba939ccdda8167e71fh7u', // Updated to Bandeja Der Adelante
     platform: 'tuya',
     deviceType: 'light',
     category: 'led_panel',
   },
   luzPanel2: {
-    name: 'Panel LED 2 (Der Atrás)',
-    id: process.env.TUYA_LUZ_PANEL_2_ID,
+    name: 'Bandeja Der Atrás', // Updated Name
+    id: process.env.TUYA_LUZ_PANEL_2_ID || 'eb2182339420bb6701wu4q', // Updated to Bandeja Der Atrás
     platform: 'tuya',
     deviceType: 'light',
     category: 'led_panel',
   },
   luzPanel3: {
-    name: 'Panel Led (izq A)',
-    id: process.env.TUYA_LUZ_PANEL_3_ID,
+    name: 'Bandeja Izq Adelante', // Updated Name
+    id: process.env.TUYA_LUZ_PANEL_3_ID || 'ebb361hhi0cei8xb', // Updated to Bandeja Izq Adelante
     platform: 'tuya',
     deviceType: 'light',
     category: 'led_panel',
     switchCode: 'switch_1',
   },
   luzPanel4: {
-    name: 'Panel LED 4 (Izq Atrás)',
-    id: process.env.TUYA_LUZ_PANEL_4_ID,
+    name: 'Bandeja Izq Atrás', // Updated Name
+    id: process.env.TUYA_LUZ_PANEL_4_ID || 'ebf84afaludhei1x', // Updated to Bandeja Izq Atrás
     platform: 'tuya',
     deviceType: 'light',
     category: 'led_panel',
-    switchCode: 'switch',
+    switchCode: 'switch_1',
   },
 
   // GATEWAYS DE CONTROL (2 gateways)
