@@ -109,6 +109,51 @@ const SettingsPage: React.FC = () => {
   const [openDialog, setOpenDialog] = useState(false);
   const [dialogAction, setDialogAction] = useState<'reset' | 'backup'>('reset');
 
+  // Xiaomi Login State
+  const [xiaomiLogin, setXiaomiLogin] = useState({ username: '', password: '' });
+  const [twoFA, setTwoFA] = useState({ open: false, code: '', context: null as any });
+
+  const handleXiaomiLogin = async () => {
+    try {
+        setLoading(true);
+        const res = await apiClient.loginXiaomi(xiaomiLogin);
+        if (res.status === 'ok') {
+            alert('✅ Conexión Exitosa con Xiaomi Cloud!');
+            loadSettings(); // Refresh
+        } else if (res.status === '2fa_required') {
+            setTwoFA({ open: true, code: '', context: res.context });
+        } else {
+            alert('Error: ' + JSON.stringify(res));
+        }
+    } catch (e: any) {
+        alert('Error Login: ' + e.message);
+    } finally {
+        setLoading(false);
+    }
+  };
+
+  const handleVerify2FA = async () => {
+      try {
+          setLoading(true);
+          const res = await apiClient.verifyXiaomi2FA({
+              code: twoFA.code,
+              context: twoFA.context,
+              password: xiaomiLogin.password
+          });
+          if (res.status === 'ok') {
+              alert('✅ Verificación 2FA Exitosa! Tokens guardados.');
+              setTwoFA({ ...twoFA, open: false });
+              loadSettings();
+          } else {
+              alert('Error 2FA: ' + JSON.stringify(res));
+          }
+      } catch (e: any) {
+          alert('Error 2FA Verification: ' + e.message);
+      } finally {
+          setLoading(false);
+      }
+  };
+
   // Cargar configuración
   useEffect(() => {
     loadSettings();
@@ -398,6 +443,36 @@ const SettingsPage: React.FC = () => {
               Para obtener tokens: https://github.com/PiotrMachowski/Xiaomi-Cloud-Tokens-Extractor
             </Alert>
 
+            {/* LOGIN AUTOMATICO */}
+            <Paper variant="outlined" sx={{ p: 2, bgcolor: 'background.default' }}>
+                <Typography variant="h6" gutterBottom>🔐 Conexión Automática (2FA)</Typography>
+                <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
+                    Ingresa tu cuenta de Xiaomi. Si se requiere verificación (SMS/Email), aparecerá una ventana emergente.
+                </Typography>
+                <Box sx={{ display: 'flex', gap: 2, flexDirection: 'column' }}>
+                    <TextField
+                        label="Email / Teléfono Xiaomi (+569...)"
+                        size="small"
+                        fullWidth
+                        value={xiaomiLogin.username}
+                        onChange={(e) => setXiaomiLogin({ ...xiaomiLogin, username: e.target.value })}
+                    />
+                    <TextField
+                        label="Contraseña"
+                        size="small"
+                        type="password"
+                        fullWidth
+                        value={xiaomiLogin.password}
+                        onChange={(e) => setXiaomiLogin({ ...xiaomiLogin, password: e.target.value })}
+                    />
+                    <Button variant="contained" onClick={handleXiaomiLogin}>
+                        Conectar Cuenta Xiaomi
+                    </Button>
+                </Box>
+            </Paper>
+
+            <Divider />
+
             <Box>
               <Typography variant="h6" sx={{ mb: 2 }}>
                 🌱 Humidificador
@@ -636,13 +711,40 @@ const SettingsPage: React.FC = () => {
         <DialogActions>
           <Button onClick={() => setOpenDialog(false)}>Cancelar</Button>
           <Button
-            onClick={handleResetSettings}
+            onClick={null} // was handleResetSettings
+            // dialogAction === 'reset' ? handleResetSettings : undefined // logic handling inside
+            onClick={dialogAction === 'reset' ? handleResetSettings : () => setOpenDialog(false)}
             variant="contained"
             color={dialogAction === 'reset' ? 'error' : 'primary'}
           >
             {dialogAction === 'reset' ? 'Restaurar' : 'Hacer copia'}
           </Button>
         </DialogActions>
+      </Dialog>
+
+      {/* 2FA Dialog */}
+      <Dialog open={twoFA.open} onClose={() => setTwoFA({ ...twoFA, open: false })}>
+          <DialogTitle>🔐 Verificación de Dos Pasos</DialogTitle>
+          <DialogContent>
+              <Typography gutterBottom>
+                  Xiaomi ha enviado un código de verificación (SMS o Email). Ingrésalo aquí:
+              </Typography>
+              <TextField
+                  autoFocus
+                  margin="dense"
+                  label="Código de Verificación"
+                  fullWidth
+                  variant="outlined"
+                  value={twoFA.code}
+                  onChange={(e) => setTwoFA({ ...twoFA, code: e.target.value })}
+              />
+          </DialogContent>
+          <DialogActions>
+              <Button onClick={() => setTwoFA({ ...twoFA, open: false })}>Cancelar</Button>
+              <Button onClick={handleVerify2FA} variant="contained" color="primary">
+                  Verificar
+              </Button>
+          </DialogActions>
       </Dialog>
     </Box>
   );

@@ -244,6 +244,21 @@ class APIClient {
       method: 'POST',
     })
   }
+
+  // Xiaomi Auth
+  async loginXiaomi(credentials: { username: string; password: string }): Promise<any> {
+    return this.request('/api/settings/xiaomi-login', {
+      method: 'POST',
+      body: JSON.stringify(credentials)
+    });
+  }
+
+  async verifyXiaomi2FA(data: { code: string; context: any; password?: string }): Promise<any> {
+    return this.request('/api/settings/verify-2fa', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+  }
 }
 
 // Export singleton instance

@@ -3034,6 +3034,83 @@ setInterval(() => {
     }
 }, 60000);
 
+// --- XIAOMI AUTH ENDPOINTS ---
+
+// 1. Initial Login
+app.post('/api/settings/xiaomi-login', async (req, res) => {
+    try {
+        const { username, password } = req.body;
+        if (!username || !password) return res.status(400).json({ error: 'Missing credentials' });
+
+        if (MODO_SIMULACION) {
+            // Simulate 2FA requirement
+            return res.json({
+                status: '2fa_required',
+                context: {
+                    sign: 'mock_sign',
+                    qs: 'mock_qs',
+                    username: username,
+                    type: 'sms',
+                    notificationUrl: 'http://mock.url'
+                }
+            });
+        }
+
+        console.log(`[AUTH] Attempting login for user: ${username}`);
+        const result = await xiaomiAuth.login(username, password);
+
+        // If successful immediately (no 2FA), result has status: 'ok' and tokens
+        if (result.status === 'ok') {
+            // Save to .env or memory
+            process.env.XIAOMI_USER_ID = result.userId;
+            process.env.XIAOMI_SERVICE_TOKEN = result.serviceToken;
+            process.env.XIAOMI_SSECURITY = result.ssecurity;
+
+            // Re-init devices
+            setTimeout(() => initXiaomiDevices(), 1000);
+        }
+
+        res.json(result);
+
+    } catch (e) {
+        console.error('[AUTH] Login Error:', e);
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// 2. Verify 2FA Code
+app.post('/api/settings/verify-2fa', async (req, res) => {
+    try {
+        const { code, context, password } = req.body;
+        if (!code || !context) return res.status(400).json({ error: 'Missing code or context' });
+
+        if (MODO_SIMULACION) {
+            return res.json({ status: 'ok', userId: 'mock_userid', serviceToken: 'mock_token' });
+        }
+
+        console.log(`[AUTH] Verifying 2FA code: ${code}`);
+        const result = await xiaomiAuth.verify2FA(code, context, password);
+
+        if (result.status === 'ok') {
+            console.log('[AUTH] 2FA Success! Tokens obtained.');
+            process.env.XIAOMI_USER_ID = result.userId;
+            process.env.XIAOMI_SERVICE_TOKEN = result.serviceToken;
+            process.env.XIAOMI_SSECURITY = result.ssecurity;
+
+            // TODO: Persist deep to .env file if needed
+
+            // Re-init devices
+            setTimeout(() => initXiaomiDevices(), 1000);
+        }
+
+        res.json(result);
+
+    } catch (e) {
+        console.error('[AUTH] 2FA Error:', e);
+        res.status(500).json({ error: e.message });
+    }
+});
+
 app.listen(PORT, '0.0.0.0', async () => { // Escuchar en 0.0.0.0 para acceso LAN
   console.log(`\nâ•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—`);
   console.log(`â•‘     ðŸŒ± PKGrower Backend - Servidor iniciado           â•‘`);
