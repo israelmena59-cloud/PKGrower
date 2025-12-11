@@ -3034,6 +3034,8 @@ setInterval(() => {
     }
 }, 60000);
 
+const xiaomiBrowserService = require('./xiaomi-browser-service');
+
 // --- XIAOMI AUTH ENDPOINTS ---
 
 // 1. Initial Login
@@ -3043,30 +3045,17 @@ app.post('/api/settings/xiaomi-login', async (req, res) => {
         if (!username || !password) return res.status(400).json({ error: 'Missing credentials' });
 
         if (MODO_SIMULACION) {
-            // Simulate 2FA requirement
-            return res.json({
-                status: '2fa_required',
-                context: {
-                    sign: 'mock_sign',
-                    qs: 'mock_qs',
-                    username: username,
-                    type: 'sms',
-                    notificationUrl: 'http://mock.url'
-                }
-            });
+             return res.json({ status: '2fa_required', context: { username } });
         }
 
-        console.log(`[AUTH] Attempting login for user: ${username}`);
-        const result = await xiaomiAuth.login(username, password);
+        console.log(`[AUTH] Starting Browser Login for user: ${username}`);
+        const result = await xiaomiBrowserService.startLogin(username, password);
 
-        // If successful immediately (no 2FA), result has status: 'ok' and tokens
+        // If successful immediately
         if (result.status === 'ok') {
-            // Save to .env or memory
             process.env.XIAOMI_USER_ID = result.userId;
             process.env.XIAOMI_SERVICE_TOKEN = result.serviceToken;
             process.env.XIAOMI_SSECURITY = result.ssecurity;
-
-            // Re-init devices
             setTimeout(() => initXiaomiDevices(), 1000);
         }
 
@@ -3078,28 +3067,28 @@ app.post('/api/settings/xiaomi-login', async (req, res) => {
     }
 });
 
+
 // 2. Verify 2FA Code
 app.post('/api/settings/verify-2fa', async (req, res) => {
     try {
-        const { code, context, password } = req.body;
-        if (!code || !context) return res.status(400).json({ error: 'Missing code or context' });
+        const { code, context } = req.body;
+        const username = context?.username || req.body.username; // Safer access
+
+        if (!code || !username) return res.status(400).json({ error: 'Missing code or username' });
 
         if (MODO_SIMULACION) {
-            return res.json({ status: 'ok', userId: 'mock_userid', serviceToken: 'mock_token' });
+            return res.json({ status: 'ok', userId: 'mock', serviceToken: 'mock' });
         }
 
-        console.log(`[AUTH] Verifying 2FA code: ${code}`);
-        const result = await xiaomiAuth.verify2FA(code, context, password);
+        console.log(`[AUTH] Submitting Browser 2FA for: ${username}`);
+        const result = await xiaomiBrowserService.submitTwoFACode(username, code);
 
         if (result.status === 'ok') {
-            console.log('[AUTH] 2FA Success! Tokens obtained.');
+            console.log('[AUTH] 2FA Success! Tokens obtained via Browser.');
             process.env.XIAOMI_USER_ID = result.userId;
             process.env.XIAOMI_SERVICE_TOKEN = result.serviceToken;
             process.env.XIAOMI_SSECURITY = result.ssecurity;
 
-            // TODO: Persist deep to .env file if needed
-
-            // Re-init devices
             setTimeout(() => initXiaomiDevices(), 1000);
         }
 
@@ -3110,6 +3099,7 @@ app.post('/api/settings/verify-2fa', async (req, res) => {
         res.status(500).json({ error: e.message });
     }
 });
+
 
 app.listen(PORT, '0.0.0.0', async () => { // Escuchar en 0.0.0.0 para acceso LAN
   console.log(`\nâ•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—`);
