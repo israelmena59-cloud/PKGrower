@@ -53,35 +53,47 @@ const HistoryChart: React.FC<HistoryChartProps> = ({ type, title, targets, data:
 
   // Process data for charts (Sanitization & Formatting)
   // This ensures BOTH externalData and internalData are cleaned of zeros.
+  // Process data for charts (Sanitization & Formatting)
   const chartData = React.useMemo(() => {
-    if (!rawData) return [];
+    if (!Array.isArray(rawData)) return [];
 
-    return rawData.map((d: any) => {
-        const t = Number(d.temperature);
-        const h = Number(d.humidity);
-        const s = Number(d.substrateHumidity);
-        const sh1 = Number(d.sh1);
-        const sh2 = Number(d.sh2);
-        const sh3 = Number(d.sh3);
+    return rawData
+        .filter(d => d && typeof d === 'object' && d.timestamp) // Filter invalid objects
+        .map((d: any) => {
+            try {
+                const t = Number(d.temperature);
+                const h = Number(d.humidity);
+                const s = Number(d.substrateHumidity);
+                const sh1 = Number(d.sh1);
+                const sh2 = Number(d.sh2);
+                const sh3 = Number(d.sh3);
 
-        return {
-          ...d,
-          timeStr: new Date(d.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          dateStr: new Date(d.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric' }),
-          fullDate: new Date(d.timestamp),
+                const dateObj = new Date(d.timestamp);
+                if (isNaN(dateObj.getTime())) return null; // Skip invalid dates
 
-          // Map 0 to null to prevent drops/spikes
-          temperature: t > 0 ? t : null,
-          humidity: h > 0 ? h : null,
-          substrateHumidity: s > 0 ? s : null,
-          sh1: sh1 > 0 ? sh1 : null,
-          sh2: sh2 > 0 ? sh2 : null,
-          sh3: sh3 > 0 ? sh3 : null,
+                return {
+                  ...d,
+                  timeStr: dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                  dateStr: dateObj.toLocaleDateString([], { month: 'short', day: 'numeric' }),
+                  fullDate: dateObj,
 
-          dp: (t > 0 && h > 0) ? calculateDP(t, h) : null,
-          vpd: (d.vpd && Number(d.vpd) > 0) ? Number(d.vpd) : ((t > 0 && h > 0) ? calculateVPD(t, h) : null)
-        };
-    });
+                  // Map 0 to null to prevent drops/spikes (converts falsy 0 to null)
+                  temperature: t > 0 ? t : null,
+                  humidity: h > 0 ? h : null,
+                  substrateHumidity: s > 0 ? s : null,
+                  sh1: sh1 > 0 ? sh1 : null,
+                  sh2: sh2 > 0 ? sh2 : null,
+                  sh3: sh3 > 0 ? sh3 : null,
+
+                  dp: (t > 0 && h > 0) ? calculateDP(t, h) : null,
+                  vpd: (d.vpd && Number(d.vpd) > 0) ? Number(d.vpd) : ((t > 0 && h > 0) ? calculateVPD(t, h) : null)
+                };
+            } catch (err) {
+                console.warn("Skipping malformed data point", d);
+                return null;
+            }
+        })
+        .filter(Boolean); // Remove nulls from map errors
   }, [rawData]);
 
   useEffect(() => {
