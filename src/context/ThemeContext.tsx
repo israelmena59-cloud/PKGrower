@@ -58,6 +58,23 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           }
         }
       },
+      MuiInputBase: {
+          styleOverrides: {
+              root: {
+                  backgroundColor: mode === 'dark' ? 'rgba(255,255,255,0.05)' : '#f3f4f6',
+                  color: mode === 'dark' ? '#fff' : '#000',
+              }
+          }
+      },
+      MuiOutlinedInput: {
+          styleOverrides: {
+              root: {
+                  '& fieldset': {
+                      borderColor: mode === 'dark' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)',
+                  },
+              }
+          }
+      },
       MuiButton: {
           styleOverrides: {
               root: {

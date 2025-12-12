@@ -358,10 +358,13 @@ app.post('/api/devices/scan', async (req, res) => {
 });
 
 // 2. CONFIGURE: Guardar metadatos (Nombre, Tipo)
+// [NEW] Configure Device (Save Name/Type)
 app.post('/api/devices/configure', async (req, res) => {
     try {
         const { id, name, type, category, platform } = req.body;
-        if (!id) return res.status(400).json({ error: "Missing ID" });
+        if (!id) return res.status(400).json({ error: 'Missing ID' });
+
+        console.log(`[CONFIG] Saving device: ${id} (${name})`);
 
         const config = {
             id,
@@ -372,14 +375,20 @@ app.post('/api/devices/configure', async (req, res) => {
             configured: true
         };
 
-        // Save to DB
-        await firestore.saveDeviceConfig(config);
+        // 1. Save to Firestore
+        await firestore.saveDeviceConfig(id, config);
 
-        // Update local cache
+        // 2. Update Memory Cache
         customDeviceConfigs[id] = config;
+
+        // 3. Update Dynamic Objects if present
+        if (platform === 'tuya' && tuyaDevices[id]) {
+            tuyaDevices[id].name = config.name;
+        }
 
         res.json({ success: true, config });
     } catch (e) {
+        console.error('[CONFIG] Error:', e);
         res.status(500).json({ error: e.message });
     }
 });
