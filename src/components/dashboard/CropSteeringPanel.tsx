@@ -4,43 +4,57 @@ import { Sprout, Timer, Droplets, ArrowDownRight, TrendingUp, Activity } from 'l
 
 interface CropSteeringPanelProps {
   phase: 'vegetative' | 'generative';
-  currentVWC: number; // Volumetric Water Content (Humedad Sustrato %)
+  currentVWC: number;
+  history?: any[]; // Added history prop
 }
 
-export const CropSteeringPanel: React.FC<CropSteeringPanelProps> = ({ phase, currentVWC }) => {
+export const CropSteeringPanel: React.FC<CropSteeringPanelProps> = ({ phase, currentVWC, history = [] }) => {
 
   // --- CONSTANTES Y CONFIGURACIÓN ---
   // Idealmente esto vendría de una configuración global (Lights On/Off)
-  // Asumimos ciclo estándar por ahora:
-  // - Vegetativo: 18/6 (On: 06:00, Off: 00:00)
-  // - Generativo: 12/12 (On: 08:00, Off: 20:00)
-
   const lightsOn = phase === 'vegetative' ? 6 : 8;
-  const lightsOff = phase === 'vegetative' ? 24 : 20; // 24 = 00:00
+  const lightsOff = phase === 'vegetative' ? 24 : 20;
+
+  // --- ANALYSIS (Real Data) ---
+  const analysis = React.useMemo(() => {
+      if (!history || history.length === 0) return { dryback: 0, max: 0, min: 0 };
+
+      // Filter for "Today" (since lights on) or last 24h
+      // For simplicity, let's look at the full passed history (assumed Day range)
+      const vwcs = history.map(h => h.substrateHumidity || 0).filter(v => v > 0);
+
+      if (vwcs.length === 0) return { dryback: 0, max: 0, min: 0 };
+
+      const max = Math.max(...vwcs);
+      const min = Math.min(...vwcs); // This might be "start of day" min or "currrent" min
+      // Dryback is usually Max - Current (if day not over) or Max - Min (if looking at yesterday)
+      // Let's use Max - CurrentVWC for "Current Dryback"
+      const dryback = max - currentVWC;
+
+      return { dryback: Math.max(0, dryback), max, min };
+  }, [history, currentVWC]);
 
   // --- LÓGICA DE CÁLCULO (CROP STEERING) ---
 
   // P1: Riego de Generación (Ramp Up)
-  // Objetivo: Alcanzar Capacidad de Campo (FC) rápidamente.
-  // Veg: Menos agresivo (3-5% shots). Gen: Más agresivo (4-6% shots).
-  const p1StartTime = lightsOn + 1; // 1 hora después de encender luces
-  const p1TargetVWC = phase === 'vegetative' ? 55 : 50; // Ejemplo: Veg requiere más agua disponible
+  const p1StartTime = lightsOn + 1;
+  const p1TargetVWC = phase === 'vegetative' ? 55 : 50;
   const p1ShotSize = phase === 'vegetative' ? '3%' : '5%';
   const p1Duration = phase === 'vegetative' ? '2 horas' : '1.5 horas';
 
   // P2: Mantenimiento
-  // Objetivo: Mantener la humedad sin saturar ni secar.
-  // Veg: Plano (muchos micros). Gen: Caída controlada o nulo (estrés).
   const p2Strategy = phase === 'vegetative'
     ? 'Mantenimiento Plano: Micro-riegos (1-2%) cada 30-45 min para mantener VWC constante.'
     : 'Mantenimiento Mínimo: Solo si VWC cae bajo 40%. Dejar caer ligeramente (LD).';
 
   // P3: Dryback (Secado)
-  // Objetivo: Secar sustrato para oxigenar raíces (Veg) o generar estrés generativo (Gen).
-  // Veg: Dryback moderado (15-20%). Gen: Dryback fuerte (25-30%).
-  const p3StopTime = lightsOff - (phase === 'vegetative' ? 2 : 3); // Veg: parar 2h antes. Gen: parar 3h antes.
-  const targetDryback = phase === 'vegetative' ? '15-20%' : '25-30%';
-  const targetMorningVWC = p1TargetVWC - (phase === 'vegetative' ? 18 : 28); // Estimado
+  const p3StopTime = lightsOff - (phase === 'vegetative' ? 2 : 3);
+  const targetDryback = phase === 'vegetative' ? 15 : 25; // number
+  const targetDrybackStr = phase === 'vegetative' ? '15-20%' : '25-30%';
+  const targetMorningVWC = p1TargetVWC - (phase === 'vegetative' ? 18 : 28);
+
+  // Achievement Colors
+  const drybackScore = analysis.dryback >= targetDryback ? 'success.main' : 'warning.main';
 
   return (
     <Card sx={{ boxShadow: 3, borderRadius: 2 }}>
@@ -61,16 +75,18 @@ export const CropSteeringPanel: React.FC<CropSteeringPanelProps> = ({ phase, cur
             <Box sx={{ textAlign: 'center' }}>
                 <Typography variant="caption" color="text.secondary">VWC Actual</Typography>
                 <Typography variant="h4" fontWeight="bold" color="primary.main">{currentVWC.toFixed(1)}%</Typography>
+                <Typography variant="caption" color="text.disabled">Max: {analysis.max.toFixed(1)}%</Typography>
+            </Box>
+            <Divider orientation="vertical" flexItem />
+            <Box sx={{ textAlign: 'center' }}>
+                <Typography variant="caption" color="text.secondary">Dryback Actual</Typography>
+                <Typography variant="h4" fontWeight="bold" sx={{ color: drybackScore }}>{analysis.dryback.toFixed(1)}%</Typography>
+                <Typography variant="caption" color="text.disabled">Meta: {targetDrybackStr}</Typography>
             </Box>
             <Divider orientation="vertical" flexItem />
             <Box sx={{ textAlign: 'center' }}>
                 <Typography variant="caption" color="text.secondary">Meta P1 (FC)</Typography>
                 <Typography variant="h4" fontWeight="bold" color="success.main">{p1TargetVWC}%</Typography>
-            </Box>
-            <Divider orientation="vertical" flexItem />
-            <Box sx={{ textAlign: 'center' }}>
-                <Typography variant="caption" color="text.secondary">Meta Dryback</Typography>
-                <Typography variant="h4" fontWeight="bold" color="secondary.main">{targetDryback}</Typography>
             </Box>
         </Box>
 
@@ -132,7 +148,7 @@ export const CropSteeringPanel: React.FC<CropSteeringPanelProps> = ({ phase, cur
                             <strong>Meta Mañana:</strong> ~{targetMorningVWC.toFixed(0)}% VWC
                         </Typography>
                         <Typography variant="body2" paragraph>
-                             <strong>Total Dryback:</strong> {targetDryback}
+                             <strong>Meta Dryback:</strong> {targetDrybackStr}
                         </Typography>
                         <Alert severity="secondary" sx={{ py: 0, '& .MuiAlert-message': { fontSize: '0.75rem' } }}>
                             {phase === 'vegetative' ? 'Oxigenación radicular.' : 'Señal Generativa (Fruta).'}

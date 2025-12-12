@@ -1,5 +1,13 @@
 const admin = require('firebase-admin');
 const path = require('path');
+const fs = require('fs');
+
+// Local Backup Config
+const BACKUP_DIR = path.join(__dirname, '../data');
+if (!fs.existsSync(BACKUP_DIR)) {
+    try { fs.mkdirSync(BACKUP_DIR, { recursive: true }); } catch (e) {}
+}
+const BACKUP_FILE = path.join(BACKUP_DIR, 'sensor_backup.jsonl');
 
 // Initialize Firebase Admin
 let db = null;
@@ -19,30 +27,47 @@ try {
   console.log('[FIRESTORE] Conexión exitosa a la base de datos.');
 } catch (error) {
   console.error('[FIRESTORE] Error inicializando Firebase Admin:', error.message);
-  console.error('[FIRESTORE] Asegúrate de que "service-account.json" existe en la carpeta backend.');
+  console.error('[FIRESTORE] Modo Offline: Se usarán copias locales.');
 }
 
 const COLLECTION_NAME = 'sensor_history';
 
 /**
- * Save a sensor data record to Firestore
+ * Save a sensor data record to Firestore (with Local Fallback)
  * @param {Object} data - The sensor data object
  */
 async function saveSensorRecord(data) {
-  if (!db) return;
-
-  try {
-    // Add timestamp if missing
-    const record = {
+  const record = {
       ...data,
       timestamp: data.timestamp || new Date().toISOString(),
-      createdAt: admin.firestore.FieldValue.serverTimestamp()
-    };
+      // Use simple ISO string for local compatibility, logic handles Firestore Timestamp if needed
+      createdAt: new Date().toISOString()
+  };
 
-    await db.collection(COLLECTION_NAME).add(record);
-    console.log('[FIRESTORE] ✓ Registro guardado (para gráficas).'); // Verbose confirmed
-  } catch (error) {
-    console.error('[FIRESTORE] Error guardando registro:', error.message);
+  // Try Firestore
+  if (db) {
+      try {
+        await db.collection(COLLECTION_NAME).add({
+            ...record,
+            createdAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+        console.log('[FIRESTORE] ✓ Registro guardado.');
+        return;
+      } catch (error) {
+        console.error('[FIRESTORE] Error guardando registro (Cloud):', error.message);
+        // Fallthrough to local backup
+      }
+  }
+
+  // Local Fallback
+  try {
+      const line = JSON.stringify(record) + '\n';
+      fs.appendFile(BACKUP_FILE, line, (err) => {
+          if (err) console.error('[BACKUP] Fallo escritura local:', err.message);
+          else console.log('[BACKUP] ✓ Registro guardado localmente (JSONL).');
+      });
+  } catch (err) {
+      console.error('[BACKUP] Error crítico sistema de archivos:', err.message);
   }
 }
 

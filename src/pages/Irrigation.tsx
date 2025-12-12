@@ -197,7 +197,7 @@ const Irrigation: React.FC = () => {
               <Box sx={{ mb: 3 }}>
                 <HistoryChart type="substrate" title="Historial Sustrato" data={sensorHistory} />
               </Box>
-              <CropSteeringPanel phase={phase} currentVWC={latestVWC} />
+              <CropSteeringPanel phase={phase} currentVWC={latestVWC} history={sensorHistory} />
 
               {/* IRRIGATION LOG */}
               <Box className="glass-panel" sx={{

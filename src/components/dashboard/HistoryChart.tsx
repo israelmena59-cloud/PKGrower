@@ -4,6 +4,16 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { useTheme } from '../../context/ThemeContext';
 import { apiClient } from '../../api/client';
 
+// Helper to add hours to "HH:mm" string
+const addHours = (timeStr: string, hours: number) => {
+    if (!timeStr) return '';
+    const [h, m] = timeStr.split(':').map(Number);
+    let newH = h + hours;
+    if (newH >= 24) newH -= 24;
+    if (newH < 0) newH += 24;
+    return `${newH.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+};
+
 interface HistoryChartProps {
   type: 'environment' | 'substrate';
   title: string;
@@ -12,6 +22,7 @@ interface HistoryChartProps {
       dryback?: number;
   };
   data?: any[]; // Optional external data
+  phase?: 'vegetative' | 'generative';
 }
 
 const calculateDP = (T: number, RH: number) => {
@@ -28,7 +39,7 @@ const calculateVPD = (T: number, RH: number) => {
     return svp * (1 - (RH / 100));
 };
 
-const HistoryChart: React.FC<HistoryChartProps> = ({ type, title, targets, data: externalData }) => {
+const HistoryChart: React.FC<HistoryChartProps> = ({ type, title, targets, data: externalData, phase = 'vegetative' }) => {
   const { mode } = useTheme();
   const [range, setRange] = useState<'day' | 'week' | 'month'>('day');
   const [internalData, setInternalData] = useState<any[]>([]);
@@ -319,6 +330,20 @@ const HistoryChart: React.FC<HistoryChartProps> = ({ type, title, targets, data:
                                 )}
                                 {targets?.vwc && targets?.dryback && (
                                     <ReferenceLine yAxisId="left" y={targets.vwc - targets.dryback} label={{ position: 'right', value: `Dryback: -${targets.dryback}%`, fill: '#ef4444', fontSize: 10 }} stroke="#ef4444" strokeDasharray="3 3" />
+                                )}
+
+                                {/* P1 / P2 / P3 Annotations (Only for Substrate & Daily view & Schedule present) */}
+                                {type === 'substrate' && range === 'day' && lightingSchedule && (
+                                    <>
+                                        {/* P1 Start: Lights On + 1h */}
+                                        <ReferenceLine yAxisId="left" x={addHours(lightingSchedule.on, 1)} stroke="#22c55e" strokeDasharray="3 3" label={{ value: 'P1 Start', position: 'insideTopLeft', fill: '#22c55e', fontSize: 10 }} />
+
+                                        {/* P2 Start: Lights On + 3h */}
+                                        <ReferenceLine yAxisId="left" x={addHours(lightingSchedule.on, 3)} stroke="#3b82f6" strokeDasharray="3 3" label={{ value: 'P2 Maint', position: 'insideTopLeft', fill: '#3b82f6', fontSize: 10 }} />
+
+                                        {/* P3 Start: Lights Off - 2h */}
+                                        <ReferenceLine yAxisId="left" x={addHours(lightingSchedule.off, -2)} stroke="#a855f7" strokeDasharray="3 3" label={{ value: 'P3 Stop', position: 'insideTopLeft', fill: '#a855f7', fontSize: 10 }} />
+                                    </>
                                 )}
                             </>
                         )}
