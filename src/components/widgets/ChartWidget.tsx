@@ -95,60 +95,69 @@ export const ChartWidget: React.FC<ChartWidgetProps & { lightSchedule?: { on: st
     };
 
     const renderNightZones = () => {
-        if (!data || data.length === 0) return null;
+        if (!data || !Array.isArray(data) || data.length === 0) return null;
         if (!lightSchedule || !lightSchedule.on || !lightSchedule.off) return null;
+        if (typeof lightSchedule.on !== 'string' || typeof lightSchedule.off !== 'string') return null;
 
-        const [onH, onM] = lightSchedule.on.split(':').map(Number);
-        const [offH, offM] = lightSchedule.off.split(':').map(Number);
-        const onMinutes = onH * 60 + onM;
-        const offMinutes = offH * 60 + offM;
+        try {
+            const [onH, onM] = lightSchedule.on.split(':').map(Number);
+            const [offH, offM] = lightSchedule.off.split(':').map(Number);
+            if (isNaN(onH) || isNaN(onM) || isNaN(offH) || isNaN(offM)) return null;
 
-        const isNight = (dateStr: string) => {
-            const d = new Date(dateStr);
-            const minutes = d.getHours() * 60 + d.getMinutes();
-            if (onMinutes < offMinutes) {
-                // Day is e.g. 06:00 to 18:00
-                // Night is < 06:00 OR > 18:00
-                return minutes < onMinutes || minutes >= offMinutes;
-            } else {
-                // Day is e.g. 18:00 to 06:00 (Night is 06:00 to 18:00)
-                return minutes >= offMinutes && minutes < onMinutes;
-            }
-        };
+            const onMinutes = onH * 60 + onM;
+            const offMinutes = offH * 60 + offM;
 
-        const nightBlocks: { start: string, end: string }[] = [];
-        let currentBlock: { start: string, end: string } | null = null;
-
-        for (let i = 0; i < data.length; i++) {
-            const point = data[i];
-            const night = isNight(point.timestamp);
-
-            if (night) {
-                if (!currentBlock) {
-                    currentBlock = { start: point.timestamp, end: point.timestamp };
+            const isNight = (dateStr: string | undefined) => {
+                if (!dateStr) return false;
+                const d = new Date(dateStr);
+                if (isNaN(d.getTime())) return false;
+                const minutes = d.getHours() * 60 + d.getMinutes();
+                if (onMinutes < offMinutes) {
+                    return minutes < onMinutes || minutes >= offMinutes;
                 } else {
-                    currentBlock.end = point.timestamp;
+                    return minutes >= offMinutes && minutes < onMinutes;
                 }
-            } else {
-                if (currentBlock) {
-                    nightBlocks.push(currentBlock);
-                    currentBlock = null;
+            };
+
+            const nightBlocks: { start: string, end: string }[] = [];
+            let currentBlock: { start: string, end: string } | null = null;
+
+            for (let i = 0; i < data.length; i++) {
+                const point = data[i];
+                if (!point || !point.timestamp) continue;
+
+                const night = isNight(point.timestamp);
+
+                if (night) {
+                    if (!currentBlock) {
+                        currentBlock = { start: point.timestamp, end: point.timestamp };
+                    } else {
+                        currentBlock.end = point.timestamp;
+                    }
+                } else {
+                    if (currentBlock) {
+                        nightBlocks.push(currentBlock);
+                        currentBlock = null;
+                    }
                 }
             }
-        }
-        if (currentBlock) nightBlocks.push(currentBlock);
+            if (currentBlock) nightBlocks.push(currentBlock);
 
-        return nightBlocks.map((block, i) => (
-             <ReferenceArea
-                key={`night-${i}`}
-                x1={block.start}
-                x2={block.end}
-                fill="#000"
-                fillOpacity={0.2}
-                ifOverflow="extendDomain"
-                style={{ pointerEvents: 'none' }} // Ensure tooltip works through it
-            />
-        ));
+            return nightBlocks.map((block, i) => (
+                 <ReferenceArea
+                    key={`night-${i}`}
+                    x1={block.start}
+                    x2={block.end}
+                    fill="#000"
+                    fillOpacity={0.2}
+                    ifOverflow="extendDomain"
+                    style={{ pointerEvents: 'none' }}
+                />
+            ));
+        } catch (e) {
+            console.warn("Error rendering night zones:", e);
+            return null;
+        }
     };
 
     const renderChart = () => {
