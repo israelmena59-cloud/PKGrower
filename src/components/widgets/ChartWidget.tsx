@@ -19,79 +19,59 @@ const STAGE_ZONES: Record<GrowthStage, Record<string, [number, number]>> = {
     'veg': {
         'vpd': [0.4, 0.8], // Low VPD for Veg
         'humidity': [65, 80],
-        'temperature': [24, 28]
+        'temperature': [24, 28],
+        'substrateHumidity': [45, 65] // Wet
     },
     'flower_early': {
         'vpd': [0.8, 1.2],
         'humidity': [55, 70],
-        'temperature': [22, 26]
+        'temperature': [22, 26],
+        'substrateHumidity': [35, 55] // Generative
     },
     'flower_mid': {
         'vpd': [1.2, 1.6],
         'humidity': [45, 60],
-        'temperature': [20, 25]
+        'temperature': [20, 25],
+        'substrateHumidity': [30, 50]
     },
     'flower_late': {
         'vpd': [1.4, 1.8], // High drift for maturation
         'humidity': [35, 50],
-        'temperature': [18, 24]
+        'temperature': [18, 24],
+        'substrateHumidity': [20, 40] // Ripening
     },
     'none': {}
 };
 
-const STAGE_LABELS: Record<GrowthStage, string> = {
-    'veg': 'Vegetativo (Engorde)',
-    'flower_early': 'Floración S1-4 (Generativo)',
-    'flower_mid': 'Floración S4-7',
-    'flower_late': 'Maduración S8-9',
-    'none': 'Sin Referencia'
-};
+// ... labels ...
 
-export const ChartWidget: React.FC<ChartWidgetProps> = ({
+export const ChartWidget: React.FC<ChartWidgetProps & { lightSchedule?: { on: string, off: string } }> = ({
     data,
     dataKey,
     color = '#8884d8',
     unit = '',
-    onRangeChange
+    onRangeChange,
+    lightSchedule = { on: '06:00', off: '00:00' } // Default 18/6
 }) => {
+    // ... state ...
     const [chartType, setChartType] = useState<ChartType>('area');
     const [timeRange, setTimeRange] = useState<TimeRange>('24h');
     const [growthStage, setGrowthStage] = useState<GrowthStage>('none');
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
-    const handleOpenSettings = (event: React.MouseEvent<HTMLElement>) => {
-        setAnchorEl(event.currentTarget);
-    };
+    // ... handlers ...
+    const handleOpenSettings = (event: React.MouseEvent<HTMLElement>) => setAnchorEl(event.currentTarget);
+    const handleCloseSettings = () => setAnchorEl(null);
+    // ... other handlers unchanged ...
+    const handleChartTypeChange = (type: ChartType) => { setChartType(type); handleCloseSettings(); };
+    const handleRangeChange = (range: TimeRange) => { setTimeRange(range); if (onRangeChange) onRangeChange(range); handleCloseSettings(); };
+    const handleStageChange = (stage: GrowthStage) => { setGrowthStage(stage); handleCloseSettings(); };
 
-    const handleCloseSettings = () => {
-        setAnchorEl(null);
-    };
-
-    const handleChartTypeChange = (type: ChartType) => {
-        setChartType(type);
-        handleCloseSettings();
-    };
-
-    const handleRangeChange = (range: TimeRange) => {
-        setTimeRange(range);
-        if (onRangeChange) onRangeChange(range);
-        handleCloseSettings();
-    };
-
-    const handleStageChange = (stage: GrowthStage) => {
-        setGrowthStage(stage);
-        handleCloseSettings();
-    };
 
     const renderReferenceZones = () => {
         if (growthStage === 'none') return null;
         const zones = STAGE_ZONES[growthStage];
-        // Map dataKey (e.g., 'temperature') to zone key if possible
-        // Our dataKeys: 'temperature', 'humidity', 'vpd', 'substrateHumidity'
-        // Zones keys: 'temperature', 'humidity', 'vpd'
-
-        // Simple mapping check
-        let zoneKey = dataKey;
+        let zoneKey = dataKey; // simple map
         if (!zones[zoneKey]) return null;
 
         const [min, max] = zones[zoneKey];
@@ -101,17 +81,74 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({
                 y1={min}
                 y2={max}
                 fill="#22c55e"
-                fillOpacity={0.15}
-                stroke="#22c55e"
-                strokeOpacity={0.3}
+                fillOpacity={0.1}
+                stroke="none"
                 label={{
                     value: "Zona Ideal",
                     position: 'insideTopRight',
                     fill: '#22c55e',
-                    fontSize: 10
+                    fontSize: 10,
+                    opacity: 0.8
                 }}
             />
         );
+    };
+
+    const renderNightZones = () => {
+        if (!data || data.length === 0) return null;
+        if (!lightSchedule || !lightSchedule.on || !lightSchedule.off) return null;
+
+        const [onH, onM] = lightSchedule.on.split(':').map(Number);
+        const [offH, offM] = lightSchedule.off.split(':').map(Number);
+        const onMinutes = onH * 60 + onM;
+        const offMinutes = offH * 60 + offM;
+
+        const isNight = (dateStr: string) => {
+            const d = new Date(dateStr);
+            const minutes = d.getHours() * 60 + d.getMinutes();
+            if (onMinutes < offMinutes) {
+                // Day is e.g. 06:00 to 18:00
+                // Night is < 06:00 OR > 18:00
+                return minutes < onMinutes || minutes >= offMinutes;
+            } else {
+                // Day is e.g. 18:00 to 06:00 (Night is 06:00 to 18:00)
+                return minutes >= offMinutes && minutes < onMinutes;
+            }
+        };
+
+        const nightBlocks: { start: string, end: string }[] = [];
+        let currentBlock: { start: string, end: string } | null = null;
+
+        for (let i = 0; i < data.length; i++) {
+            const point = data[i];
+            const night = isNight(point.timestamp);
+
+            if (night) {
+                if (!currentBlock) {
+                    currentBlock = { start: point.timestamp, end: point.timestamp };
+                } else {
+                    currentBlock.end = point.timestamp;
+                }
+            } else {
+                if (currentBlock) {
+                    nightBlocks.push(currentBlock);
+                    currentBlock = null;
+                }
+            }
+        }
+        if (currentBlock) nightBlocks.push(currentBlock);
+
+        return nightBlocks.map((block, i) => (
+             <ReferenceArea
+                key={`night-${i}`}
+                x1={block.start}
+                x2={block.end}
+                fill="#000"
+                fillOpacity={0.2}
+                ifOverflow="extendDomain"
+                style={{ pointerEvents: 'none' }} // Ensure tooltip works through it
+            />
+        ));
     };
 
     const renderChart = () => {
@@ -121,23 +158,24 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({
         };
 
         const grid = <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.1} />;
-        const xaxis = <XAxis dataKey="timestamp" hide />;
-        // Auto domain but maybe padded for zones? No, 'auto' is fine.
+        const xaxis = <XAxis dataKey="timestamp" hide />; // using timestamp as key
         const yaxis = <YAxis domain={['auto', 'auto']} hide />;
         const tooltip = (
             <Tooltip
-                contentStyle={{ borderRadius: 8, border: 'none', background: 'rgba(0,0,0,0.8)', color: '#fff' }}
+                contentStyle={{ borderRadius: 16, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.8)', color: '#fff' }}
                 formatter={(value: any) => [`${value}${unit}`, dataKey]}
                 labelFormatter={() => ''}
             />
         );
         const refZones = renderReferenceZones();
+        const nightZones = renderNightZones();
 
         switch (chartType) {
             case 'line':
                 return (
                     <LineChart {...commonProps}>
                         {grid}
+                        {nightZones}
                         {refZones}
                         {xaxis}
                         {yaxis}
@@ -146,31 +184,35 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({
                     </LineChart>
                 );
             case 'bar':
+                // ... same ...
                 return (
                     <BarChart {...commonProps}>
-                        {grid}
-                        {refZones}
-                        {xaxis}
-                        {yaxis}
-                        {tooltip}
-                        <Bar dataKey={dataKey} fill={color} radius={[4, 4, 0, 0]} />
+                         {grid} {refZones} {xaxis} {yaxis} {tooltip}
+                         <Bar dataKey={dataKey} fill={color} radius={[4, 4, 0, 0]} />
                     </BarChart>
                 );
             case 'area':
             default:
                 return (
                     <AreaChart {...commonProps}>
+                        <defs>
+                            <linearGradient id={`color${dataKey}`} x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor={color} stopOpacity={0.3}/>
+                                <stop offset="95%" stopColor={color} stopOpacity={0}/>
+                            </linearGradient>
+                        </defs>
                         {grid}
                         {refZones}
                         {xaxis}
                         {yaxis}
                         {tooltip}
-                        <Area type="monotone" dataKey={dataKey} stroke={color} fill={color} fillOpacity={0.2} strokeWidth={2} />
+                        <Area type="monotone" dataKey={dataKey} stroke={color} fill={`url(#color${dataKey})`} strokeWidth={2} />
                     </AreaChart>
                 );
         }
     };
 
+    // ... rest of render ... (menu, etc)
     if (!data || data.length === 0) {
         return (
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'text.disabled', flexDirection: 'column', gap: 1 }}>
@@ -182,11 +224,12 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({
 
     return (
         <Box sx={{ width: '100%', height: '100%', position: 'relative' }}>
-            <Box sx={{ position: 'absolute', top: 0, right: 0, zIndex: 10, display: 'flex', gap: 1 }}>
+             {/* Header with Stage Label */}
+            <Box sx={{ position: 'absolute', top: 0, right: 0, zIndex: 10, display: 'flex', gap: 1, alignItems: 'center' }}>
                 {growthStage !== 'none' && (
-                     <Box sx={{ bgcolor: 'rgba(34, 197, 94, 0.1)', px: 1, borderRadius: 1, display: 'flex', alignItems: 'center' }}>
+                     <Box sx={{ bgcolor: 'rgba(34, 197, 94, 0.1)', px: 1, py: 0.5, borderRadius: 1, display: 'flex', alignItems: 'center', backdropFilter: 'blur(4px)' }}>
                         <Typography variant="caption" sx={{ color: '#22c55e', fontWeight: 700, fontSize: '0.65rem' }}>
-                            {STAGE_LABELS[growthStage].split(' ')[0]}
+                            {STAGE_LABELS[growthStage]}
                         </Typography>
                      </Box>
                 )}
@@ -201,57 +244,37 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({
                 </ResponsiveContainer>
             </div>
 
+            {/* Menu stays same */}
             <Menu
                 anchorEl={anchorEl}
                 open={Boolean(anchorEl)}
                 onClose={handleCloseSettings}
-                PaperProps={{ sx: { minWidth: 200, maxHeight: 300 } }}
+                PaperProps={{
+                    sx: {
+                        minWidth: 200,
+                        maxHeight: 300,
+                        bgcolor: 'background.paper', // Uses new Theme logic
+                        backgroundImage: 'none',
+                        borderRadius: 2
+                    }
+                }}
             >
-                <MenuItem disabled><Typography variant="caption" color="text.secondary">TIPO DE GRÁFICO</Typography></MenuItem>
+                {/* ... existing menu items ... but mapped with new code logic if replaced */}
+                <MenuItem disabled><Typography variant="caption" color="text.secondary">TIPO</Typography></MenuItem>
                 <MenuItem selected={chartType === 'area'} onClick={() => handleChartTypeChange('area')} dense>
-                    <ListItemIcon><Activity size={16} /></ListItemIcon>
-                    <ListItemText primary="Área" />
+                    <ListItemIcon><Activity size={16} /></ListItemIcon> <ListItemText primary="Área" />
                 </MenuItem>
                 <MenuItem selected={chartType === 'line'} onClick={() => handleChartTypeChange('line')} dense>
-                     <ListItemIcon><TrendingUp size={16} /></ListItemIcon>
-                    <ListItemText primary="Línea" />
+                    <ListItemIcon><TrendingUp size={16} /></ListItemIcon> <ListItemText primary="Línea" />
                 </MenuItem>
-
                 <Divider />
-
-                <MenuItem disabled><Typography variant="caption" color="text.secondary">ETAPA DE CULTIVO</Typography></MenuItem>
-                <MenuItem selected={growthStage === 'none'} onClick={() => handleStageChange('none')} dense>
-                     <ListItemIcon><Leaf size={16} /></ListItemIcon>
-                    <ListItemText primary="Ninguna" />
-                </MenuItem>
-                <MenuItem selected={growthStage === 'veg'} onClick={() => handleStageChange('veg')} dense>
-                     <ListItemIcon><Sprout size={16} /></ListItemIcon>
-                    <ListItemText primary="Vegetativo" secondary="Engorde" secondaryTypographyProps={{ fontSize: 10 }} />
-                </MenuItem>
-                <MenuItem selected={growthStage === 'flower_early'} onClick={() => handleStageChange('flower_early')} dense>
-                     <ListItemIcon><Flower size={16} /></ListItemIcon>
-                    <ListItemText primary="Floración S1-4" secondary="Generativo" secondaryTypographyProps={{ fontSize: 10 }} />
-                </MenuItem>
-                <MenuItem selected={growthStage === 'flower_mid'} onClick={() => handleStageChange('flower_mid')} dense>
-                     <ListItemIcon><Flower size={16} /></ListItemIcon>
-                    <ListItemText primary="Floración S4-7" />
-                </MenuItem>
-                <MenuItem selected={growthStage === 'flower_late'} onClick={() => handleStageChange('flower_late')} dense>
-                     <ListItemIcon><Flower size={16} /></ListItemIcon>
-                    <ListItemText primary="Maduración S8-9" />
-                </MenuItem>
-
-                <Divider />
-
-                <MenuItem disabled><Typography variant="caption" color="text.secondary">RANGO</Typography></MenuItem>
-                <MenuItem selected={timeRange === '24h'} onClick={() => handleRangeChange('24h')} dense>
-                     <ListItemIcon><Clock size={16} /></ListItemIcon>
-                    <ListItemText primary="24 Horas" />
-                </MenuItem>
-                <MenuItem selected={timeRange === '7d'} onClick={() => handleRangeChange('7d')} dense>
-                     <ListItemIcon><Clock size={16} /></ListItemIcon>
-                    <ListItemText primary="7 Días" />
-                </MenuItem>
+                <MenuItem disabled><Typography variant="caption" color="text.secondary">ETAPA</Typography></MenuItem>
+                {['none', 'veg', 'flower_early', 'flower_mid', 'flower_late'].map((stage: any) => (
+                    <MenuItem key={stage} selected={growthStage === stage} onClick={() => handleStageChange(stage)} dense>
+                           <ListItemIcon>{stage === 'veg' ? <Sprout size={16}/> : (stage === 'none' ? <Leaf size={16}/> : <Flower size={16}/>)}</ListItemIcon>
+                           <ListItemText primary={STAGE_LABELS[stage as GrowthStage]} />
+                    </MenuItem>
+                ))}
             </Menu>
         </Box>
     );

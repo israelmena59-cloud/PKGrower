@@ -26,28 +26,53 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     palette: {
       mode,
       primary: {
-        main: mode === 'dark' ? '#22c55e' : '#15803d', // Green
+        main: mode === 'dark' ? '#00ff41' : '#15803d', // Neon Green (Matrix/Cyber/Agro)
       },
       secondary: {
-        main: mode === 'dark' ? '#a855f7' : '#7e22ce', // Purple
+        main: mode === 'dark' ? '#ffffff' : '#000000', // High contrast bw
       },
       background: {
-        default: mode === 'dark' ? '#0f172a' : '#f0f9ff',
-        paper: mode === 'dark' ? '#1e293b' : '#ffffff',
+        default: mode === 'dark' ? '#000000' : '#ffffff',
+        paper: mode === 'dark' ? '#0a0a0a' : '#ffffff',
       },
+      text: {
+        primary: mode === 'dark' ? '#ffffff' : '#000000',
+        secondary: mode === 'dark' ? '#a0a0a0' : '#666666',
+      }
     },
     typography: {
-      fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
-      h4: { fontWeight: 700 },
-      h6: { fontWeight: 600 },
+      fontFamily: '"SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      h4: { fontWeight: 700, letterSpacing: '-0.02em' },
+      h6: { fontWeight: 600, letterSpacing: '-0.01em' },
+      button: { textTransform: 'none', fontWeight: 600 },
+    },
+    shape: {
+        borderRadius: 16 // iOS Squircle approx
     },
     components: {
       MuiPaper: {
         styleOverrides: {
           root: {
             backgroundImage: 'none',
+            border: mode === 'dark' ? '1px solid #222' : '1px solid #eee',
           }
         }
+      },
+      MuiButton: {
+          styleOverrides: {
+              root: {
+                  borderRadius: 9999, // Pill shape
+              }
+          }
+      },
+      MuiCard: {
+          styleOverrides: {
+              root: {
+                  borderRadius: 24,
+                  border: mode === 'dark' ? '1px solid rgba(255,255,255,0.12)' : '1px solid rgba(0,0,0,0.05)',
+                  boxShadow: 'none', // Flat IOS style
+              }
+          }
       }
     }
   });

@@ -141,6 +141,20 @@ async function getDeviceConfigs() {
   }
 }
 
+/**
+ * Delete a device configuration
+ * @param {string} deviceId
+ */
+async function deleteDeviceConfig(deviceId) {
+  if (!db || !deviceId) return;
+  try {
+    await db.collection('device_configs').doc(deviceId).delete();
+    console.log(`[FIRESTORE] Device config deleted: ${deviceId}`);
+  } catch (error) {
+    console.error('[FIRESTORE] Error deleting device config:', error.message);
+  }
+}
+
 module.exports = {
   saveSensorRecord,
   getSensorHistory,
@@ -149,9 +163,47 @@ module.exports = {
   getLastIrrigationLog,
   saveDeviceConfig,
   getDeviceConfigs,
+  deleteDeviceConfig, // Added export
   saveGlobalSettings,
-  getGlobalSettings
+  getGlobalSettings,
+  saveRules,
+  getRules
 };
+
+/**
+ * Save automation rules
+ * @param {Array} rules - Array of rule objects
+ */
+async function saveRules(rules) {
+  if (!db) return;
+  try {
+    // Save as a single document 'config' in 'rules' collection for simplicity,
+    // or as individual docs. Array in one doc is easier for "full sync".
+    await db.collection('rules').doc('config').set({
+        list: rules,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+    console.log('[FIRESTORE] Automation rules saved.');
+  } catch (error) {
+    console.error('[FIRESTORE] Error saving rules:', error.message);
+  }
+}
+
+/**
+ * Get automation rules
+ * @returns {Promise<Array>}
+ */
+async function getRules() {
+  if (!db) return [];
+  try {
+    const doc = await db.collection('rules').doc('config').get();
+    if (!doc.exists) return [];
+    return doc.data().list || [];
+  } catch (error) {
+    console.error('[FIRESTORE] Error getting rules:', error.message);
+    return [];
+  }
+}
 
 /**
  * Save global settings (credentials, etc.)

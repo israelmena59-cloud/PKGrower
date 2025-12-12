@@ -6,7 +6,7 @@ import {
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   IconButton, Select, MenuItem, Chip
 } from '@mui/material';
-import { Settings, Cloud, Router, Key, Info, Smartphone, Save, RefreshCw } from 'lucide-react';
+import { Settings, Cloud, Router, Key, Info, Smartphone, Save, RefreshCw, Trash2 } from 'lucide-react';
 import { apiClient } from '../../api/client';
 
 interface ConfigModalProps {
@@ -108,6 +108,18 @@ export const ConfigModal: React.FC<ConfigModalProps> = ({ open, onClose }) => {
            fetchDevices(); // Refresh
       } catch (e) {
            setErrorMsg("Error guardando dispositivo.");
+      }
+  };
+
+  const handleDeleteDevice = async (id: string, name: string) => {
+      if (!window.confirm(`¿Estás seguro de que quieres eliminar "${name}"? Esta acción no se puede deshacer.`)) return;
+
+      try {
+          await apiClient.request(`/api/devices/${id}`, { method: 'DELETE' });
+          setSuccessMsg(`Dispositivo ${name} eliminado.`);
+          setAvailableDevices(prev => prev.filter(d => d.id !== id));
+      } catch (e) {
+          setErrorMsg("Error al eliminar dispositivo.");
       }
   };
 
@@ -388,9 +400,14 @@ export const ConfigModal: React.FC<ConfigModalProps> = ({ open, onClose }) => {
                                         {dev.configured ? <Chip label="Guardado" size="small" color="success" /> : <Chip label="Nuevo" size="small" />}
                                     </TableCell>
                                     <TableCell align="right">
-                                        <IconButton color="primary" onClick={() => handleSaveDevice(dev)}>
-                                            <Save size={18} />
-                                        </IconButton>
+                                        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+                                            <IconButton color="error" onClick={() => handleDeleteDevice(dev.id, dev.name || 'Unnamed')}>
+                                                <Trash2 size={18} />
+                                            </IconButton>
+                                            <IconButton color="primary" onClick={() => handleSaveDevice(dev)}>
+                                                <Save size={18} />
+                                            </IconButton>
+                                        </Box>
                                     </TableCell>
                                 </TableRow>
                             ))}

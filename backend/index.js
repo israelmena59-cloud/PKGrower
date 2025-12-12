@@ -382,6 +382,43 @@ app.post('/api/devices/configure', async (req, res) => {
     }
 });
 
+// 2b. DELETE: Eliminar dispositivo (Ghost Busters)
+app.delete('/api/devices/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!id) return res.status(400).json({ error: "Missing ID" });
+
+        console.log(`[DELETE] Request to remove device: ${id}`);
+
+        // 1. Remove from Firestore
+        await firestore.deleteDeviceConfig(id);
+
+        // 2. Remove from Memory (Custom Configs)
+        if (customDeviceConfigs[id]) {
+            delete customDeviceConfigs[id];
+            console.log(`[DELETE] Removed from customDeviceConfigs`);
+        }
+
+        // 3. Remove from Dynamic Maps (if it was auto-discovered but we want to hide it)
+        // Note: If the device is still online and discoverable by Tuya/Meross scanning,
+        // it might reappear on next restart unless we blacklist it.
+        // For now, this effectively "forgets" the custom settings and removes it if it was purely custom.
+        if (tuyaDevices[id]) {
+             // Optional: Mark as ignored or delete?
+             // Deleting from memory works until next scan.
+             delete tuyaDevices[id];
+        }
+        if (merossDevices[id]) {
+            delete merossDevices[id];
+        }
+
+        res.json({ success: true, message: "Device deleted" });
+    } catch (e) {
+        console.error('[DELETE] Error:', e);
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // 3. LIST: Retornar TODOS los dispositivos (Estáticos + Dinámicos + Custom) con metadatos completos
 app.get('/api/devices/list', (req, res) => {
     try {
@@ -3294,8 +3331,101 @@ app.listen(PORT, '0.0.0.0', async () => { // Escuchar en 0.0.0.0 para acceso LAN
     }, 5000); // Wait 5s before starting heavy init
   }
 
-  // FORCE REFRESH ENDPOINT
-  // (Moved out of listen callback)
+// --- RULES ENGINE LOGIC ---
+let automationRules = [];
+// Load rules on startup
+(async () => {
+    try {
+        automationRules = await firestore.getRules();
+        console.log(`[RULES] Loaded ${automationRules.length} rules.`);
+    } catch(e){console.error(e)}
+})();
+
+app.get('/api/rules', (req, res) => res.json(automationRules));
+app.post('/api/rules', async (req, res) => {
+    try {
+        const rule = req.body;
+        if(!rule.id) rule.id = 'rule_' + Date.now();
+        automationRules.push(rule);
+        await firestore.saveRules(automationRules);
+        res.json({ success: true, rule });
+    } catch(e) { res.status(500).json({error: e.message}) }
+});
+app.delete('/api/rules/:id', async (req, res) => {
+    try {
+        automationRules = automationRules.filter(r => r.id !== req.params.id);
+        await firestore.saveRules(automationRules);
+        res.json({ success: true });
+    } catch(e) { res.status(500).json({error: e.message}) }
+});
+
+// Rules Loop (10s)
+setInterval(async () => {
+    if (automationRules.length === 0) return;
+    const latest = sensorHistory[sensorHistory.length - 1]; // Global var
+    if (!latest) return;
+    // Debounce structure? for now, naive implementation (fire every time condition met)
+    // To prevent spam, we can check if state is ALREADY what we want.
+
+    for (const rule of automationRules) {
+        if (!rule.enabled) continue;
+        try {
+            // Check Condition
+            let val = latest[rule.sensor]; // e.g. 'temperature'
+            if (val === undefined || val === null) continue;
+            val = Number(val);
+
+            let triggered = false;
+            const threshold = Number(rule.value);
+            if (rule.operator === '>' && val > threshold) triggered = true;
+            if (rule.operator === '<' && val < threshold) triggered = true;
+            if (rule.operator === '=' && val === threshold) triggered = true;
+
+            if (triggered) {
+                const devId = rule.deviceId;
+                const action = rule.action; // 'on' or 'off'
+                const targetState = action === 'on';
+
+                // Check current state to avoid spam
+                // We rely on `tuyaDevices` cache or `xiaomiClients`
+                let currentState = null;
+                if (tuyaDevices[devId]) {
+                    // Tuya cache uses .on or .status (if sensor)
+                     currentState = tuyaDevices[devId].on;
+                }
+                // (Skip xiaomi check for MVP)
+
+                // Only send command if state differs or if force is needed (here assuming basic optimization)
+                if (currentState !== targetState) {
+                     console.log(`[RULES] Triggered: ${rule.name}. Setting ${devId} to ${action}`);
+
+                     // Helper to trigger device
+                     if (tuyaDevices[devId]) {
+                          if (tuyaClient) {
+                               const tDev = tuyaDevices[devId];
+                               // Try multiple codes if needed
+                               const code = tDev.switchCode || 'switch_1';
+                               tuyaClient.request({
+                                    method: 'POST',
+                                    path: `/v1.0/iot-03/devices/${tDev.id}/commands`,
+                                    body: { commands: [{ code: code, value: targetState }] }
+                               }).then(res => {
+                                   if(res.success) console.log(`[RULES] ${devId} Success`);
+                                   else console.warn(`[RULES] ${devId} Failed`);
+                               }).catch(e => console.error('[RULES] Tuya Fail:', e.message));
+
+                               tDev.on = targetState; // Optimistic
+                          }
+                     }
+                }
+            }
+        } catch (e) { console.error(`[RULES] Error processing rule ${rule.id}:`, e.message); }
+    }
+}, 10000);
+
+// Start Server
+// FORCE REFRESH ENDPOINT
+// (Moved out of listen callback)
 
   console.log(`âœ“ Dispositivos Xiaomi conectados: ${Object.keys(xiaomiClients).length}`);
   console.log(`âœ“ Dispositivos Tuya registrados: ${Object.keys(tuyaDevices).length}`);

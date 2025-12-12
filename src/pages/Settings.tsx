@@ -29,6 +29,9 @@ import {
   EyeOff,
   Wifi,
   Database,
+  Leaf,
+  Sun,
+  Moon
 } from 'lucide-react';
 import { apiClient } from '../api/client';
 
@@ -98,6 +101,13 @@ const SettingsPage: React.FC = () => {
     cameraToken: '',
     cameraId: '',
     cameraIp: '',
+    cameraIp: '',
+  });
+
+  const [lightingSettings, setLightingSettings] = useState({
+    onTime: '06:00',
+    offTime: '00:00',
+    mode: 'manual'
   });
 
   const [showSecrets, setShowSecrets] = useState({
@@ -167,6 +177,7 @@ const SettingsPage: React.FC = () => {
         setAppSettings(response.app || appSettings);
         setTuyaSettings(response.tuya || tuyaSettings);
         setXiaomiSettings(response.xiaomi || xiaomiSettings);
+        setLightingSettings(response.lighting || lightingSettings);
       }
     } catch (error) {
       console.error('Error loading settings:', error);
@@ -182,6 +193,7 @@ const SettingsPage: React.FC = () => {
         app: appSettings,
         tuya: tuyaSettings,
         xiaomi: xiaomiSettings,
+        lighting: lightingSettings
       });
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
@@ -260,6 +272,7 @@ const SettingsPage: React.FC = () => {
           <Tab label="General" icon={<SettingsIcon size={20} />} iconPosition="start" />
           <Tab label="Tuya Cloud" icon={<Wifi size={20} />} iconPosition="start" />
           <Tab label="Xiaomi" icon={<Database size={20} />} iconPosition="start" />
+          <Tab label="Cultivo" icon={<Leaf size={20} />} iconPosition="start" />
           <Tab label="Sistema" icon={<Info size={20} />} iconPosition="start" />
         </Tabs>
 
@@ -597,8 +610,44 @@ const SettingsPage: React.FC = () => {
           </Box>
         </TabPanel>
 
-        {/* Tab: Sistema */}
+
+
+        {/* Tab: Cultivo (Lighting) */}
         <TabPanel value={tabValue} index={3}>
+            <Box sx={{ p: 3, maxWidth: 600 }}>
+                <Typography variant="h6" gutterBottom>🌞 Fotoperiodo (Ciclo de Luz)</Typography>
+                <Alert severity="info" sx={{ mb: 3 }}>
+                    Configura el horario de encendido y apagado de las luces para visualizar el ciclo Día/Noche en las gráficas y (opcionalmente) controlar la automatización.
+                </Alert>
+                <Grid container spacing={3}>
+                    <Grid item xs={6}>
+                         <TextField
+                            label="Hora Encendido (Lights On)"
+                            type="time"
+                            fullWidth
+                            value={lightingSettings.onTime}
+                            onChange={e => setLightingSettings({ ...lightingSettings, onTime: e.target.value })}
+                            InputLabelProps={{ shrink: true }}
+                            InputProps={{ startAdornment: <Sun size={18} className="mr-2 text-yellow-500"/> }}
+                         />
+                    </Grid>
+                    <Grid item xs={6}>
+                         <TextField
+                            label="Hora Apagado (Lights Off)"
+                            type="time"
+                            fullWidth
+                            value={lightingSettings.offTime}
+                            onChange={e => setLightingSettings({ ...lightingSettings, offTime: e.target.value })}
+                            InputLabelProps={{ shrink: true }}
+                            InputProps={{ startAdornment: <Moon size={18} className="mr-2 text-blue-400"/> }}
+                         />
+                    </Grid>
+                </Grid>
+            </Box>
+        </TabPanel>
+
+        {/* Tab: Sistema */}
+        <TabPanel value={tabValue} index={4}>
           <Box sx={{ p: 3 }}>
             <Grid container spacing={2}>
               <Grid item xs={12} md={6}>
