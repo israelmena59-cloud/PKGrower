@@ -43,7 +43,13 @@ const STAGE_ZONES: Record<GrowthStage, Record<string, [number, number]>> = {
     'none': {}
 };
 
-// ... labels ...
+const STAGE_LABELS: Record<GrowthStage, string> = {
+    'veg': 'Vegetativo',
+    'flower_early': 'Floración Temprana',
+    'flower_mid': 'Floración Media',
+    'flower_late': 'Floración Tardía',
+    'none': 'Sin Etapa'
+};
 
 export const ChartWidget: React.FC<ChartWidgetProps & { lightSchedule?: { on: string, off: string } }> = ({
     data,
