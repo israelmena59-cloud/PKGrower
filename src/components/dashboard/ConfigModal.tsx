@@ -365,7 +365,7 @@ export const ConfigModal: React.FC<ConfigModalProps> = ({ open, onClose }) => {
                                     <TableCell>
                                         <Select
                                             size="small"
-                                            value={dev.type || 'switch'}
+                                            value={['switch', 'light', 'fan', 'pump', 'sensor', 'gateway', 'valve', 'humidifier', 'camera', 'lock', 'curtain', 'thermostat', 'outlet'].includes(dev.type) ? dev.type : 'switch'}
                                             onChange={(e) => updateDeviceLocal(dev.id, 'type', e.target.value)}
                                             sx={{ minWidth: 100 }}
                                         >
@@ -374,6 +374,14 @@ export const ConfigModal: React.FC<ConfigModalProps> = ({ open, onClose }) => {
                                             <MenuItem value="fan">Ventilador</MenuItem>
                                             <MenuItem value="pump">Bomba</MenuItem>
                                             <MenuItem value="sensor">Sensor</MenuItem>
+                                            <MenuItem value="gateway">Gateway</MenuItem>
+                                            <MenuItem value="valve">Válvula</MenuItem>
+                                            <MenuItem value="humidifier">Humidificador</MenuItem>
+                                            <MenuItem value="camera">Cámara</MenuItem>
+                                            <MenuItem value="lock">Cerradura</MenuItem>
+                                            <MenuItem value="curtain">Cortina</MenuItem>
+                                            <MenuItem value="thermostat">Termostato</MenuItem>
+                                            <MenuItem value="outlet">Enchufe</MenuItem>
                                         </Select>
                                     </TableCell>
                                     <TableCell>

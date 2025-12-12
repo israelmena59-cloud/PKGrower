@@ -2353,6 +2353,55 @@ app.delete('/api/calendar/events/:id', (req, res) => {
   }
 });
 
+// --- MEROSS INTEGRATION ---
+async function initMerossDevices() {
+    if (MODO_SIMULACION) {
+        console.log('[MEROSS] Simulation Mode. Skipping connection.');
+        return;
+    }
+
+    const email = process.env.MEROSS_EMAIL || appSettings.meross?.email;
+    const password = process.env.MEROSS_PASSWORD || appSettings.meross?.password;
+
+    if (!email || !password) {
+        console.warn('[MEROSS] Meross credentials missing. Skipping.');
+        return;
+    }
+
+    try {
+        console.log(`[MEROSS] Connecting as ${email}...`);
+        merossClient = new MerossCloud({
+            email,
+            password,
+            logger: console.log
+        });
+
+        // Event Listeners
+        merossClient.on('deviceInitialized', (deviceId, deviceDef, device) => {
+            console.log(`[MEROSS] New Device: ${deviceDef.name} (${deviceDef.type})`);
+            merossDevices[deviceId] = {
+                id: deviceId,
+                name: deviceDef.name,
+                type: deviceDef.type,
+                online: device.online,
+                device: device // Keep reference for control
+            };
+        });
+
+        merossClient.on('data', (deviceId, namespace, payload) => {
+             // console.log(`[MEROSS] Data from ${deviceId}:`, payload);
+             // Update status if needed
+        });
+
+        // Connect
+        await merossClient.connect();
+        console.log('[MEROSS] Successfully connected!');
+
+    } catch (e) {
+        console.error('[MEROSS] Connection failed:', e.message);
+    }
+}
+
 // ===== SOIL SENSORS ENDPOINT (Missing Fix) =====
 app.get('/api/sensors/soil', async (req, res) => {
     try {
@@ -2434,6 +2483,48 @@ app.get('/api/devices/all', async (req, res) => {
 });
 
 // --- PULSE ENDPOINT (Timed ON) ---
+// --- CONFIGURE DEVICE ENDPOINT (Missing Implementation) ---
+app.post('/api/devices/configure', async (req, res) => {
+    try {
+        const { id, name, type, category, platform } = req.body;
+        console.log(`[CONFIG] Updating device ${id}: ${name} (${type})`);
+
+        if (!id) return res.status(400).json({ error: 'Device ID required' });
+
+        // Update In-Memory Maps
+        if (platform === 'tuya' || tuyaDevices[id]) {
+            if (tuyaDevices[id]) {
+                tuyaDevices[id].name = name;
+                tuyaDevices[id].deviceType = type; // Internal
+                // type is used by frontend, mapping might be needed if structure differs
+            }
+        } else if (platform === 'xiaomi' || xiaomiClients[id]) {
+             // Xiaomi config
+        } else if (platform === 'meross' || merossDevices[id]) {
+             if (merossDevices[id]) {
+                 merossDevices[id].name = name;
+                 merossDevices[id].type = type;
+             }
+        }
+
+        // Persist to Firestore
+        await firestore.saveDeviceConfig({
+            id,
+            name,
+            type,
+            category: category || 'unknown',
+            platform: platform || 'unknown',
+            updatedAt: new Date().toISOString()
+        });
+
+        res.json({ success: true, message: 'Device configured successfully' });
+
+    } catch (e) {
+        console.error('[CONFIG] Error configuring device:', e);
+        res.status(500).json({ error: e.message });
+    }
+});
+
 app.post('/api/device/:id/pulse', async (req, res) => {
   try {
     const { id } = req.params;

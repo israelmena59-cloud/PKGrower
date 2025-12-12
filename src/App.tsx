@@ -1,6 +1,6 @@
-// src/App.tsx
 import { useState } from 'react';
 import Layout, { Page } from './components/Layout';
+import DebugOverlay from './components/DebugOverlay';
 import Dashboard from './pages/Dashboard';
 import Lighting from './pages/Lighting';
 import Irrigation from './pages/Irrigation';
@@ -50,6 +50,7 @@ function AppContent() {
 function App() {
   return (
     <ThemeProvider>
+      <DebugOverlay />
       <AppContent />
     </ThemeProvider>
   );

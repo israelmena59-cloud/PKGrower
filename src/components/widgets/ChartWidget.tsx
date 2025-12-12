@@ -195,7 +195,7 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({
                  </IconButton>
             </Box>
 
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minWidth={100} minHeight={100}>
                 {renderChart()}
             </ResponsiveContainer>
 

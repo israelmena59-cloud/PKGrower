@@ -12,7 +12,7 @@ class XiaomiBrowserService {
 
         // Launch a new browser for this session
         const browser = await puppeteer.launch({
-            headless: "new", // Use 'false' for debugging if needed
+            headless: false, // User needs to see this to trust it / debug
             args: [
                 '--no-sandbox',
                 '--disable-setuid-sandbox',
