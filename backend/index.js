@@ -3069,16 +3069,7 @@ app.post('/api/irrigation/log', async (req, res) => {
       res.json({ success: true, message: 'Dispositivos actualizados' });
   });
 
-  // --- SERVE FRONTEND STATIC FILES ---
-  // Serve static files from the React app build directory
-  app.use(express.static(path.join(__dirname, '../dist')));
-
-  // The "catchall" handler: for any request that doesn't
-  // match one above, send back React's index.html file.
-  // NOTE: Express 5 requires regex wildcard or named parameter
-  app.get(/(.*)/, (req, res) => {
-    res.sendFile(path.join(__dirname, '../dist/index.html'));
-  });
+// [Moved Catch-All to end of file]
 
 
 
@@ -3424,6 +3415,14 @@ setInterval(async () => {
         } catch (e) { console.error(`[RULES] Error processing rule ${rule.id}:`, e.message); }
     }
 }, 10000);
+
+// --- SERVE FRONTEND STATIC FILES ---
+app.use(express.static(path.join(__dirname, '../dist')));
+
+// The "catchall" handler: matches any request not handled by API
+app.get(/(.*)/, (req, res) => {
+    res.sendFile(path.join(__dirname, '../dist/index.html'));
+});
 
 // --- GLOBAL ERROR HANDLER ---
 app.use((err, req, res, next) => {
