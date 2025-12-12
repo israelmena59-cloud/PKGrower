@@ -253,8 +253,8 @@ export const ChartWidget: React.FC<ChartWidgetProps & { lightSchedule?: { on: st
                  </IconButton>
             </Box>
 
-            <div style={{ width: '100%', height: '100%', minHeight: '200px' }}>
-                <ResponsiveContainer width="100%" height="100%" debounce={50}>
+            <div style={{ width: '100%', height: '100%', minHeight: 200, minWidth: 200, position: 'relative' }}>
+                <ResponsiveContainer width="100%" height="100%" minWidth={200} minHeight={200}>
                     {renderChart()}
                 </ResponsiveContainer>
             </div>
