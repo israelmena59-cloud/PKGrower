@@ -4,14 +4,17 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { useTheme } from '../../context/ThemeContext';
 import { apiClient } from '../../api/client';
 
-// Helper to add hours to "HH:mm" string
-const addHours = (timeStr: string, hours: number) => {
-    if (!timeStr) return '';
-    const [h, m] = timeStr.split(':').map(Number);
-    let newH = h + hours;
-    if (newH >= 24) newH -= 24;
-    if (newH < 0) newH += 24;
-    return `${newH.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+// Helper to add hours to "HH:mm" string safely
+const addHours = (timeStr: string | undefined | null, hours: number) => {
+    if (!timeStr || typeof timeStr !== 'string' || !timeStr.includes(':')) return '00:00';
+    try {
+        const [h, m] = timeStr.split(':').map(Number);
+        if (isNaN(h) || isNaN(m)) return '00:00';
+        let newH = h + hours;
+        if (newH >= 24) newH -= 24;
+        if (newH < 0) newH += 24;
+        return `${newH.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+    } catch { return '00:00'; }
 };
 
 interface HistoryChartProps {
@@ -109,10 +112,14 @@ const HistoryChart: React.FC<HistoryChartProps> = ({ type, title, targets, data:
       try {
           const settings = await apiClient.getSettings();
           if (settings?.lighting?.enabled && settings?.lighting?.onTime && settings?.lighting?.offTime) {
-              setLightingSchedule({
-                  on: settings.lighting.onTime,
-                  off: settings.lighting.offTime
-              });
+              const { onTime, offTime } = settings.lighting;
+              // Validate format HH:mm
+              if (/^\d{2}:\d{2}$/.test(onTime) && /^\d{2}:\d{2}$/.test(offTime)) {
+                  setLightingSchedule({
+                      on: onTime,
+                      off: offTime
+                  });
+              }
           }
       } catch (e) { console.error("Error fetching lighting settings", e); }
   }
