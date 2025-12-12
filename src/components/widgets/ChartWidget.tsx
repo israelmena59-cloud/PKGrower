@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Box, Typography, IconButton, Menu, MenuItem, ListItemIcon, ListItemText, Divider } from '@mui/material';
 import { ResponsiveContainer, AreaChart, Area, LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, ReferenceArea } from 'recharts';
-import { Settings, TrendingUp, Activity, Clock, Sprout, Flower, Leaf } from 'lucide-react';
+import { Settings, TrendingUp, Activity, Sprout, Flower, Leaf } from 'lucide-react';
 
 interface ChartWidgetProps {
     data: any[];
@@ -70,7 +70,6 @@ export const ChartWidget: React.FC<ChartWidgetProps & { lightSchedule?: { on: st
     const handleCloseSettings = () => setAnchorEl(null);
     // ... other handlers unchanged ...
     const handleChartTypeChange = (type: ChartType) => { setChartType(type); handleCloseSettings(); };
-    const handleRangeChange = (range: TimeRange) => { setTimeRange(range); if (onRangeChange) onRangeChange(range); handleCloseSettings(); };
     const handleStageChange = (stage: GrowthStage) => { setGrowthStage(stage); handleCloseSettings(); };
 
 
