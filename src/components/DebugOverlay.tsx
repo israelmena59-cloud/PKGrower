@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Box, Paper, IconButton, Typography, Divider, Button } from '@mui/material';
+import { Box, Paper, IconButton, Typography } from '@mui/material';
 import { X, Minimize2, Maximize2, Terminal, Copy, Trash2, Bug } from 'lucide-react';
 
 interface LogEntry {

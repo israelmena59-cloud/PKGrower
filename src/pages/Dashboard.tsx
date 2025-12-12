@@ -9,7 +9,7 @@ import { Box, Paper, Typography, IconButton, CircularProgress, Button, Tabs, Tab
 import _ from 'lodash';
 
 // Initial default layout for a fresh start
-const DEFAULT_WIDGETS_CONFIG = [
+const DEFAULT_WIDGETS_CONFIG: WidgetDefinition[] = [
     { id: 'temp', type: 'sensor', title: 'Temperatura' },
     { id: 'hum', type: 'sensor', title: 'Humedad' },
     { id: 'vpd', type: 'sensor', title: 'D.P.V' },
@@ -216,7 +216,7 @@ const Dashboard: React.FC = () => {
 
             // Dynamic Sensor Mapping
             if (w.type === 'sensor' && !['temp', 'hum', 'vpd', 'sub'].includes(w.id)) {
-                const val = latestSensors?.[w.id];
+                const val = latestSensors?.[w.id as keyof SensorData];
                 const meta = deviceMeta.find(d => d.id === w.id);
                 props = {
                     icon: <RefreshCw/>, // Default icon

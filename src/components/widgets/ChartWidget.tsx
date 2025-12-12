@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Box, Typography, IconButton, Menu, MenuItem, ListItemIcon, ListItemText, Divider } from '@mui/material';
-import { ResponsiveContainer, AreaChart, Area, LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, ReferenceArea, ReferenceLine } from 'recharts';
-import { Settings, BarChart as BarChartIcon, TrendingUp, Activity, Clock, Sprout, Flower, Leaf } from 'lucide-react';
+import { ResponsiveContainer, AreaChart, Area, LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, ReferenceArea } from 'recharts';
+import { Settings, TrendingUp, Activity, Clock, Sprout, Flower, Leaf } from 'lucide-react';
 
 interface ChartWidgetProps {
     data: any[];
