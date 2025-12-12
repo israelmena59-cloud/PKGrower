@@ -195,9 +195,11 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({
                  </IconButton>
             </Box>
 
-            <ResponsiveContainer width="100%" height="100%" minWidth={100} minHeight={100}>
-                {renderChart()}
-            </ResponsiveContainer>
+            <div style={{ width: '100%', height: '100%', minHeight: '200px' }}>
+                <ResponsiveContainer width="100%" height="100%" debounce={50}>
+                    {renderChart()}
+                </ResponsiveContainer>
+            </div>
 
             <Menu
                 anchorEl={anchorEl}
