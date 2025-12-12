@@ -1,4 +1,5 @@
 ﻿const express = require('express');
+const compression = require('compression');
 const cors = require('cors');
 // DEBUG: Check file system in Render
 const fs = require('fs');
@@ -220,6 +221,7 @@ const DEVICE_MAP = {
 
 // --- INICIALIZACIÃ“N DE LA APP Y CONECTORES ---
 const app = express();
+app.use(compression()); // Enable GZIP compression
 // Import path removed (duplicate)
 app.use(cors()); // Safe toggle
 const PORT = process.env.PORT || 3000;
@@ -3423,11 +3425,18 @@ setInterval(async () => {
     }
 }, 10000);
 
-// Start Server
-// FORCE REFRESH ENDPOINT
-// (Moved out of listen callback)
+// --- GLOBAL ERROR HANDLER ---
+app.use((err, req, res, next) => {
+    console.error('[GLOBAL ERROR]', err.stack);
+    res.status(500).json({
+        success: false,
+        error: 'Internal Server Error',
+        message: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
+});
 
-  console.log(`âœ“ Dispositivos Xiaomi conectados: ${Object.keys(xiaomiClients).length}`);
+// Start Server
+app.listen(PORT, () => {
   console.log(`âœ“ Dispositivos Tuya registrados: ${Object.keys(tuyaDevices).length}`);
   console.log(`\nðŸ“¡ Endpoints disponibles:`);
   console.log(`  â€¢ GET  /api/sensors/latest`);

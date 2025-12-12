@@ -101,7 +101,7 @@ const SettingsPage: React.FC = () => {
     cameraToken: '',
     cameraId: '',
     cameraIp: '',
-    cameraIp: '',
+
   });
 
   const [lightingSettings, setLightingSettings] = useState({

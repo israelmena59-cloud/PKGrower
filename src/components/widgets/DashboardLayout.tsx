@@ -7,6 +7,7 @@ import { BaseWidgetWrapper } from './BaseWidgetWrapper';
 import { WIDGET_COMPONENTS, WidgetDefinition, WidgetType } from './WidgetRegistry';
 import { Box, Button, SpeedDial, SpeedDialIcon, SpeedDialAction } from '@mui/material';
 import { Check, Edit2 } from 'lucide-react';
+import { ErrorBoundary } from '../ErrorBoundary';
 import _ from 'lodash';
 
 // Using local WidthProvider because lib export is broken in v2
@@ -19,35 +20,6 @@ interface DashboardLayoutProps {
     onLayoutChange: (layout: any[]) => void;
     onAddWidget?: (type: WidgetType) => void;
     onRemoveWidget?: (id: string) => void;
-}
-
-// Simple Error Boundary Component
-class WidgetErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
-    constructor(props: { children: React.ReactNode }) {
-        super(props);
-        this.state = { hasError: false };
-    }
-
-    static getDerivedStateFromError(error: any) {
-        return { hasError: true };
-    }
-
-    componentDidCatch(error: any, errorInfo: any) {
-        console.error("Widget Crash:", error, errorInfo);
-    }
-
-    render() {
-        if (this.state.hasError) {
-            return (
-                <Box sx={{ p: 2, height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'rgba(255,0,0,0.1)', color: 'error.main', flexDirection: 'column' }}>
-                    <Edit2 size={24} />
-                    <Box component="span" sx={{ mt: 1, fontSize: '0.75rem', fontWeight: 600 }}>Error</Box>
-                </Box>
-            );
-        }
-
-        return this.props.children;
-    }
 }
 
 export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
@@ -103,9 +75,9 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                                 isEditMode={isEditMode}
                                 onRemove={() => onRemoveWidget?.(widget.id)}
                             >
-                                <WidgetErrorBoundary>
+                                <ErrorBoundary>
                                      <Component {...widget.props} />
-                                </WidgetErrorBoundary>
+                                </ErrorBoundary>
                             </BaseWidgetWrapper>
                         </div>
                     );
