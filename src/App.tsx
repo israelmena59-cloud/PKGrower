@@ -3,6 +3,7 @@ import Layout, { Page } from './components/Layout';
 import DebugOverlay from './components/DebugOverlay';
 import { ThemeProvider } from './context/ThemeContext';
 import { Box, CircularProgress } from '@mui/material';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 // Lazy Load Pages
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -34,10 +35,6 @@ function AppContent() {
   };
 
   return (
-import { ErrorBoundary } from './components/ErrorBoundary';
-
-// ...
-
     <Layout activePage={activePage} onNavigate={setActivePage}>
       <ErrorBoundary>
         <Suspense fallback={
