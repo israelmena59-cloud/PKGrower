@@ -711,8 +711,7 @@ const SettingsPage: React.FC = () => {
         <DialogActions>
           <Button onClick={() => setOpenDialog(false)}>Cancelar</Button>
           <Button
-            onClick={null} // was handleResetSettings
-            // dialogAction === 'reset' ? handleResetSettings : undefined // logic handling inside
+            // onClick={null} // was handleResetSettings
             onClick={dialogAction === 'reset' ? handleResetSettings : () => setOpenDialog(false)}
             variant="contained"
             color={dialogAction === 'reset' ? 'error' : 'primary'}
