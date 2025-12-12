@@ -39,39 +39,43 @@
   --backdrop-blur: blur(20px) saturate(180%);
 }
 
-.dark {
-  --background: 0 0% 0%; /* TRUE BLACK */
-  --foreground: 0 0% 100%; /* Pure White High Contrast */
+  /* FLUID GLASS THEME (Refined Dark Mode) */
+  --background: 240 10% 3.9%; /* Approx #0a0a0a */
+  --foreground: 0 0% 98%;
 
-  --card: 0 0% 5%; /* Slightly lighter for cards */
-  --card-foreground: 0 0% 100%;
+  --card: 240 10% 6%; /* #111 */
+  --card-foreground: 0 0% 98%;
 
-  --popover: 0 0% 5%;
-  --popover-foreground: 0 0% 100%;
+  --popover: 240 10% 4%;
+  --popover-foreground: 0 0% 98%;
 
-  --primary: 130 100% 50%; /* Neon Green High Contrast */
-  --primary-foreground: 0 0% 0%;
+  --primary: 142 70% 50%; /* #22c55e (Vivid Green) */
+  --primary-foreground: 144.9 80.4% 10%;
 
   --secondary: 240 3.7% 15.9%;
   --secondary-foreground: 0 0% 98%;
 
-  --muted: 0 0% 15%; /* Darker muted */
+  --muted: 240 3.7% 15.9%;
   --muted-foreground: 240 5% 64.9%;
 
-  --accent: 0 0% 15%;
+  --accent: 260 50% 50%; /* Electric Purple for secondary actions */
   --accent-foreground: 0 0% 98%;
 
   --destructive: 0 62.8% 30.6%;
   --destructive-foreground: 0 0% 98%;
 
-  --border: 0 0% 20%;
-  --input: 0 0% 20%;
-  --ring: 130 100% 50%;
+  --border: 240 3.7% 15.9%;
+  --input: 240 3.7% 15.9%;
+  --ring: 142 70% 50%;
 
-  /* GLASS SYSTEM (Dark / OLED) */
-  --glass-bg: rgba(20, 20, 20, 0.6);
-  --glass-border: 1px solid rgba(255, 255, 255, 0.15);
-  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+  --radius: 1.5rem; /* Squircle radius 24px */
+
+  /* ADVANCED GLASS SYSTEM (iOS Style) */
+  --glass-bg: rgba(20, 20, 20, 0.65);
+  --glass-border: 1px solid rgba(255, 255, 255, 0.08);
+  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+  --backdrop-blur: blur(16px) saturate(180%);
+  --squircle-radius: 24px;
 }
 
 body {

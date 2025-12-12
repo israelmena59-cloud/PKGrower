@@ -34,14 +34,20 @@ function AppContent() {
   };
 
   return (
+import { ErrorBoundary } from './components/ErrorBoundary';
+
+// ...
+
     <Layout activePage={activePage} onNavigate={setActivePage}>
-      <Suspense fallback={
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', minHeight: 400 }}>
-          <CircularProgress color="secondary" />
-        </Box>
-      }>
-        {renderPage()}
-      </Suspense>
+      <ErrorBoundary>
+        <Suspense fallback={
+          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', minHeight: 400 }}>
+            <CircularProgress color="secondary" />
+          </Box>
+        }>
+          {renderPage()}
+        </Suspense>
+      </ErrorBoundary>
     </Layout>
   );
 }
