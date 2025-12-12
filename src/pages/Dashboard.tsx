@@ -5,18 +5,18 @@ import { WidgetDefinition } from '../components/widgets/WidgetRegistry';
 import { apiClient, type SensorData, type DeviceStates } from '../api/client';
 import ConfigModal from '../components/dashboard/ConfigModal';
 import RulesModal from '../components/dashboard/RulesModal';
+import HistoryChart from '../components/dashboard/HistoryChart';
 import { Thermometer, Droplet, Wind, Droplets, Lightbulb, RefreshCw, Settings, Plus, X, Zap } from 'lucide-react';
-import { Box, Paper, Typography, IconButton, CircularProgress, Button, Tabs, Tab, TextField, Dialog, DialogTitle, DialogContent, DialogActions, Tooltip } from '@mui/material';
+import { Box, Paper, Typography, IconButton, CircularProgress, Button, Tabs, Tab, TextField, Dialog, DialogTitle, DialogContent, DialogActions, Tooltip, Grid } from '@mui/material';
 import _ from 'lodash';
 
 // Initial default layout for a fresh start
+// Default widgets (no charts - they are now static)
 const DEFAULT_WIDGETS_CONFIG: WidgetDefinition[] = [
     { id: 'temp', type: 'sensor', title: 'Temperatura' },
     { id: 'hum', type: 'sensor', title: 'Humedad' },
     { id: 'vpd', type: 'sensor', title: 'D.P.V' },
     { id: 'sub', type: 'sensor', title: 'Sustrato' },
-    { id: 'chart_vpd', type: 'chart', title: 'Historial Ambiental' },
-    { id: 'chart_soil', type: 'chart', title: 'Historial Sustrato' },
     { id: 'light_main', type: 'control', title: 'Luz Principal' }
 ];
 
@@ -333,6 +333,28 @@ const Dashboard: React.FC = () => {
 
             <ConfigModal open={isConfigOpen} onClose={() => setIsConfigOpen(false)} />
             <RulesModal open={isRulesOpen} onClose={() => setIsRulesOpen(false)} />
+
+            {/* STATIC CHARTS SECTION */}
+            <Grid container spacing={2} sx={{ mb: 3 }}>
+                <Grid item xs={12} md={6}>
+                    <HistoryChart
+                        type="environment"
+                        title="Historial Ambiental"
+                        data={sensorHistory}
+                    />
+                </Grid>
+                <Grid item xs={12} md={6}>
+                    <HistoryChart
+                        type="substrate"
+                        title="Historial de Sustrato"
+                        data={sensorHistory}
+                        targets={{
+                            vwc: settings?.cropSteering?.targetVWC || 50,
+                            dryback: settings?.cropSteering?.targetDryback || 15
+                        }}
+                    />
+                </Grid>
+            </Grid>
 
             {/* NEW PAGE MODAL */}
             <Dialog open={isAddPageOpen} onClose={() => setIsAddPageOpen(false)}>
