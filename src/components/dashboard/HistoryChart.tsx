@@ -42,7 +42,7 @@ const calculateVPD = (T: number, RH: number) => {
     return svp * (1 - (RH / 100));
 };
 
-const HistoryChart: React.FC<HistoryChartProps> = ({ type, title, targets, data: externalData, phase = 'vegetative' }) => {
+const HistoryChart: React.FC<HistoryChartProps> = ({ type, title, targets, data: externalData, phase: _phase = 'vegetative' }) => {
   const { mode } = useTheme();
   const [range, setRange] = useState<'day' | 'week' | 'month'>('day');
   const [internalData, setInternalData] = useState<any[]>([]);

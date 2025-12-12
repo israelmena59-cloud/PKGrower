@@ -56,12 +56,12 @@ export const ChartWidget: React.FC<ChartWidgetProps & { lightSchedule?: { on: st
     dataKey,
     color = '#8884d8',
     unit = '',
-    onRangeChange,
+    onRangeChange: _onRangeChange,
     lightSchedule = { on: '06:00', off: '00:00' } // Default 18/6
 }) => {
     // ... state ...
     const [chartType, setChartType] = useState<ChartType>('area');
-    const [timeRange, setTimeRange] = useState<TimeRange>('24h');
+    const [timeRange, _setTimeRange] = useState<TimeRange>('24h');
     const [growthStage, setGrowthStage] = useState<GrowthStage>('none');
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 

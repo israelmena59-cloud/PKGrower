@@ -77,7 +77,7 @@ class APIClient {
       ...options,
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': import.meta.env.VITE_API_KEY || '3ea88c89-43e8-495b-be3c-56b541a8cc49', // Fallback for local dev if env missing
+        'x-api-key': (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_API_KEY) || '3ea88c89-43e8-495b-be3c-56b541a8cc49',
         ...options?.headers,
       },
     })
