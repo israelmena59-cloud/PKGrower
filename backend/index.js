@@ -3165,6 +3165,7 @@ setInterval(() => {
 }, 60000);
 
 const xiaomiBrowserService = require('./xiaomi-browser-service');
+const xiaomiAuth = require('./xiaomi-auth');
 
 // --- XIAOMI AUTH ENDPOINTS ---
 
@@ -3178,22 +3179,44 @@ app.post('/api/settings/xiaomi-login', async (req, res) => {
              return res.json({ status: '2fa_required', context: { username } });
         }
 
-        console.log(`[AUTH] Starting Browser Login for user: ${username}`);
-        const result = await xiaomiBrowserService.startLogin(username, password);
+        console.log(`[AUTH] Starting Login for user: ${username}`);
 
-        // If successful immediately
-        if (result.status === 'ok') {
-            process.env.XIAOMI_USER_ID = result.userId;
-            process.env.XIAOMI_SERVICE_TOKEN = result.serviceToken;
-            process.env.XIAOMI_SSECURITY = result.ssecurity;
-            setTimeout(() => initXiaomiDevices(), 1000);
+        // Try Browser-based login first (works better locally)
+        try {
+            const result = await xiaomiBrowserService.startLogin(username, password);
+
+            if (result.status === 'ok') {
+                process.env.XIAOMI_USER_ID = result.userId;
+                process.env.XIAOMI_SERVICE_TOKEN = result.serviceToken;
+                process.env.XIAOMI_SSECURITY = result.ssecurity;
+                setTimeout(() => initXiaomiDevices(), 1000);
+            }
+
+            return res.json(result);
+        } catch (browserErr) {
+            console.warn('[AUTH] Browser login failed, trying API fallback:', browserErr.message);
         }
 
-        res.json(result);
+        // Fallback: Use xiaomi-auth (API-based)
+        try {
+            const result = await xiaomiAuth.login(username, password);
+
+            if (result.status === 'ok') {
+                process.env.XIAOMI_USER_ID = result.userId;
+                process.env.XIAOMI_SERVICE_TOKEN = result.serviceToken;
+                process.env.XIAOMI_SSECURITY = result.ssecurity;
+                setTimeout(() => initXiaomiDevices(), 1000);
+            }
+
+            return res.json(result);
+        } catch (apiErr) {
+            console.error('[AUTH] API login also failed:', apiErr.message);
+            throw new Error('Both browser and API authentication failed. Check credentials or try again later.');
+        }
 
     } catch (e) {
         console.error('[AUTH] Login Error:', e);
-        res.status(500).json({ error: e.message });
+        res.status(500).json({ error: e.message || 'Unknown error during login' });
     }
 });
 
