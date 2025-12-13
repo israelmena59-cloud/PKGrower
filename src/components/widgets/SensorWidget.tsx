@@ -58,10 +58,11 @@ export const SensorWidget: React.FC<SensorWidgetProps> = ({
             const height = rect.height;
             const width = rect.width;
 
-            // Adjust thresholds based on actual widget dimensions
-            if (height <= 100 && width <= 180) {
+            // Adjust thresholds - widgets typically start at ~130-150px height
+            // Small: 1 grid row (~130px), Medium: 2 rows (~260px), Large: 3+ rows
+            if (height <= 140) {
                 setWidgetSize('small');
-            } else if (height <= 180) {
+            } else if (height <= 250) {
                 setWidgetSize('medium');
             } else {
                 setWidgetSize('large');
