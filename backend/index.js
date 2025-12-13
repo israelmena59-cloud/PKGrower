@@ -1207,17 +1207,8 @@ app.get('/api/sensors/history', (req, res) => {
   }
 });
 
-app.get('/api/sensors/latest', (req, res) => {
-    try {
-        if (!sensorHistory || sensorHistory.length === 0) {
-            return res.json({ temperature: 0, humidity: 0, substrateHumidity: 0, vpd: 0 });
-        }
-        const latest = sensorHistory[sensorHistory.length - 1];
-        res.json(latest);
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
-});
+// NOTE: /api/sensors/latest is defined later in the file (around line 1804)
+// with proper VPD calculation. Removed duplicate endpoint here.
 
 // Dispositivos (combinado Tuya y Xiaomi)
 app.get('/api/devices', async (req, res) => {
