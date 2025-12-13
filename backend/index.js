@@ -119,7 +119,7 @@ const TUYA_DEVICES_MAP = {
     platform: 'tuya',
     deviceType: 'light',
     category: 'led_panel',
-    switchCode: 'switch',
+    switchCode: 'switch_1',
   },
   luzPanel4: {
     name: 'Bandeja Izq AtrÃ¡s', // Updated Name
