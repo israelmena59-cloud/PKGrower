@@ -1859,7 +1859,8 @@ app.get('/api/sensors/latest', async (req, res) => {
      }
      } // Closes the main else (MODO_SIMULACION)
 
-     if (temp && hum) {
+     // Calculate VPD if we have valid temp (any positive) and hum (any non-negative)
+     if (temp > 0 && hum >= 0 && hum <= 100) {
         vpd = parseFloat(calculateVPD(temp, hum).toFixed(2));
      }
 
