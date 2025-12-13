@@ -1,8 +1,8 @@
-import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
+import React, { useState, useRef, useLayoutEffect } from 'react';
 import { Box, Typography, Tooltip, IconButton, TextField } from '@mui/material';
 import { Info, Edit2, Check } from 'lucide-react';
 
-// Ideal ranges per growth stage
+// Ideal ranges per growth stage (for growers)
 const IDEAL_RANGES: Record<string, Record<string, [number, number]>> = {
   veg: {
     temp: [24, 28],
@@ -16,6 +16,28 @@ const IDEAL_RANGES: Record<string, Record<string, [number, number]>> = {
     vpd: [0.8, 1.4],
     sub: [30, 50]
   }
+};
+
+// Helper to check if value is in ideal range
+const getValueStatus = (value: number | string, range: [number, number] | null): 'optimal' | 'warning' | 'danger' | 'unknown' => {
+  if (!range || value === '--' || typeof value === 'string') return 'unknown';
+  const num = typeof value === 'number' ? value : parseFloat(value);
+  if (isNaN(num)) return 'unknown';
+
+  const [min, max] = range;
+  const margin = (max - min) * 0.15; // 15% margin for warning zone
+
+  if (num >= min && num <= max) return 'optimal';
+  if (num >= min - margin && num <= max + margin) return 'warning';
+  return 'danger';
+};
+
+// Status colors (iOS palette)
+const STATUS_COLORS = {
+  optimal: '#34C759', // iOS Green
+  warning: '#FF9500', // iOS Orange
+  danger: '#FF3B30',  // iOS Red
+  unknown: '#8E8E93'  // iOS Gray
 };
 
 interface SensorWidgetProps {
@@ -38,7 +60,7 @@ export const SensorWidget: React.FC<SensorWidgetProps> = ({
     value,
     unit,
     description,
-    color = '#10b981',
+    color = '#34C759',
     onRename,
     metricKey,
     growthStage = 'none'
@@ -48,7 +70,6 @@ export const SensorWidget: React.FC<SensorWidgetProps> = ({
     const [widgetSize, setWidgetSize] = useState<WidgetSize>('medium');
     const containerRef = useRef<HTMLDivElement>(null);
 
-    // Detect widget size using ResizeObserver
     useLayoutEffect(() => {
         const container = containerRef.current;
         if (!container) return;
@@ -56,10 +77,7 @@ export const SensorWidget: React.FC<SensorWidgetProps> = ({
         const updateSize = () => {
             const rect = container.getBoundingClientRect();
             const height = rect.height;
-            const width = rect.width;
 
-            // Adjust thresholds - widgets typically start at ~130-150px height
-            // Small: 1 grid row (~130px), Medium: 2 rows (~260px), Large: 3+ rows
             if (height <= 140) {
                 setWidgetSize('small');
             } else if (height <= 250) {
@@ -69,19 +87,14 @@ export const SensorWidget: React.FC<SensorWidgetProps> = ({
             }
         };
 
-        // Initial check
         updateSize();
-
         const observer = new ResizeObserver(updateSize);
         observer.observe(container);
-
         return () => observer.disconnect();
     }, []);
 
     const handleSave = () => {
-        if (onRename && editName.trim()) {
-            onRename(editName);
-        }
+        if (onRename && editName.trim()) onRename(editName);
         setIsEditing(false);
     };
 
@@ -92,9 +105,19 @@ export const SensorWidget: React.FC<SensorWidgetProps> = ({
     };
 
     const idealRange = getIdealRange();
-    const stageLabel = growthStage === 'veg' ? 'Vegetación' : growthStage === 'flower' ? 'Floración' : '';
+    const status = getValueStatus(value, idealRange);
+    const statusColor = STATUS_COLORS[status];
+    const stageLabel = growthStage === 'veg' ? 'Veg' : growthStage === 'flower' ? 'Flor' : '';
 
-    // Common styles
+    // Fluid Glass styles
+    const glassStyle = {
+        background: 'rgba(255, 255, 255, 0.08)',
+        backdropFilter: 'blur(20px) saturate(180%)',
+        WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+        borderRadius: '16px',
+        border: '1px solid rgba(255, 255, 255, 0.12)',
+    };
+
     const iconBoxStyle = {
         borderRadius: '12px',
         background: `linear-gradient(135deg, ${color}30 0%, ${color}15 100%)`,
@@ -105,42 +128,72 @@ export const SensorWidget: React.FC<SensorWidgetProps> = ({
         flexShrink: 0
     };
 
-    // ===== SMALL LAYOUT: Horizontal compact =====
+    // Format ideal range text
+    const idealText = idealRange ? `${idealRange[0]}-${idealRange[1]}${unit}` : null;
+
+    // ===== SMALL LAYOUT: Horizontal with ideal range =====
     if (widgetSize === 'small') {
         return (
             <Box
                 ref={containerRef}
                 sx={{
+                    ...glassStyle,
                     display: 'flex',
                     flexDirection: 'row',
                     alignItems: 'center',
                     gap: 1.5,
                     height: '100%',
                     width: '100%',
-                    p: 1
+                    p: 1.5
                 }}
             >
                 <Box sx={{ ...iconBoxStyle, p: 0.8, '& svg': { width: 18, height: 18 } }}>
                     {icon}
                 </Box>
-                <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5 }}>
-                    <Typography fontWeight="800" sx={{ fontSize: '1.3rem', color: '#fff', lineHeight: 1 }}>
+
+                {/* Value with status indicator */}
+                <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.3, flex: 1 }}>
+                    <Typography fontWeight="700" sx={{
+                        fontSize: '1.4rem',
+                        color: statusColor,
+                        lineHeight: 1,
+                        textShadow: status !== 'unknown' ? `0 0 20px ${statusColor}40` : 'none'
+                    }}>
                         {value}
                     </Typography>
                     <Typography sx={{ fontSize: '0.65rem', color: 'text.secondary', fontWeight: 600 }}>
                         {unit}
                     </Typography>
                 </Box>
+
+                {/* Ideal range badge */}
+                {idealText && (
+                    <Box sx={{
+                        background: 'rgba(52, 199, 89, 0.15)',
+                        border: '1px solid rgba(52, 199, 89, 0.3)',
+                        borderRadius: '8px',
+                        px: 0.8,
+                        py: 0.3,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 0.3
+                    }}>
+                        <Typography sx={{ fontSize: '0.55rem', color: '#34C759', fontWeight: 600 }}>
+                            {idealText}
+                        </Typography>
+                    </Box>
+                )}
             </Box>
         );
     }
 
-    // ===== MEDIUM LAYOUT: Vertical standard =====
+    // ===== MEDIUM LAYOUT: Vertical with ideal range =====
     if (widgetSize === 'medium') {
         return (
             <Box
                 ref={containerRef}
                 sx={{
+                    ...glassStyle,
                     display: 'flex',
                     flexDirection: 'column',
                     height: '100%',
@@ -163,40 +216,64 @@ export const SensorWidget: React.FC<SensorWidgetProps> = ({
                 </Box>
 
                 <Box>
-                    <Typography sx={{
-                        color: 'text.secondary',
-                        fontWeight: 700,
-                        fontSize: '0.65rem',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.5px',
-                        mb: 0.5
-                    }}>
-                        {name}
-                    </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                        <Typography sx={{
+                            color: 'text.secondary',
+                            fontWeight: 600,
+                            fontSize: '0.65rem',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.5px'
+                        }}>
+                            {name}
+                        </Typography>
+                        {/* Status dot */}
+                        {status !== 'unknown' && (
+                            <Box sx={{
+                                width: 6,
+                                height: 6,
+                                borderRadius: '50%',
+                                background: statusColor,
+                                boxShadow: `0 0 8px ${statusColor}`
+                            }} />
+                        )}
+                    </Box>
+
                     <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5 }}>
                         <Typography fontWeight="800" sx={{
-                            background: 'linear-gradient(to right, #fff, #a1a1aa)',
-                            WebkitBackgroundClip: 'text',
-                            WebkitTextFillColor: 'transparent',
-                            fontSize: '1.8rem',
-                            lineHeight: 1
+                            color: statusColor,
+                            fontSize: '2rem',
+                            lineHeight: 1,
+                            textShadow: status !== 'unknown' ? `0 0 30px ${statusColor}30` : 'none'
                         }}>
                             {value}
                         </Typography>
-                        <Typography sx={{ color: 'text.secondary', fontWeight: 600, fontSize: '0.75rem' }}>
+                        <Typography sx={{ color: 'text.secondary', fontWeight: 600, fontSize: '0.8rem' }}>
                             {unit}
                         </Typography>
                     </Box>
+
+                    {/* Ideal range */}
+                    {idealText && (
+                        <Typography sx={{
+                            fontSize: '0.6rem',
+                            color: '#34C759',
+                            mt: 0.5,
+                            fontWeight: 500
+                        }}>
+                            Ideal ({stageLabel}): {idealText}
+                        </Typography>
+                    )}
                 </Box>
             </Box>
         );
     }
 
-    // ===== LARGE LAYOUT: Vertical + Ideal Range =====
+    // ===== LARGE LAYOUT: Full with all info =====
     return (
         <Box
             ref={containerRef}
             sx={{
+                ...glassStyle,
                 display: 'flex',
                 flexDirection: 'column',
                 height: '100%',
@@ -244,35 +321,49 @@ export const SensorWidget: React.FC<SensorWidgetProps> = ({
                             autoFocus
                             sx={{ input: { fontSize: '0.8rem', fontWeight: 600 } }}
                         />
-                        <IconButton size="small" onClick={handleSave} sx={{ color: 'success.main' }}>
+                        <IconButton size="small" onClick={handleSave} sx={{ color: '#34C759' }}>
                             <Check size={16} />
                         </IconButton>
                     </Box>
                 ) : (
-                    <Typography sx={{
-                        color: 'text.secondary',
-                        fontWeight: 700,
-                        fontSize: '0.7rem',
-                        textTransform: 'uppercase',
-                        letterSpacing: '1px',
-                        mb: 1
-                    }}>
-                        {name}
-                    </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                        <Typography sx={{
+                            color: 'text.secondary',
+                            fontWeight: 700,
+                            fontSize: '0.75rem',
+                            textTransform: 'uppercase',
+                            letterSpacing: '1px'
+                        }}>
+                            {name}
+                        </Typography>
+                        {/* Status indicator */}
+                        {status !== 'unknown' && (
+                            <Box sx={{
+                                px: 1,
+                                py: 0.2,
+                                borderRadius: '6px',
+                                background: `${statusColor}20`,
+                                border: `1px solid ${statusColor}40`
+                            }}>
+                                <Typography sx={{ fontSize: '0.55rem', color: statusColor, fontWeight: 600 }}>
+                                    {status === 'optimal' ? '✓ Óptimo' : status === 'warning' ? '⚠ Alerta' : '✗ Fuera'}
+                                </Typography>
+                            </Box>
+                        )}
+                    </Box>
                 )}
 
                 <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5 }}>
                     <Typography fontWeight="800" sx={{
-                        background: 'linear-gradient(to right, #fff, #a1a1aa)',
-                        WebkitBackgroundClip: 'text',
-                        WebkitTextFillColor: 'transparent',
-                        fontSize: '2.5rem',
+                        color: statusColor,
+                        fontSize: '3rem',
                         letterSpacing: '-2px',
-                        lineHeight: 1
+                        lineHeight: 1,
+                        textShadow: status !== 'unknown' ? `0 0 40px ${statusColor}25` : 'none'
                     }}>
                         {value}
                     </Typography>
-                    <Typography sx={{ color: 'text.secondary', fontWeight: 600, fontSize: '1rem' }}>
+                    <Typography sx={{ color: 'text.secondary', fontWeight: 600, fontSize: '1.1rem' }}>
                         {unit}
                     </Typography>
                 </Box>
@@ -287,16 +378,24 @@ export const SensorWidget: React.FC<SensorWidgetProps> = ({
                     alignItems: 'center',
                     justifyContent: 'space-between'
                 }}>
-                    <Typography sx={{ color: 'text.disabled', fontSize: '0.65rem' }}>
-                        Ideal ({stageLabel})
-                    </Typography>
-                    <Typography sx={{
-                        color: color,
-                        fontWeight: 700,
-                        fontSize: '0.75rem'
-                    }}>
-                        {idealRange[0]} - {idealRange[1]} {unit}
-                    </Typography>
+                    <Box>
+                        <Typography sx={{ color: 'text.disabled', fontSize: '0.6rem', mb: 0.3 }}>
+                            Rango Ideal ({stageLabel})
+                        </Typography>
+                        <Typography sx={{ color: '#34C759', fontWeight: 700, fontSize: '0.9rem' }}>
+                            {idealRange[0]} - {idealRange[1]} {unit}
+                        </Typography>
+                    </Box>
+                    {/* Visual range indicator */}
+                    <Box sx={{ width: 60, height: 6, borderRadius: 3, background: 'rgba(255,255,255,0.1)', overflow: 'hidden' }}>
+                        <Box sx={{
+                            height: '100%',
+                            width: status === 'optimal' ? '100%' : status === 'warning' ? '60%' : '30%',
+                            background: `linear-gradient(90deg, ${statusColor}, ${statusColor}80)`,
+                            borderRadius: 3,
+                            transition: 'width 0.3s ease'
+                        }} />
+                    </Box>
                 </Box>
             )}
         </Box>

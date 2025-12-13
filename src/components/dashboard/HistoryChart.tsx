@@ -167,29 +167,121 @@ const HistoryChart: React.FC<HistoryChartProps> = ({ type, title, targets, data:
   const textColor = isDark ? '#e5e7eb' : '#374151';
   const gridColor = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
 
+  // Ideal ranges for growers (vegetative stage as default)
+  const idealRanges = {
+    temperature: [24, 28],
+    humidity: [65, 80],
+    vpd: [0.4, 0.8],
+    substrateHumidity: [45, 65],
+  };
+
+  // Get grower recommendation based on value
+  const getRecommendation = (key: string, value: number): string | null => {
+    const range = idealRanges[key as keyof typeof idealRanges];
+    if (!range) return null;
+    const [min, max] = range;
+
+    if (value < min) {
+      switch(key) {
+        case 'temperature': return '❄️ Temperatura baja - considera aumentar calefacción';
+        case 'humidity': return '💨 Humedad baja - activa humidificador';
+        case 'vpd': return '🌿 VPD bajo - reduce humedad o aumenta temp';
+        case 'substrateHumidity': return '💧 Sustrato seco - programar riego';
+        default: return null;
+      }
+    }
+    if (value > max) {
+      switch(key) {
+        case 'temperature': return '🔥 Temperatura alta - mejora ventilación';
+        case 'humidity': return '💦 Humedad alta - activa deshumidificador';
+        case 'vpd': return '⚠️ VPD alto - aumenta humedad';
+        case 'substrateHumidity': return '🌊 Sustrato saturado - reduce riego';
+        default: return null;
+      }
+    }
+    return '✓ Óptimo';
+  };
+
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
       const d = payload[0].payload;
       return (
         <Box sx={{
-            bgcolor: isDark ? 'rgba(0,0,0,0.8)' : 'rgba(255,255,255,0.95)',
-            p: 1.5,
-            border: '1px solid rgba(255,255,255,0.1)',
-            borderRadius: 2,
-            boxShadow: 3
+            bgcolor: isDark ? 'rgba(28, 28, 30, 0.95)' : 'rgba(255, 255, 255, 0.98)',
+            backdropFilter: 'blur(20px) saturate(180%)',
+            WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+            p: 2,
+            border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.08)',
+            borderRadius: '16px',
+            boxShadow: isDark ? '0 8px 32px rgba(0,0,0,0.4)' : '0 8px 32px rgba(0,0,0,0.12)',
+            minWidth: 200
         }}>
-          <Typography variant="caption" sx={{ color: isDark? 'gray' : 'text.secondary', display: 'block', mb: 1 }}>
-            {d.dateStr} {d.timeStr}
+          <Typography variant="caption" sx={{
+            color: isDark ? 'rgba(235, 235, 245, 0.6)' : 'rgba(60, 60, 67, 0.6)',
+            display: 'block',
+            mb: 1.5,
+            fontWeight: 600,
+            letterSpacing: '0.5px'
+          }}>
+            📅 {d.dateStr} • {d.timeStr}
           </Typography>
 
-          {payload.map((p: any) => (
-              <Box key={p.name} sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-                  <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: p.color }} />
-                  <Typography variant="body2" sx={{ color: isDark? 'white' : 'black', fontWeight: 'bold' }}>
-                      {p.name}: {p.value}{p.unit}
+          {payload.map((p: any) => {
+            const recommendation = p.value !== null ? getRecommendation(p.dataKey, p.value) : null;
+            const isOptimal = recommendation === '✓ Óptimo';
+
+            return (
+              <Box key={p.name} sx={{ mb: 1.5 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Box sx={{
+                      width: 10,
+                      height: 10,
+                      borderRadius: '50%',
+                      bgcolor: p.color,
+                      boxShadow: `0 0 8px ${p.color}`
+                    }} />
+                    <Typography variant="body2" sx={{
+                      color: isDark ? '#fff' : '#000',
+                      fontWeight: 600,
+                      fontSize: '0.85rem'
+                    }}>
+                      {p.name}
+                    </Typography>
+                  </Box>
+                  <Typography variant="body2" sx={{
+                    color: isDark ? '#fff' : '#000',
+                    fontWeight: 700,
+                    fontSize: '0.9rem'
+                  }}>
+                    {p.value !== null ? `${typeof p.value === 'number' ? p.value.toFixed(1) : p.value}${p.unit || ''}` : '--'}
                   </Typography>
+                </Box>
+                {recommendation && !isOptimal && (
+                  <Typography sx={{
+                    fontSize: '0.7rem',
+                    color: '#FF9500',
+                    mt: 0.5,
+                    pl: 2.5,
+                    fontWeight: 500
+                  }}>
+                    {recommendation}
+                  </Typography>
+                )}
+                {isOptimal && (
+                  <Typography sx={{
+                    fontSize: '0.7rem',
+                    color: '#34C759',
+                    mt: 0.5,
+                    pl: 2.5,
+                    fontWeight: 500
+                  }}>
+                    {recommendation}
+                  </Typography>
+                )}
               </Box>
-          ))}
+            );
+          })}
         </Box>
       );
     }
@@ -199,9 +291,18 @@ const HistoryChart: React.FC<HistoryChartProps> = ({ type, title, targets, data:
   return (
     <Card sx={{
         p: 3,
-        borderRadius: 4,
-        background: isDark ? 'linear-gradient(145deg, #1e293b, #0f172a)' : 'white',
-        boxShadow: isDark ? '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)' : '0 10px 15px -3px rgba(0, 0, 0, 0.1)'
+        borderRadius: '20px',
+        background: isDark
+          ? 'rgba(28, 28, 30, 0.72)'
+          : 'rgba(255, 255, 255, 0.85)',
+        backdropFilter: 'blur(20px) saturate(180%)',
+        WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+        border: isDark
+          ? '1px solid rgba(255, 255, 255, 0.08)'
+          : '1px solid rgba(0, 0, 0, 0.05)',
+        boxShadow: isDark
+          ? '0 8px 32px rgba(0, 0, 0, 0.32)'
+          : '0 4px 24px rgba(0, 0, 0, 0.08)'
     }}>
         <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'start', md: 'center' }, mb: 3, gap: 2 }}>
             <Box>

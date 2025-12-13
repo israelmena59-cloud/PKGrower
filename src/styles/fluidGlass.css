@@ -1,0 +1,259 @@
+/* ===========================================
+   PKGrower Fluid Glass Design System
+   Based on iPadOS 26 / iOS Fluid Glass
+   =========================================== */
+
+/* ===== iOS Color Palette ===== */
+:root {
+  /* Primary Colors */
+  --ios-blue: #007AFF;
+  --ios-green: #34C759;
+  --ios-red: #FF3B30;
+  --ios-orange: #FF9500;
+  --ios-yellow: #FFCC00;
+  --ios-purple: #AF52DE;
+  --ios-pink: #FF2D55;
+  --ios-teal: #5AC8FA;
+  --ios-indigo: #5856D6;
+
+  /* Neutral Colors */
+  --ios-gray: #8E8E93;
+  --ios-gray2: #636366;
+  --ios-gray3: #48484A;
+  --ios-gray4: #3A3A3C;
+  --ios-gray5: #2C2C2E;
+  --ios-gray6: #1C1C1E;
+
+  /* Glass Properties */
+  --glass-blur: 20px;
+  --glass-saturation: 180%;
+  --glass-border-radius: 20px;
+  --glass-border-radius-sm: 12px;
+  --glass-border-radius-lg: 28px;
+}
+
+/* ===== Light Mode Glass ===== */
+[data-theme="light"] {
+  --glass-bg: rgba(255, 255, 255, 0.72);
+  --glass-bg-elevated: rgba(255, 255, 255, 0.85);
+  --glass-border: rgba(255, 255, 255, 0.5);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+  --surface-primary: #F2F2F7;
+  --surface-secondary: #FFFFFF;
+  --text-primary: #000000;
+  --text-secondary: rgba(60, 60, 67, 0.6);
+  --text-tertiary: rgba(60, 60, 67, 0.3);
+  --separator: rgba(60, 60, 67, 0.12);
+}
+
+/* ===== Dark Mode Glass ===== */
+[data-theme="dark"] {
+  --glass-bg: rgba(30, 30, 30, 0.72);
+  --glass-bg-elevated: rgba(44, 44, 46, 0.85);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.32);
+  --surface-primary: #000000;
+  --surface-secondary: #1C1C1E;
+  --text-primary: #FFFFFF;
+  --text-secondary: rgba(235, 235, 245, 0.6);
+  --text-tertiary: rgba(235, 235, 245, 0.3);
+  --separator: rgba(84, 84, 88, 0.65);
+}
+
+/* ===== Fluid Glass Base Class ===== */
+.fluid-glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--glass-border-radius);
+  box-shadow: var(--glass-shadow);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.fluid-glass:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+}
+
+/* ===== Glass Card Variants ===== */
+.fluid-glass-card {
+  background: var(--glass-bg-elevated);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--glass-border-radius);
+  box-shadow: var(--glass-shadow);
+  overflow: hidden;
+}
+
+.fluid-glass-inset {
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: var(--glass-border-radius-sm);
+  border: 1px solid var(--separator);
+}
+
+[data-theme="dark"] .fluid-glass-inset {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* ===== iOS Button Styles ===== */
+.ios-button {
+  background: var(--ios-blue);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  padding: 12px 20px;
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ios-button:hover {
+  filter: brightness(1.1);
+  transform: scale(1.02);
+}
+
+.ios-button:active {
+  transform: scale(0.98);
+}
+
+.ios-button-secondary {
+  background: rgba(0, 122, 255, 0.12);
+  color: var(--ios-blue);
+}
+
+/* ===== iOS Capsule/Pill Style ===== */
+.ios-capsule {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 100px;
+  background: rgba(0, 122, 255, 0.12);
+  color: var(--ios-blue);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* ===== Status Indicators ===== */
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+.status-dot.optimal {
+  background: var(--ios-green);
+  box-shadow: 0 0 12px var(--ios-green);
+}
+
+.status-dot.warning {
+  background: var(--ios-orange);
+  box-shadow: 0 0 12px var(--ios-orange);
+}
+
+.status-dot.danger {
+  background: var(--ios-red);
+  box-shadow: 0 0 12px var(--ios-red);
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+/* ===== Chart Zone Colors (for growers) ===== */
+.zone-optimal {
+  fill: rgba(52, 199, 89, 0.15);
+  stroke: rgba(52, 199, 89, 0.3);
+}
+
+.zone-warning {
+  fill: rgba(255, 149, 0, 0.1);
+  stroke: rgba(255, 149, 0, 0.2);
+}
+
+.zone-danger {
+  fill: rgba(255, 59, 48, 0.1);
+  stroke: rgba(255, 59, 48, 0.2);
+}
+
+/* ===== Day/Night Indicators ===== */
+.day-zone {
+  fill: rgba(255, 204, 0, 0.08);
+}
+
+.night-zone {
+  fill: rgba(88, 86, 214, 0.08);
+}
+
+/* ===== Typography ===== */
+.text-primary {
+  color: var(--text-primary);
+}
+
+.text-secondary {
+  color: var(--text-secondary);
+}
+
+.text-tertiary {
+  color: var(--text-tertiary);
+}
+
+/* ===== Metric Display ===== */
+.metric-value {
+  font-size: 2.5rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+.metric-unit {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-left: 4px;
+}
+
+.metric-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+}
+
+/* ===== Widget Grid ===== */
+.widget-grid {
+  display: grid;
+  gap: 16px;
+}
+
+/* ===== Scrollbar Styling ===== */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--ios-gray);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--ios-gray2);
+}
+
+/* ===== Smooth Transitions ===== */
+* {
+  transition-property: background-color, border-color, box-shadow;
+  transition-duration: 0.2s;
+  transition-timing-function: ease;
+}
