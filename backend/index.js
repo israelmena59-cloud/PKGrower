@@ -1078,63 +1078,7 @@ const syncTuyaDevicesIndividual = async () => {
     }
 };
 
-// Initialize Meross Devices
-async function initMerossDevices() {
-  if (MODO_SIMULACION) return;
-
-  const email = process.env.MEROSS_EMAIL;
-  const password = process.env.MEROSS_PASSWORD;
-
-  if (!email || !password) {
-      console.log('[MEROSS] Skipped. Missing MEROSS_EMAIL or MEROSS_PASSWORD in .env');
-      return;
-  }
-
-  try {
-      console.log('[MEROSS] Connecting to Cloud...');
-      const options = {
-          email: email,
-          password: password,
-          logger: (msg) => console.log(`[MEROSS-LIB] ${msg}`)
-      };
-
-      merossClient = new MerossCloud(options);
-
-      merossClient.on('deviceInitialized', (deviceId, deviceDef, device) => {
-          console.log(`[MEROSS] Device Found: ${deviceDef.name} (${deviceId})`);
-          merossDevices[deviceId] = {
-              id: deviceId,
-              name: deviceDef.name,
-              type: deviceDef.type,
-              uuid: deviceDef.uuid,
-              online: true, // initial assumption
-              deviceInstance: device
-          };
-
-          device.on('connected', () => {
-              console.log(`[MEROSS] ${deviceDef.name} is ONLINE`);
-              if (merossDevices[deviceId]) merossDevices[deviceId].online = true;
-          });
-
-          device.on('close', () => {
-              console.log(`[MEROSS] ${deviceDef.name} is OFFLINE`);
-              if (merossDevices[deviceId]) merossDevices[deviceId].online = false;
-          });
-
-          device.on('error', (err) => {
-               console.error(`[MEROSS] ${deviceDef.name} error:`, err);
-          });
-      });
-
-      merossClient.connect((err) => {
-          if (err) console.error('[MEROSS] Connect Error:', err);
-          else console.log('[MEROSS] Login Successful.');
-      });
-
-  } catch (e) {
-      console.error('[MEROSS] Init Exception:', e.message);
-  }
-}
+// Initialize Meross Devices - See initMerossDevices() in MEROSS INTEGRATION section (~line 2400)
 
 // Inicializar dispositivos Xiaomi y Tuya si no estamos en modo simulaciÃ³n
 if (!MODO_SIMULACION) {
