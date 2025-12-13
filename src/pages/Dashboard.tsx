@@ -60,7 +60,12 @@ const Dashboard: React.FC = () => {
     // PAGE STATE
     const [activePage, setActivePage] = useState('General');
     const [pages, setPages] = useState<Record<string, WidgetDefinition[]>>({ 'General': DEFAULT_WIDGETS_CONFIG });
-    const [layouts, setLayouts] = useState<Record<string, any[]>>({});
+    const [layouts, setLayouts] = useState<Record<string, any[]>>(() => {
+        try {
+            const saved = localStorage.getItem('dashboard_layouts');
+            return saved ? JSON.parse(saved) : {};
+        } catch { return {}; }
+    });
     const [isAddPageOpen, setIsAddPageOpen] = useState(false);
     const [newPageName, setNewPageName] = useState('');
 

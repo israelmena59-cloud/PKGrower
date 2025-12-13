@@ -329,6 +329,11 @@ let appSettings = {
     pumpRate: 70, // ml/minuto (CalibraciÃ³n default)
     targetVWC: 60,
     drybackTarget: 20
+  },
+  cropSteering: {
+    stage: 'none', // 'veg', 'flower', 'none'
+    targetVWC: 50,
+    targetDryback: 15
   }
 };
 
@@ -2749,7 +2754,19 @@ app.post('/api/settings', async (req, res) => {
         if (meross.password) process.env.MEROSS_PASSWORD = meross.password;
     }
 
-    // Persistir cambios en FIRESTORE (Ya no en .env ya que Render es efÃmero)
+    // LIGHTING CONFIG
+    const { lighting } = req.body;
+    if (lighting) {
+        Object.assign(appSettings.lighting, lighting);
+    }
+
+    // CROP STEERING CONFIG
+    const { cropSteering } = req.body;
+    if (cropSteering) {
+        Object.assign(appSettings.cropSteering, cropSteering);
+    }
+
+    // Persistir cambios en FIRESTORE
     await saveSettings();
 
     // Trigger Hot Reloads

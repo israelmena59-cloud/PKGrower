@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Box, Typography, ButtonGroup, Button, CircularProgress } from '@mui/material';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, ReferenceArea } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, ReferenceArea, Legend } from 'recharts';
 import { useTheme } from '../../context/ThemeContext';
 import { apiClient } from '../../api/client';
 
@@ -312,6 +312,24 @@ const HistoryChart: React.FC<HistoryChartProps> = ({ type, title, targets, data:
                         <YAxis yAxisId="left" stroke={textColor} fontSize={12} tickLine={false} axisLine={false} />
                         <YAxis yAxisId="right" orientation="right" stroke={textColor} fontSize={12} tickLine={false} axisLine={false} />
                         <Tooltip content={<CustomTooltip />} />
+                        <Legend
+                            verticalAlign="top"
+                            height={36}
+                            wrapperStyle={{ fontSize: '12px', paddingBottom: '10px' }}
+                            formatter={(value) => {
+                                const labels: Record<string, string> = {
+                                    temperature: 'Temp',
+                                    humidity: 'Humedad',
+                                    dp: 'Punto Rocío',
+                                    vpd: 'VPD',
+                                    substrateHumidity: 'Promedio',
+                                    sh1: 'Sensor 1',
+                                    sh2: 'Sensor 2',
+                                    sh3: 'Sensor 3'
+                                };
+                                return labels[value] || value;
+                            }}
+                        />
 
                         {/* Light Regions Background (Simplified for 'day' view) */}
                         {range === 'day' && lightingSchedule && (
