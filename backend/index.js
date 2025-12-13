@@ -3165,7 +3165,7 @@ setInterval(() => {
 }, 60000);
 
 const xiaomiBrowserService = require('./xiaomi-browser-service');
-const xiaomiAuth = require('./xiaomi-auth');
+// xiaomiAuth already required at top of file (line 18)
 
 // --- XIAOMI AUTH ENDPOINTS ---
 
