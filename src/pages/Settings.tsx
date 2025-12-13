@@ -110,6 +110,13 @@ const SettingsPage: React.FC = () => {
     mode: 'manual'
   });
 
+  // Crop Steering Settings
+  const [cropSteeringSettings, setCropSteeringSettings] = useState({
+    stage: 'none' as 'veg' | 'flower' | 'none',
+    targetVWC: 50,
+    targetDryback: 15
+  });
+
   const [showSecrets, setShowSecrets] = useState({
     tuyaSecret: false,
     humidifierToken: false,
@@ -178,6 +185,9 @@ const SettingsPage: React.FC = () => {
         setTuyaSettings(response.tuya || tuyaSettings);
         setXiaomiSettings(response.xiaomi || xiaomiSettings);
         setLightingSettings(response.lighting || lightingSettings);
+        if (response.cropSteering) {
+          setCropSteeringSettings(response.cropSteering);
+        }
       }
     } catch (error) {
       console.error('Error loading settings:', error);
@@ -193,7 +203,8 @@ const SettingsPage: React.FC = () => {
         app: appSettings,
         tuya: tuyaSettings,
         xiaomi: xiaomiSettings,
-        lighting: lightingSettings
+        lighting: lightingSettings,
+        cropSteering: cropSteeringSettings
       });
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
@@ -615,9 +626,29 @@ const SettingsPage: React.FC = () => {
         {/* Tab: Cultivo (Lighting) */}
         <TabPanel value={tabValue} index={3}>
             <Box sx={{ p: 3, maxWidth: 600 }}>
+                <Typography variant="h6" gutterBottom>🌱 Etapa de Crecimiento</Typography>
+                <Alert severity="info" sx={{ mb: 3 }}>
+                    Selecciona la etapa actual de tu cultivo para ver los rangos ideales de temperatura, humedad y VPD en los widgets.
+                </Alert>
+                <Box sx={{ display: 'flex', gap: 2, mb: 4 }}>
+                    {['veg', 'flower', 'none'].map(stage => (
+                        <Button
+                            key={stage}
+                            variant={cropSteeringSettings.stage === stage ? 'contained' : 'outlined'}
+                            onClick={() => setCropSteeringSettings({ ...cropSteeringSettings, stage: stage as any })}
+                            sx={{ flex: 1, py: 1.5 }}
+                            color={stage === 'veg' ? 'success' : stage === 'flower' ? 'secondary' : 'inherit'}
+                        >
+                            {stage === 'veg' ? '🌿 Vegetación' : stage === 'flower' ? '🌸 Floración' : '❌ Sin Etapa'}
+                        </Button>
+                    ))}
+                </Box>
+
+                <Divider sx={{ my: 3 }} />
+
                 <Typography variant="h6" gutterBottom>🌞 Fotoperiodo (Ciclo de Luz)</Typography>
                 <Alert severity="info" sx={{ mb: 3 }}>
-                    Configura el horario de encendido y apagado de las luces para visualizar el ciclo Día/Noche en las gráficas y (opcionalmente) controlar la automatización.
+                    Configura el horario de encendido y apagado de las luces para visualizar el ciclo Día/Noche en las gráficas.
                 </Alert>
                 <Grid container spacing={3}>
                     <Grid item xs={6}>

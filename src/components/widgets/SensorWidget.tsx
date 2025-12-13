@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { Box, Typography, Tooltip, IconButton, TextField } from '@mui/material';
 import { Info, Edit2, Check } from 'lucide-react';
 
@@ -15,18 +15,6 @@ const IDEAL_RANGES: Record<string, Record<string, [number, number]>> = {
     hum: [40, 60],
     vpd: [0.8, 1.4],
     sub: [30, 50]
-  },
-  flower_early: {
-    temp: [22, 26],
-    hum: [55, 70],
-    vpd: [0.8, 1.2],
-    sub: [35, 55]
-  },
-  flower_late: {
-    temp: [18, 24],
-    hum: [35, 50],
-    vpd: [1.2, 1.6],
-    sub: [25, 45]
   }
 };
 
@@ -38,9 +26,8 @@ interface SensorWidgetProps {
     description?: string;
     color?: string;
     onRename?: (newName: string) => void;
-    // New props for responsive features
     metricKey?: 'temp' | 'hum' | 'vpd' | 'sub';
-    growthStage?: 'veg' | 'flower' | 'flower_early' | 'flower_late' | 'none';
+    growthStage?: 'veg' | 'flower' | 'none';
 }
 
 type WidgetSize = 'small' | 'medium' | 'large';
@@ -61,27 +48,32 @@ export const SensorWidget: React.FC<SensorWidgetProps> = ({
     const [widgetSize, setWidgetSize] = useState<WidgetSize>('medium');
     const containerRef = useRef<HTMLDivElement>(null);
 
-    // Detect widget size via ResizeObserver
-    useEffect(() => {
+    // Detect widget size using ResizeObserver
+    useLayoutEffect(() => {
         const container = containerRef.current;
         if (!container) return;
 
-        const observer = new ResizeObserver((entries) => {
-            for (const entry of entries) {
-                const height = entry.contentRect.height;
-                const width = entry.contentRect.width;
+        const updateSize = () => {
+            const rect = container.getBoundingClientRect();
+            const height = rect.height;
+            const width = rect.width;
 
-                if (height < 80 || width < 150) {
-                    setWidgetSize('small');
-                } else if (height < 150 || width < 220) {
-                    setWidgetSize('medium');
-                } else {
-                    setWidgetSize('large');
-                }
+            // Adjust thresholds based on actual widget dimensions
+            if (height <= 100 && width <= 180) {
+                setWidgetSize('small');
+            } else if (height <= 180) {
+                setWidgetSize('medium');
+            } else {
+                setWidgetSize('large');
             }
-        });
+        };
 
+        // Initial check
+        updateSize();
+
+        const observer = new ResizeObserver(updateSize);
         observer.observe(container);
+
         return () => observer.disconnect();
     }, []);
 
@@ -99,50 +91,42 @@ export const SensorWidget: React.FC<SensorWidgetProps> = ({
     };
 
     const idealRange = getIdealRange();
-    const stageLabel = growthStage === 'veg' ? 'Vegetación' :
-                       growthStage === 'flower' ? 'Floración' :
-                       growthStage === 'flower_early' ? 'Flor Temprana' :
-                       growthStage === 'flower_late' ? 'Flor Tardía' : '';
+    const stageLabel = growthStage === 'veg' ? 'Vegetación' : growthStage === 'flower' ? 'Floración' : '';
 
-    // ===== SMALL LAYOUT: Horizontal, compact =====
+    // Common styles
+    const iconBoxStyle = {
+        borderRadius: '12px',
+        background: `linear-gradient(135deg, ${color}30 0%, ${color}15 100%)`,
+        color: color,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexShrink: 0
+    };
+
+    // ===== SMALL LAYOUT: Horizontal compact =====
     if (widgetSize === 'small') {
         return (
             <Box
                 ref={containerRef}
                 sx={{
                     display: 'flex',
+                    flexDirection: 'row',
                     alignItems: 'center',
-                    gap: 1,
+                    gap: 1.5,
                     height: '100%',
                     width: '100%',
-                    p: 0.5,
-                    overflow: 'hidden'
+                    p: 1
                 }}
             >
-                <Box sx={{
-                    p: 0.5,
-                    borderRadius: '8px',
-                    background: `linear-gradient(135deg, ${color}20 0%, ${color}10 100%)`,
-                    color: color,
-                    display: 'flex',
-                    flexShrink: 0,
-                    '& svg': { width: 16, height: 16 }
-                }}>
+                <Box sx={{ ...iconBoxStyle, p: 0.8, '& svg': { width: 18, height: 18 } }}>
                     {icon}
                 </Box>
-                <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.3, overflow: 'hidden' }}>
-                    <Typography fontWeight="800" sx={{
-                        fontSize: 'clamp(0.9rem, 4vw, 1.4rem)',
-                        color: 'text.primary',
-                        lineHeight: 1
-                    }}>
+                <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5 }}>
+                    <Typography fontWeight="800" sx={{ fontSize: '1.3rem', color: '#fff', lineHeight: 1 }}>
                         {value}
                     </Typography>
-                    <Typography sx={{
-                        fontSize: '0.6rem',
-                        color: 'text.secondary',
-                        fontWeight: 600
-                    }}>
+                    <Typography sx={{ fontSize: '0.65rem', color: 'text.secondary', fontWeight: 600 }}>
                         {unit}
                     </Typography>
                 </Box>
@@ -150,7 +134,7 @@ export const SensorWidget: React.FC<SensorWidgetProps> = ({
         );
     }
 
-    // ===== MEDIUM LAYOUT: Vertical, standard =====
+    // ===== MEDIUM LAYOUT: Vertical standard =====
     if (widgetSize === 'medium') {
         return (
             <Box
@@ -161,55 +145,44 @@ export const SensorWidget: React.FC<SensorWidgetProps> = ({
                     height: '100%',
                     width: '100%',
                     justifyContent: 'space-between',
-                    p: 1,
-                    overflow: 'hidden'
+                    p: 1.5
                 }}
             >
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <Box sx={{
-                        p: 0.8,
-                        borderRadius: '12px',
-                        background: `linear-gradient(135deg, ${color}20 0%, ${color}10 100%)`,
-                        color: color,
-                        display: 'flex',
-                        '& svg': { width: 20, height: 20 }
-                    }}>
+                    <Box sx={{ ...iconBoxStyle, p: 1, '& svg': { width: 22, height: 22 } }}>
                         {icon}
                     </Box>
                     {description && (
-                        <Tooltip title={description} arrow placement="top">
-                            <IconButton size="small" sx={{ opacity: 0.5, p: 0.3 }}>
-                                <Info size={12} />
+                        <Tooltip title={description} arrow>
+                            <IconButton size="small" sx={{ opacity: 0.5 }}>
+                                <Info size={14} />
                             </IconButton>
                         </Tooltip>
                     )}
                 </Box>
 
                 <Box>
-                    <Typography variant="caption" sx={{
+                    <Typography sx={{
                         color: 'text.secondary',
                         fontWeight: 700,
-                        fontSize: '0.6rem',
+                        fontSize: '0.65rem',
                         textTransform: 'uppercase',
-                        opacity: 0.7
+                        letterSpacing: '0.5px',
+                        mb: 0.5
                     }}>
                         {name}
                     </Typography>
                     <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5 }}>
                         <Typography fontWeight="800" sx={{
-                            background: 'linear-gradient(to right, #fff, #cbd5e1)',
+                            background: 'linear-gradient(to right, #fff, #a1a1aa)',
                             WebkitBackgroundClip: 'text',
                             WebkitTextFillColor: 'transparent',
-                            fontSize: 'clamp(1.2rem, 5vw, 2rem)',
-                            lineHeight: 1.1
+                            fontSize: '1.8rem',
+                            lineHeight: 1
                         }}>
                             {value}
                         </Typography>
-                        <Typography sx={{
-                            color: 'text.secondary',
-                            fontWeight: 600,
-                            fontSize: '0.7rem'
-                        }}>
+                        <Typography sx={{ color: 'text.secondary', fontWeight: 600, fontSize: '0.75rem' }}>
                             {unit}
                         </Typography>
                     </Box>
@@ -228,39 +201,29 @@ export const SensorWidget: React.FC<SensorWidgetProps> = ({
                 height: '100%',
                 width: '100%',
                 justifyContent: 'space-between',
-                p: 1.5,
-                overflow: 'hidden',
+                p: 2,
                 '&:hover .edit-btn': { opacity: 1 }
             }}
         >
             {/* Header */}
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <Box sx={{
-                    p: 1,
-                    borderRadius: '14px',
-                    background: `linear-gradient(135deg, ${color}20 0%, ${color}10 100%)`,
-                    color: color,
-                    display: 'flex',
-                    boxShadow: `0 4px 12px ${color}15`,
-                    '& svg': { width: 24, height: 24 }
-                }}>
+                <Box sx={{ ...iconBoxStyle, p: 1.2, '& svg': { width: 28, height: 28 } }}>
                     {icon}
                 </Box>
-
                 <Box sx={{ display: 'flex', gap: 0.5 }}>
-                    {!isEditing && (
+                    {!isEditing && onRename && (
                         <IconButton
                             size="small"
                             className="edit-btn"
                             onClick={() => setIsEditing(true)}
-                            sx={{ opacity: 0, transition: 'opacity 0.2s', color: 'rgba(255,255,255,0.5)' }}
+                            sx={{ opacity: 0, transition: 'opacity 0.2s', color: 'text.secondary' }}
                         >
                             <Edit2 size={14} />
                         </IconButton>
                     )}
                     {description && (
-                        <Tooltip title={description} arrow placement="top">
-                            <IconButton size="small" sx={{ opacity: 0.6, color: 'text.secondary' }}>
+                        <Tooltip title={description} arrow>
+                            <IconButton size="small" sx={{ opacity: 0.6 }}>
                                 <Info size={16} />
                             </IconButton>
                         </Tooltip>
@@ -268,32 +231,30 @@ export const SensorWidget: React.FC<SensorWidgetProps> = ({
                 </Box>
             </Box>
 
-            {/* Main Content */}
-            <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+            {/* Main Value */}
+            <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', my: 1 }}>
                 {isEditing ? (
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                         <TextField
                             variant="standard"
                             value={editName}
                             onChange={(e) => setEditName(e.target.value)}
                             size="small"
                             autoFocus
-                            sx={{
-                                input: { color: 'text.secondary', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }
-                            }}
+                            sx={{ input: { fontSize: '0.8rem', fontWeight: 600 } }}
                         />
-                        <IconButton size="small" onClick={handleSave} sx={{ color: 'green' }}>
+                        <IconButton size="small" onClick={handleSave} sx={{ color: 'success.main' }}>
                             <Check size={16} />
                         </IconButton>
                     </Box>
                 ) : (
-                    <Typography variant="caption" sx={{
+                    <Typography sx={{
                         color: 'text.secondary',
                         fontWeight: 700,
-                        letterSpacing: '1px',
+                        fontSize: '0.7rem',
                         textTransform: 'uppercase',
-                        opacity: 0.8,
-                        mb: 0.5
+                        letterSpacing: '1px',
+                        mb: 1
                     }}>
                         {name}
                     </Typography>
@@ -301,42 +262,37 @@ export const SensorWidget: React.FC<SensorWidgetProps> = ({
 
                 <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5 }}>
                     <Typography fontWeight="800" sx={{
-                        background: 'linear-gradient(to right, #fff, #cbd5e1)',
+                        background: 'linear-gradient(to right, #fff, #a1a1aa)',
                         WebkitBackgroundClip: 'text',
                         WebkitTextFillColor: 'transparent',
-                        fontSize: 'clamp(1.8rem, 6vw, 3rem)',
-                        letterSpacing: '-1px',
+                        fontSize: '2.5rem',
+                        letterSpacing: '-2px',
                         lineHeight: 1
                     }}>
                         {value}
                     </Typography>
-                    <Typography sx={{
-                        color: 'text.secondary',
-                        fontWeight: 600,
-                        fontSize: '0.875rem'
-                    }}>
+                    <Typography sx={{ color: 'text.secondary', fontWeight: 600, fontSize: '1rem' }}>
                         {unit}
                     </Typography>
                 </Box>
             </Box>
 
-            {/* Ideal Range Footer (only if stage is set and we have a range) */}
+            {/* Ideal Range Footer */}
             {idealRange && (
                 <Box sx={{
-                    mt: 1,
-                    pt: 1,
-                    borderTop: '1px solid rgba(255,255,255,0.1)',
+                    pt: 1.5,
+                    borderTop: '1px solid rgba(255,255,255,0.08)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between'
                 }}>
-                    <Typography variant="caption" sx={{ color: 'text.disabled', fontSize: '0.65rem' }}>
+                    <Typography sx={{ color: 'text.disabled', fontSize: '0.65rem' }}>
                         Ideal ({stageLabel})
                     </Typography>
-                    <Typography variant="caption" sx={{
+                    <Typography sx={{
                         color: color,
                         fontWeight: 700,
-                        fontSize: '0.7rem'
+                        fontSize: '0.75rem'
                     }}>
                         {idealRange[0]} - {idealRange[1]} {unit}
                     </Typography>
