@@ -113,14 +113,14 @@ const TUYA_DEVICES_MAP = {
     deviceType: 'light',
     category: 'led_panel',
   },
-  // luzPanel3: {
-  //   name: 'Bandeja Izq Adelante', // Updated Name
-  //   id: process.env.TUYA_LUZ_PANEL_3_ID || 'ebb361hhi0cei8xb', // Updated to Bandeja Izq Adelante
-  //   platform: 'tuya',
-  //   deviceType: 'light',
-  //   category: 'led_panel',
-  //   switchCode: 'switch_1',
-  // },
+  luzPanel3: {
+    name: 'Bandeja Izq Adelante',
+    id: process.env.TUYA_LUZ_PANEL_3_ID || 'ebd8dbv4btvl7h1b', // Updated from user
+    platform: 'tuya',
+    deviceType: 'light',
+    category: 'led_panel',
+    switchCode: 'switch',
+  },
   luzPanel4: {
     name: 'Bandeja Izq AtrÃ¡s', // Updated Name
     id: process.env.TUYA_LUZ_PANEL_4_ID || 'ebf84afaludhei1x', // Updated to Bandeja Izq AtrÃ¡s
@@ -181,7 +181,7 @@ const TUYA_DEVICES_MAP = {
   // VENTILACIÃ“N (1 ventilador)
   ventiladorIzq: {
     name: 'Ventilador Izq',
-    id: process.env.TUYA_VENTILADOR_IZQ_ID || 'eb974ezlyixtw3gj', // Updated from scan
+    id: process.env.TUYA_VENTILADOR_IZQ_ID || 'eba66ay908qnuxq3', // Updated from user
     platform: 'tuya',
     deviceType: 'switch',
     category: 'fan_controller',
@@ -189,11 +189,20 @@ const TUYA_DEVICES_MAP = {
   },
   ventiladorDer: {
     name: 'Ventilador Derecha',
-    id: process.env.TUYA_VENTILADOR_DER_ID || 'ebbb230txodu6jik', // Updated from scan
+    id: process.env.TUYA_VENTILADOR_DER_ID || 'ebadc3tv1usy2xbr', // Updated from user
     platform: 'tuya',
     deviceType: 'switch',
     category: 'fan_controller',
     switchCode: 'switch_1',
+  },
+  // DESHUMIDIFICADOR
+  deshumidificador: {
+    name: 'Deshumidificador',
+    id: process.env.TUYA_DESHUMIDIFICADOR_ID || 'eba300vycr9wpf51', // Added from user
+    platform: 'tuya',
+    deviceType: 'switch',
+    category: 'dehumidifier',
+    switchCode: 'switch',
   },
 };
 
