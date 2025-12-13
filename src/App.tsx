@@ -2,6 +2,7 @@ import { useState, Suspense, lazy } from 'react';
 import Layout, { Page } from './components/Layout';
 import DebugOverlay from './components/DebugOverlay';
 import { ThemeProvider } from './context/ThemeContext';
+import { CropSteeringProvider } from './context/CropSteeringContext';
 import { Box, CircularProgress } from '@mui/material';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
@@ -15,6 +16,7 @@ const Calendar = lazy(() => import('./pages/Calendar'));
 const Devices = lazy(() => import('./pages/Devices'));
 const Camera = lazy(() => import('./pages/Camera'));
 const Settings = lazy(() => import('./pages/Settings'));
+const CropSteering = lazy(() => import('./pages/CropSteering'));
 
 function AppContent() {
   const [activePage, setActivePage] = useState<Page>('dashboard');
@@ -25,6 +27,7 @@ function AppContent() {
       case 'lighting': return <Lighting />;
       case 'irrigation': return <Irrigation />;
       case 'environment': return <Environment />;
+      case 'cropsteering': return <CropSteering />;
       case 'ai_assistant': return <AIAssistant />;
       case 'calendar': return <Calendar />;
       case 'devices': return <Devices />;
@@ -52,10 +55,13 @@ function AppContent() {
 function App() {
   return (
     <ThemeProvider>
-      <DebugOverlay />
-      <AppContent />
+      <CropSteeringProvider>
+        <DebugOverlay />
+        <AppContent />
+      </CropSteeringProvider>
     </ThemeProvider>
   );
 }
 
 export default App;
+
