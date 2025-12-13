@@ -113,16 +113,18 @@ const Dashboard: React.FC = () => {
 
         currentWidgets.forEach(w => {
             let props: any = {};
+            // Get growth stage from settings
+            const currentStage = settings?.cropSteering?.stage || 'none';
 
             const handleRename = (newName: string) => {
                 handleRenameWidget(w.id, newName);
             };
 
-            // Sensor Mapping
-            if (w.id === 'temp') props = { icon: <Thermometer/>, name: w.title, value: latestSensors?.temperature?.toFixed(1) ?? '--', unit: '°C', color: '#ef4444', onRename: handleRename };
-            if (w.id === 'hum') props = { icon: <Droplet/>, name: w.title, value: latestSensors?.humidity?.toFixed(0) ?? '--', unit: '%', color: '#3b82f6', onRename: handleRename };
-            if (w.id === 'vpd') props = { icon: <Wind/>, name: w.title, value: latestSensors?.vpd?.toFixed(2) ?? '--', unit: 'kPa', color: '#8b5cf6', onRename: handleRename };
-            if (w.id === 'sub') props = { icon: <Droplets/>, name: w.title, value: latestSensors?.substrateHumidity?.toFixed(0) ?? '--', unit: '%', color: '#f59e0b', onRename: handleRename };
+            // Sensor Mapping with metricKey and growthStage
+            if (w.id === 'temp') props = { icon: <Thermometer/>, name: w.title, value: latestSensors?.temperature?.toFixed(1) ?? '--', unit: '°C', color: '#ef4444', onRename: handleRename, metricKey: 'temp', growthStage: currentStage };
+            if (w.id === 'hum') props = { icon: <Droplet/>, name: w.title, value: latestSensors?.humidity?.toFixed(0) ?? '--', unit: '%', color: '#3b82f6', onRename: handleRename, metricKey: 'hum', growthStage: currentStage };
+            if (w.id === 'vpd') props = { icon: <Wind/>, name: w.title, value: latestSensors?.vpd?.toFixed(2) ?? '--', unit: 'kPa', color: '#8b5cf6', onRename: handleRename, metricKey: 'vpd', growthStage: currentStage };
+            if (w.id === 'sub') props = { icon: <Droplets/>, name: w.title, value: latestSensors?.substrateHumidity?.toFixed(0) ?? '--', unit: '%', color: '#f59e0b', onRename: handleRename, metricKey: 'sub', growthStage: currentStage };
 
             // Chart Mapping
             if (w.id === 'chart_vpd') props = { data: sensorHistory, dataKey: 'vpd', color: '#8b5cf6', unit: 'kPa', lightSchedule };
