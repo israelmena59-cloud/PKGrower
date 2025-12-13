@@ -182,32 +182,41 @@ const Environment: React.FC = () => {
                     <ResponsiveContainer width="100%" height="100%">
                         <AreaChart data={vpdData}>
                             <defs>
-                                <linearGradient id="colorVpd" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#82ca9d" stopOpacity={0.8}/>
-                                    <stop offset="95%" stopColor="#82ca9d" stopOpacity={0}/>
+                                <linearGradient id="colorVpdEnv" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#34C759" stopOpacity={0.4}/>
+                                    <stop offset="95%" stopColor="#34C759" stopOpacity={0}/>
                                 </linearGradient>
-                                <linearGradient id="colorTemp" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#ff9800" stopOpacity={0.8}/>
-                                    <stop offset="95%" stopColor="#ff9800" stopOpacity={0}/>
+                                <linearGradient id="colorTempEnv" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#FF3B30" stopOpacity={0.3}/>
+                                    <stop offset="95%" stopColor="#FF3B30" stopOpacity={0}/>
+                                </linearGradient>
+                                <linearGradient id="colorHumEnv" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#007AFF" stopOpacity={0.3}/>
+                                    <stop offset="95%" stopColor="#007AFF" stopOpacity={0}/>
                                 </linearGradient>
                             </defs>
                             <CartesianGrid strokeDasharray="3 3" opacity={0.1} stroke="white" />
                             <XAxis dataKey="time" stroke="rgba(255,255,255,0.5)" tick={{ fontSize: 10 }} />
-                            <YAxis yAxisId="left" domain={[0, 4]} stroke="rgba(255,255,255,0.5)" tick={{ fontSize: 10 }} label={{ value: 'VPD (kPa)', angle: -90, position: 'insideLeft', fill: 'white' }} />
-                            <YAxis yAxisId="right" orientation="right" domain={[10, 40]} stroke="rgba(255,255,255,0.5)" tick={{ fontSize: 10 }} label={{ value: 'Temp (°C)', angle: 90, position: 'insideRight', fill: 'white' }} />
+                            <YAxis yAxisId="left" domain={[0, 100]} stroke="rgba(255,255,255,0.5)" tick={{ fontSize: 10 }} />
+                            <YAxis yAxisId="right" orientation="right" domain={[0, 3]} stroke="rgba(255,255,255,0.5)" tick={{ fontSize: 10 }} />
                             <RechartsTooltip
                                 contentStyle={{
-                                    backgroundColor: 'rgba(20, 20, 30, 0.9)',
+                                    backgroundColor: 'rgba(28, 28, 30, 0.95)',
                                     borderColor: 'rgba(255,255,255,0.1)',
-                                    borderRadius: '12px',
-                                    backdropFilter: 'blur(10px)'
+                                    borderRadius: '16px',
+                                    backdropFilter: 'blur(20px)'
                                 }}
                             />
-                            <ReferenceLine yAxisId="left" y={0.8} stroke="#4ade80" strokeDasharray="3 3" />
-                            <ReferenceLine yAxisId="left" y={1.2} stroke="#4ade80" strokeDasharray="3 3" />
+                            {/* Reference lines for ideal VPD zone */}
+                            <ReferenceLine yAxisId="right" y={0.8} stroke="#34C759" strokeDasharray="3 3" />
+                            <ReferenceLine yAxisId="right" y={1.2} stroke="#34C759" strokeDasharray="3 3" />
 
-                            <Area yAxisId="left" type="monotone" dataKey="vpd" stroke="#82ca9d" strokeWidth={3} fillOpacity={1} fill="url(#colorVpd)" name="VPD" />
-                            <Area yAxisId="right" type="monotone" dataKey="temp" stroke="#ff9800" strokeWidth={3} fillOpacity={0.3} fill="url(#colorTemp)" name="Temperatura" />
+                            {/* Temperature - iOS Red */}
+                            <Area yAxisId="left" type="monotone" dataKey="temp" stroke="#FF3B30" strokeWidth={2} fillOpacity={1} fill="url(#colorTempEnv)" name="Temp °C" />
+                            {/* Humidity - iOS Blue */}
+                            <Area yAxisId="left" type="monotone" dataKey="hum" stroke="#007AFF" strokeWidth={2} fillOpacity={1} fill="url(#colorHumEnv)" name="Humedad %" />
+                            {/* VPD - iOS Green (prominent) */}
+                            <Area yAxisId="right" type="monotone" dataKey="vpd" stroke="#34C759" strokeWidth={3} fillOpacity={1} fill="url(#colorVpdEnv)" name="VPD kPa" />
                         </AreaChart>
                     </ResponsiveContainer>
                 </Box>
