@@ -1,11 +1,11 @@
 /**
  * Crop Steering Page
- * Dedicated page for crop steering management with all related components
+ * Unified hub for crop steering, automation, alerts, and irrigation
  */
 
 import React, { useEffect, useState } from 'react';
-import { Box, Typography, Grid, Alert, Button, TextField, Switch, FormControlLabel, Tabs, Tab } from '@mui/material';
-import { Leaf, Settings, RefreshCw, Save, Zap, Bell } from 'lucide-react';
+import { Box, Typography, Grid, Alert, Button, TextField, Switch, FormControlLabel, Tabs, Tab, CardHeader, CardContent, Divider, CircularProgress } from '@mui/material';
+import { Leaf, Settings, RefreshCw, Save, Zap, Bell, Droplet, Activity } from 'lucide-react';
 import {
   VPDGauge,
   StageSelector,
@@ -15,8 +15,10 @@ import {
   AlertList
 } from '../components/cropsteering';
 import { useCropSteering } from '../context/CropSteeringContext';
-import { API_BASE_URL } from '../api/client';
+import { API_BASE_URL, apiClient } from '../api/client';
 import { DEFAULT_AUTOMATION_RULES, AutomationRule } from '../utils/automationEngine';
+import DeviceSwitch from '../components/dashboard/DeviceSwitch';
+import HistoryChart from '../components/dashboard/HistoryChart';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -46,6 +48,11 @@ const CropSteering: React.FC = () => {
   const [automationEnabled, setAutomationEnabled] = useState(true);
   const [automationRules, setAutomationRules] = useState<AutomationRule[]>(DEFAULT_AUTOMATION_RULES);
 
+  // Irrigation state
+  const [devices, setDevices] = useState<any>({});
+  const [pulsing, setPulsing] = useState(false);
+  const [pumpRate, setPumpRate] = useState(60);
+
   // Fetch sensor data and update conditions
   useEffect(() => {
     const fetchSensorData = async () => {
@@ -65,9 +72,20 @@ const CropSteering: React.FC = () => {
     };
 
     fetchSensorData();
-    const interval = setInterval(fetchSensorData, 10000);
+    loadDevices();
+    const interval = setInterval(() => {
+      fetchSensorData();
+      loadDevices();
+    }, 10000);
     return () => clearInterval(interval);
   }, [updateConditions]);
+
+  const loadDevices = async () => {
+    try {
+      const devs = await apiClient.getDeviceStates();
+      setDevices(devs);
+    } catch (e) {}
+  };
 
   // Load settings and rules on mount
   useEffect(() => {
@@ -111,6 +129,22 @@ const CropSteering: React.FC = () => {
       alert('Configuración guardada correctamente');
     } catch (e) {
       alert('Error al guardar configuración');
+    }
+  };
+
+  // Irrigation handlers
+  const handleShot = async (pct: number) => {
+    if (pulsing) return;
+    setPulsing(true);
+    try {
+      const volumeMl = settings.potSizeLiters * 10 * pct;
+      const durationMs = Math.round((volumeMl / pumpRate) * 60 * 1000);
+      console.log(`[SHOT] ${pct}% -> ${volumeMl}ml -> ${durationMs}ms`);
+      await apiClient.pulseDevice('bombaControlador', durationMs);
+    } catch (e) {
+      console.error('Shot failed:', e);
+    } finally {
+      setTimeout(() => setPulsing(false), 2000);
     }
   };
 
@@ -165,6 +199,7 @@ const CropSteering: React.FC = () => {
           textColor="inherit"
         >
           <Tab label="Monitoreo" icon={<Leaf size={16} />} iconPosition="start" />
+          <Tab label="Riego" icon={<Droplet size={16} />} iconPosition="start" />
           <Tab label="Automatización" icon={<Zap size={16} />} iconPosition="start" />
           <Tab label="Alertas" icon={<Bell size={16} />} iconPosition="start" />
           <Tab label="Configuración" icon={<Settings size={16} />} iconPosition="start" />
@@ -215,8 +250,55 @@ const CropSteering: React.FC = () => {
         </Grid>
       </TabPanel>
 
-      {/* Tab 1: Automation */}
+      {/* Tab 1: Irrigation */}
       <TabPanel value={activeTab} index={1}>
+        <Grid container spacing={3}>
+          <Grid item xs={12} lg={8}>
+            <HistoryChart type="substrate" title="Historial Sustrato (VWC)" />
+          </Grid>
+          <Grid item xs={12} lg={4}>
+            {/* Pump Control */}
+            <Box className="glass-panel" sx={{ mb: 2, borderRadius: '16px', bgcolor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', overflow: 'hidden' }}>
+              <CardHeader title="Control de Bomba" subheader="Disparos manuales" avatar={<Droplet />} titleTypographyProps={{ fontWeight: 'bold' }} />
+              <Divider sx={{ borderColor: 'rgba(255,255,255,0.1)' }} />
+              <CardContent>
+                <Grid container spacing={1} sx={{ mb: 2 }}>
+                  {[1, 2, 3, 5].map((pct) => (
+                    <Grid item xs={6} key={pct}>
+                      <Button fullWidth variant="contained" size="large" disabled={pulsing} onClick={() => handleShot(pct)} sx={{ py: 2 }}>
+                        {pct}% Shot
+                      </Button>
+                    </Grid>
+                  ))}
+                </Grid>
+                <DeviceSwitch icon={<Activity />} name="Bomba Manual" isOn={devices.bombaControlador} onToggle={async () => { await apiClient.toggleDevice('bombaControlador'); loadDevices(); }} />
+              </CardContent>
+            </Box>
+
+            {/* Calibration */}
+            <Box className="glass-panel" sx={{ borderRadius: '16px', bgcolor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', overflow: 'hidden' }}>
+              <CardHeader title="Calibración" subheader="Parámetros de riego" titleTypographyProps={{ fontWeight: 'bold' }} />
+              <Divider sx={{ borderColor: 'rgba(255,255,255,0.1)' }} />
+              <CardContent>
+                <Grid container spacing={2}>
+                  <Grid item xs={6}>
+                    <TextField label="Maceta (L)" type="number" fullWidth size="small" value={settings.potSizeLiters} onChange={(e) => updateSettings({ potSizeLiters: parseFloat(e.target.value) || 3.8 })} />
+                  </Grid>
+                  <Grid item xs={6}>
+                    <TextField label="Flujo (ml/min)" type="number" fullWidth size="small" value={pumpRate} onChange={(e) => setPumpRate(parseFloat(e.target.value) || 60)} />
+                  </Grid>
+                </Grid>
+                <Alert severity="info" sx={{ mt: 2, fontSize: '0.75rem' }}>
+                  1% = {(settings.potSizeLiters * 10).toFixed(0)}ml = {((settings.potSizeLiters * 10) / pumpRate * 60).toFixed(1)}s
+                </Alert>
+              </CardContent>
+            </Box>
+          </Grid>
+        </Grid>
+      </TabPanel>
+
+      {/* Tab 2: Automation */}
+      <TabPanel value={activeTab} index={2}>
         <AutomationPanel
           enabled={automationEnabled}
           onEnabledChange={setAutomationEnabled}
@@ -225,25 +307,16 @@ const CropSteering: React.FC = () => {
         />
       </TabPanel>
 
-      {/* Tab 2: Alerts */}
-      <TabPanel value={activeTab} index={2}>
-        <Box
-          sx={{
-            p: 2,
-            borderRadius: '16px',
-            bgcolor: 'rgba(255,255,255,0.03)',
-            border: '1px solid rgba(255,255,255,0.08)'
-          }}
-        >
-          <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 2 }}>
-            🔔 Alertas del Sistema
-          </Typography>
+      {/* Tab 3: Alerts */}
+      <TabPanel value={activeTab} index={3}>
+        <Box sx={{ p: 2, borderRadius: '16px', bgcolor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}>
+          <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 2 }}>🔔 Alertas del Sistema</Typography>
           <AlertList maxAlerts={10} />
         </Box>
       </TabPanel>
 
-      {/* Tab 3: Settings */}
-      <TabPanel value={activeTab} index={3}>
+      {/* Tab 4: Settings */}
+      <TabPanel value={activeTab} index={4}>
         <Grid container spacing={3}>
           <Grid item xs={12} md={6}>
             <Box
