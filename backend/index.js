@@ -515,38 +515,70 @@ app.delete('/api/devices/:id', async (req, res) => {
 });
 
 // 3. LIST: Retornar TODOS los dispositivos (Estáticos + Dinámicos + Custom) con metadatos completos
+// [ENHANCED] Now includes live values from device caches
 app.get('/api/devices/list', (req, res) => {
     try {
         const allDevices = [];
         const seenIds = new Set();
 
-        // 1. Static Devices (DEVICE_MAP)
-        // Convert to array
+        // Helper to get live values from caches
+        const getLiveValues = (deviceId, deviceKey) => {
+            // Check tuyaDevices cache for live values
+            const tuyaDev = tuyaDevices[deviceKey] || tuyaDevices[deviceId];
+            if (tuyaDev) {
+                return {
+                    temperature: tuyaDev.temperature || tuyaDev.temp_current,
+                    humidity: tuyaDev.humidity || tuyaDev.humidity_value,
+                    status: tuyaDev.status ?? tuyaDev.switch ?? tuyaDev.switch_1,
+                    online: tuyaDev.online ?? true,
+                    value: tuyaDev.value
+                };
+            }
+            // Check meross cache
+            const merossDev = merossDevices[deviceId];
+            if (merossDev) {
+                return {
+                    status: merossDev.onoff ?? merossDev.status,
+                    online: merossDev.online ?? true
+                };
+            }
+            return {};
+        };
+
+        // 1. Static Devices (DEVICE_MAP - now includes all Tuya and Xiaomi base devices)
         for (const [key, def] of Object.entries(DEVICE_MAP)) {
-            // Check override
             const custom = customDeviceConfigs[def.id] || customDeviceConfigs[key];
             const finalName = custom ? custom.name : def.name;
+            const liveVals = getLiveValues(def.id, key);
+
+            // Auto-detect capabilities based on device type
+            const capabilities = custom?.capabilities || detectCapabilities(def.deviceType, def.category, def.platform);
 
             allDevices.push({
-                id: def.id || key, // Some rely on key as ID in simulation
+                id: def.id || key,
                 key: key,
                 name: finalName,
                 type: def.deviceType,
                 platform: def.platform,
                 source: 'static',
-                configured: true
+                configured: true,
+                capabilities: capabilities,
+                // Live values
+                temperature: liveVals.temperature,
+                humidity: liveVals.humidity,
+                status: liveVals.status,
+                online: liveVals.online ?? true,
+                value: liveVals.value
             });
             seenIds.add(def.id || key);
         }
 
-        // 2. Tuya Dynamic
+        // 2. Tuya Dynamic devices (discovered but not in static map)
         for (const [key, tDev] of Object.entries(tuyaDevices)) {
-             // If key matches a static entry (e.g. luzPanel1), we already added it.
-             // But check ID.
              if (seenIds.has(tDev.id) || seenIds.has(key)) continue;
 
-             // Check custom config
              const custom = customDeviceConfigs[tDev.id];
+             const capabilities = custom?.capabilities || detectCapabilities(tDev.deviceType || 'switch', tDev.category, 'tuya');
 
              allDevices.push({
                  id: tDev.id,
@@ -556,16 +588,24 @@ app.get('/api/devices/list', (req, res) => {
                  platform: 'tuya',
                  source: 'dynamic',
                  configured: !!custom,
-                 category: tDev.category
+                 category: tDev.category,
+                 capabilities: capabilities,
+                 // Live values
+                 temperature: tDev.temperature || tDev.temp_current,
+                 humidity: tDev.humidity || tDev.humidity_value,
+                 status: tDev.status ?? tDev.switch ?? tDev.switch_1,
+                 online: tDev.online ?? true,
+                 value: tDev.value
              });
              seenIds.add(tDev.id);
         }
 
-        // 3. Meross Dynamic
+        // 3. Meross Dynamic devices
         for (const [mId, mDev] of Object.entries(merossDevices)) {
              if (seenIds.has(mId)) continue;
 
              const custom = customDeviceConfigs[mId];
+             const capabilities = custom?.capabilities || ['switch'];
 
              allDevices.push({
                  id: mId,
@@ -573,13 +613,19 @@ app.get('/api/devices/list', (req, res) => {
                  type: custom ? custom.type : (mDev.type || 'switch'),
                  platform: 'meross',
                  source: 'dynamic',
-                 configured: !!custom
+                 configured: !!custom,
+                 capabilities: capabilities,
+                 // Live values
+                 status: mDev.onoff ?? mDev.status,
+                 online: mDev.online ?? true
              });
              seenIds.add(mId);
         }
 
+        console.log(`[API] /devices/list returning ${allDevices.length} devices with live values`);
         res.json(allDevices);
     } catch (e) {
+        console.error('[API] /devices/list error:', e);
         res.status(500).json({ error: e.message });
     }
 });
