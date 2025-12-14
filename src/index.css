@@ -239,3 +239,78 @@ body {
   gap: var(--spacing-sm);
   align-items: center;
 }
+
+/* =========================
+   MUI RESPONSIVE OVERRIDES
+   ========================= */
+/* CardActions - always wrap buttons */
+.MuiCardActions-root {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+  padding: 8px 16px !important;
+}
+
+/* Mobile specific - stack buttons */
+@media (max-width: 600px) {
+  .MuiCardActions-root {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+  .MuiCardActions-root > * {
+    width: 100% !important;
+    margin: 0 !important;
+  }
+
+  /* Dialog actions also responsive */
+  .MuiDialogActions-root {
+    flex-direction: column !important;
+    gap: 8px;
+    padding: 16px !important;
+  }
+  .MuiDialogActions-root > button {
+    width: 100% !important;
+    margin: 0 !important;
+  }
+
+  /* Box with multiple buttons */
+  .MuiBox-root[style*="flex"] {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+
+  /* Grid items full width */
+  .MuiGrid-item {
+    max-width: 100% !important;
+  }
+}
+
+/* Tablet - 2 columns */
+@media (min-width: 601px) and (max-width: 960px) {
+  .MuiCardActions-root {
+    justify-content: flex-start !important;
+  }
+}
+
+/* All buttons - consistent sizing */
+.MuiButton-root {
+  min-height: 36px;
+  white-space: nowrap;
+}
+
+.MuiButton-sizeSmall {
+  min-height: 32px;
+  font-size: 13px;
+}
+
+/* Chips wrap */
+.MuiChip-root {
+  margin: 2px !important;
+}
+
+/* Fix overlapping in Settings sections */
+.MuiAccordionDetails-root .MuiBox-root {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}

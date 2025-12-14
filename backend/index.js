@@ -2640,6 +2640,23 @@ app.get('/api/devices/all', async (req, res) => {
       }
     }
 
+    // Agregar dispositivos Meross
+    for (const [mId, mDev] of Object.entries(merossDevices)) {
+      if (mDev && mDev.name) {
+        devices.push({
+          id: mId,
+          name: mDev.name,
+          type: mDev.type || 'switch',
+          status: mDev.onoff ?? mDev.status ?? false,
+          platform: 'meross',
+          value: mDev.power ?? null,
+          unit: mDev.power ? 'W' : '',
+          description: `Meross ${mDev.type || 'Switch'}`,
+          lastUpdate: new Date().toLocaleTimeString(),
+        });
+      }
+    }
+
     res.json(devices);
   } catch (error) {
     res.status(500).json({ error: error.message });
