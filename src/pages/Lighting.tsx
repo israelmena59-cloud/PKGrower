@@ -221,8 +221,9 @@ const Lighting: React.FC = () => {
                 </CardContent>
             </Box>
 
-            {/* Manual Controls */}
+            {/* Device Management */}
             <Box className="glass-panel" sx={{
+                mb: 2,
                 borderRadius: 'var(--squircle-radius)',
                 bgcolor: 'var(--glass-bg)',
                 backdropFilter: 'var(--backdrop-blur)',
@@ -230,15 +231,63 @@ const Lighting: React.FC = () => {
                 boxShadow: 'var(--glass-shadow)',
                 overflow: 'hidden'
             }}>
-                <CardHeader title="Actuadores Manuales" avatar={<Zap color="#f59e0b" />} titleTypographyProps={{ fontWeight: 'bold' }} />
+                <CardHeader
+                  title="Dispositivos de Luz"
+                  avatar={<Lightbulb color="#f59e0b" />}
+                  titleTypographyProps={{ fontWeight: 'bold' }}
+                  action={
+                    <Button size="small" variant="outlined" startIcon={<Zap size={14} />}>
+                      + Agregar
+                    </Button>
+                  }
+                />
                 <Divider sx={{ borderColor: 'rgba(255,255,255,0.1)' }} />
                 <CardContent>
                     <Grid container spacing={1}>
-                        <Grid item xs={6}><DeviceSwitch icon={<Lightbulb />} name="Panel 1" isOn={devices.luzPanel1} onToggle={() => handleToggleDevice('luzPanel1')} /></Grid>
-                        <Grid item xs={6}><DeviceSwitch icon={<Lightbulb />} name="Panel 2" isOn={devices.luzPanel2} onToggle={() => handleToggleDevice('luzPanel2')} /></Grid>
-                        <Grid item xs={6}><DeviceSwitch icon={<Lightbulb />} name="Panel 3" isOn={devices.luzPanel3} onToggle={() => handleToggleDevice('luzPanel3')} /></Grid>
-                        <Grid item xs={6}><DeviceSwitch icon={<Lightbulb />} name="Panel 4" isOn={devices.luzPanel4} onToggle={() => handleToggleDevice('luzPanel4')} /></Grid>
-                        <Grid item xs={12}><DeviceSwitch icon={<Sun color={devices.controladorLuzRoja ? "#ef4444" : "gray"} />} name="Luz Roja (Emerson)" isOn={devices.controladorLuzRoja} onToggle={() => handleToggleDevice('controladorLuzRoja')} /></Grid>
+                        {['luzPanel1', 'luzPanel2', 'luzPanel3', 'luzPanel4'].map((key, idx) => (
+                          <Grid item xs={6} key={key}>
+                            <Box sx={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              p: 1,
+                              borderRadius: 1,
+                              bgcolor: devices[key] ? 'rgba(245, 158, 11, 0.1)' : 'rgba(255,255,255,0.03)'
+                            }}>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <Lightbulb size={16} color={devices[key] ? '#f59e0b' : '#666'} />
+                                <Typography variant="body2">Panel {idx + 1}</Typography>
+                              </Box>
+                              <Switch
+                                size="small"
+                                checked={devices[key] || false}
+                                onChange={() => handleToggleDevice(key)}
+                                color="warning"
+                              />
+                            </Box>
+                          </Grid>
+                        ))}
+                        <Grid item xs={12}>
+                          <Box sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            p: 1,
+                            borderRadius: 1,
+                            bgcolor: devices.controladorLuzRoja ? 'rgba(239, 68, 68, 0.1)' : 'rgba(255,255,255,0.03)'
+                          }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              <Sun size={16} color={devices.controladorLuzRoja ? '#ef4444' : '#666'} />
+                              <Typography variant="body2">Luz Roja (Emerson)</Typography>
+                            </Box>
+                            <Switch
+                              size="small"
+                              checked={devices.controladorLuzRoja || false}
+                              onChange={() => handleToggleDevice('controladorLuzRoja')}
+                              color="error"
+                            />
+                          </Box>
+                        </Grid>
                     </Grid>
                 </CardContent>
             </Box>

@@ -1,9 +1,3 @@
-/**
- * Nutrients Page
- * Athena Pro Line feeding calculator and reference tables
- * Data extracted from Spanish Handbook - Metric DIGITAL V16
- */
-
 import React, { useState, useMemo } from 'react';
 import {
   Box,
@@ -25,15 +19,19 @@ import {
   ToggleButtonGroup,
   Divider,
   Alert,
-  Paper
+  Paper,
+  Tabs,
+  Tab
 } from '@mui/material';
-import { Beaker, Droplets, Thermometer, Leaf, Calculator, BookOpen } from 'lucide-react';
+import { Beaker, Droplets, Thermometer, Leaf, Calculator, BookOpen, FlaskConical } from 'lucide-react';
 import {
   PRO_LINE_DOSING,
   ENVIRONMENT_BY_PHASE,
   IRRIGATION_BY_STAGE,
   IRRIGATION_PHASES,
   DRYBACK_TARGETS,
+  SHOT_VOLUMES,
+  VWC_TARGETS,
   calculateDosing,
   getPhaseEnvironment,
   getStageIrrigation
@@ -60,6 +58,8 @@ const Nutrients: React.FC = () => {
   const { settings } = useCropSteering();
   const [selectedPhase, setSelectedPhase] = useState<GrowthPhase>('veg');
   const [targetEC, setTargetEC] = useState<number>(2.0);
+  const [waterVolume, setWaterVolume] = useState<number>(10); // Liters
+  const [activeTab, setActiveTab] = useState(0);
 
   // Calculate dosing based on target EC
   const dosing = useMemo(() => calculateDosing(targetEC), [targetEC]);
@@ -75,19 +75,26 @@ const Nutrients: React.FC = () => {
   return (
     <Box sx={{ p: 3, maxWidth: 1400, mx: 'auto' }}>
       {/* Header */}
-      <Box sx={{ mb: 4 }}>
+      <Box sx={{ mb: 3 }}>
         <Typography variant="h4" fontWeight={700} gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <Beaker size={32} />
           Nutrientes Athena Pro Line
         </Typography>
         <Typography color="text.secondary">
-          Calculadora de dosificación y tablas de referencia del Handbook
+          Calculadora integral de dosificación y referencia del Handbook Athena
         </Typography>
       </Box>
 
+      {/* Tabs */}
+      <Tabs value={activeTab} onChange={(_, v) => setActiveTab(v)} sx={{ mb: 3 }}>
+        <Tab icon={<Calculator size={18} />} label="Calculadora" />
+        <Tab icon={<Droplets size={18} />} label="Riego" />
+        <Tab icon={<BookOpen size={18} />} label="Tablas Referencia" />
+      </Tabs>
+
       {/* Phase Selector */}
       <Box sx={{ mb: 3 }}>
-        <Typography variant="subtitle2" gutterBottom>Selecciona la Fase de Crecimiento:</Typography>
+        <Typography variant="subtitle2" gutterBottom>Fase de Crecimiento:</Typography>
         <ToggleButtonGroup
           value={selectedPhase}
           exclusive
@@ -99,16 +106,12 @@ const Nutrients: React.FC = () => {
               key={phase}
               value={phase}
               sx={{
-                px: 3,
-                py: 1,
-                borderRadius: '12px !important',
+                px: 2,
+                py: 0.5,
+                borderRadius: '8px !important',
                 border: '1px solid',
                 borderColor: selectedPhase === phase ? PHASE_COLORS[phase] : 'divider',
                 backgroundColor: selectedPhase === phase ? `${PHASE_COLORS[phase]}20` : 'transparent',
-                '&.Mui-selected': {
-                  backgroundColor: `${PHASE_COLORS[phase]}30`,
-                  borderColor: PHASE_COLORS[phase],
-                }
               }}
             >
               {PHASE_LABELS[phase]}
@@ -117,67 +120,76 @@ const Nutrients: React.FC = () => {
         </ToggleButtonGroup>
       </Box>
 
-      <Grid container spacing={3}>
-        {/* EC Calculator */}
-        <Grid item xs={12} md={6}>
-          <Card sx={{ background: 'rgba(255,255,255,0.05)', backdropFilter: 'blur(10px)' }}>
-            <CardHeader
-              title={<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}><Calculator size={20} /> Calculadora EC</Box>}
-              subheader="Dosificación Pro Line (226g/L concentrado)"
-            />
-            <CardContent>
-              <Box sx={{ mb: 3 }}>
-                <Typography variant="subtitle2" gutterBottom>EC Objetivo: {targetEC.toFixed(1)}</Typography>
-                <Slider
-                  value={targetEC}
-                  onChange={(_, v) => setTargetEC(v as number)}
-                  min={0.5}
-                  max={6.0}
-                  step={0.1}
-                  marks={[
-                    { value: 1, label: '1.0' },
-                    { value: 2, label: '2.0' },
-                    { value: 3, label: '3.0' },
-                    { value: 4, label: '4.0' },
-                    { value: 5, label: '5.0' },
-                    { value: 6, label: '6.0' },
-                  ]}
-                  sx={{ color: PHASE_COLORS[selectedPhase] }}
-                />
-              </Box>
+      {/* TAB 0: Calculator */}
+      {activeTab === 0 && (
+        <Grid container spacing={3}>
+          {/* EC Calculator */}
+          <Grid item xs={12} md={6}>
+            <Card sx={{ background: 'rgba(255,255,255,0.05)', backdropFilter: 'blur(10px)' }}>
+              <CardHeader
+                title={<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}><FlaskConical size={20} /> Calculadora EC</Box>}
+                subheader="Pro Line (226g/L concentrado)"
+              />
+              <CardContent>
+                <Grid container spacing={2} sx={{ mb: 2 }}>
+                  <Grid item xs={6}>
+                    <Typography variant="subtitle2" gutterBottom>EC Objetivo: {targetEC.toFixed(1)}</Typography>
+                    <Slider
+                      value={targetEC}
+                      onChange={(_, v) => setTargetEC(v as number)}
+                      min={0.5}
+                      max={6.0}
+                      step={0.1}
+                      sx={{ color: PHASE_COLORS[selectedPhase] }}
+                    />
+                  </Grid>
+                  <Grid item xs={6}>
+                    <TextField
+                      label="Volumen de Agua (L)"
+                      type="number"
+                      value={waterVolume}
+                      onChange={(e) => setWaterVolume(Math.max(1, Number(e.target.value)))}
+                      size="small"
+                      fullWidth
+                      inputProps={{ min: 1, max: 1000 }}
+                    />
+                  </Grid>
+                </Grid>
 
-              {dosing && (
-                <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
-                  <Paper sx={{ p: 2, textAlign: 'center', bgcolor: 'rgba(34, 197, 94, 0.1)' }}>
-                    <Typography variant="caption" color="text.secondary">Pro Grow/Bloom</Typography>
-                    <Typography variant="h4" fontWeight={700} color="success.main">
-                      {dosing.proGrowBloom} mL/L
-                    </Typography>
-                  </Paper>
-                  <Paper sx={{ p: 2, textAlign: 'center', bgcolor: 'rgba(59, 130, 246, 0.1)' }}>
-                    <Typography variant="caption" color="text.secondary">Pro Core</Typography>
-                    <Typography variant="h4" fontWeight={700} color="info.main">
-                      {dosing.proCore} mL/L
-                    </Typography>
-                  </Paper>
-                </Box>
-              )}
+                {dosing && (
+                  <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+                    <Paper sx={{ p: 2, textAlign: 'center', bgcolor: 'rgba(34, 197, 94, 0.1)' }}>
+                      <Typography variant="caption" color="text.secondary">Pro Grow/Bloom</Typography>
+                      <Typography variant="h5" fontWeight={700} color="success.main">
+                        {(dosing.proGrowBloom * waterVolume).toFixed(0)} mL
+                      </Typography>
+                      <Typography variant="caption">({dosing.proGrowBloom} mL/L)</Typography>
+                    </Paper>
+                    <Paper sx={{ p: 2, textAlign: 'center', bgcolor: 'rgba(59, 130, 246, 0.1)' }}>
+                      <Typography variant="caption" color="text.secondary">Pro Core</Typography>
+                      <Typography variant="h5" fontWeight={700} color="info.main">
+                        {(dosing.proCore * waterVolume).toFixed(0)} mL
+                      </Typography>
+                      <Typography variant="caption">({dosing.proCore} mL/L)</Typography>
+                    </Paper>
+                  </Box>
+                )}
 
-              <Alert severity="info" sx={{ mt: 2 }}>
-                Para 10L de agua: {dosing ? `${(dosing.proGrowBloom * 10).toFixed(0)} mL Grow/Bloom + ${(dosing.proCore * 10).toFixed(0)} mL Core` : '-'}
-              </Alert>
-            </CardContent>
-          </Card>
-        </Grid>
+                <Alert severity="success" sx={{ mt: 2 }}>
+                  <strong>Para {waterVolume}L:</strong> {dosing ? `${(dosing.proGrowBloom * waterVolume).toFixed(0)} mL Grow/Bloom + ${(dosing.proCore * waterVolume).toFixed(0)} mL Core` : '-'}
+                </Alert>
+              </CardContent>
+            </Card>
+          </Grid>
 
-        {/* Environment Targets */}
-        <Grid item xs={12} md={6}>
-          <Card sx={{ background: 'rgba(255,255,255,0.05)', backdropFilter: 'blur(10px)' }}>
-            <CardHeader
-              title={<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}><Thermometer size={20} /> Entorno Recomendado</Box>}
-              subheader={`Fase: ${PHASE_LABELS[selectedPhase]}`}
-            />
-            <CardContent>
+          {/* Environment Targets */}
+          <Grid item xs={12} md={6}>
+            <Card sx={{ background: 'rgba(255,255,255,0.05)', backdropFilter: 'blur(10px)' }}>
+              <CardHeader
+                title={<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}><Thermometer size={20} /> Entorno Recomendado</Box>}
+                subheader={`Fase: ${PHASE_LABELS[selectedPhase]}`}
+              />
+              <CardContent>
               {envTargets && (
                 <Grid container spacing={2}>
                   <Grid item xs={6}>
@@ -296,6 +308,128 @@ const Nutrients: React.FC = () => {
           </Card>
         </Grid>
       </Grid>
+      )}
+
+      {/* TAB 1: Riego - Same irrigation content */}
+      {activeTab === 1 && irrigationTargets && (
+        <Grid container spacing={3}>
+          <Grid item xs={12} md={6}>
+            <Card sx={{ background: 'rgba(255,255,255,0.05)', backdropFilter: 'blur(10px)' }}>
+              <CardHeader title={<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}><Droplets size={20} /> Riego y Sustrato</Box>} />
+              <CardContent>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2, flexWrap: 'wrap', gap: 2 }}>
+                  <Box>
+                    <Typography variant="caption" color="text.secondary">EC Sustrato</Typography>
+                    <Typography variant="h5" fontWeight={600}>{irrigationTargets.ecSubstrateMin} - {irrigationTargets.ecSubstrateMax}</Typography>
+                  </Box>
+                  <Box>
+                    <Typography variant="caption" color="text.secondary">Dryback</Typography>
+                    <Typography variant="h5" fontWeight={600}>{irrigationTargets.drybackMin}% - {irrigationTargets.drybackMax}%</Typography>
+                  </Box>
+                  <Chip label={irrigationTargets.strategy === 'vegetative' ? 'Vegetativo' : 'Generativo'} color={irrigationTargets.strategy === 'vegetative' ? 'success' : 'warning'} />
+                </Box>
+                <Divider sx={{ my: 2 }} />
+                <Typography variant="subtitle2" gutterBottom>Fases P0-P3:</Typography>
+                {Object.entries(IRRIGATION_PHASES).map(([key, phase]) => (
+                  <Box key={key} sx={{ mb: 1, p: 1, borderRadius: 1, bgcolor: 'rgba(255,255,255,0.03)' }}>
+                    <Typography variant="body2" fontWeight={600}>{phase.name}</Typography>
+                    <Typography variant="caption" color="text.secondary">{phase.timing}</Typography>
+                  </Box>
+                ))}
+              </CardContent>
+            </Card>
+          </Grid>
+          <Grid item xs={12} md={6}>
+            <Card sx={{ background: 'rgba(255,255,255,0.05)', backdropFilter: 'blur(10px)' }}>
+              <CardHeader title="Volúmenes por Maceta" />
+              <CardContent sx={{ p: 0 }}>
+                <TableContainer>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Maceta</TableCell>
+                        <TableCell>1% Vol</TableCell>
+                        <TableCell>Veg Runoff</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {SHOT_VOLUMES.slice(0, 4).map((row) => (
+                        <TableRow key={row.potSize}>
+                          <TableCell>{row.potSize}</TableCell>
+                          <TableCell>{row.onePercentVolume}</TableCell>
+                          <TableCell>{row.vegRunoff}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
+      )}
+
+      {/* TAB 2: Reference Tables */}
+      {activeTab === 2 && (
+        <Grid container spacing={3}>
+          <Grid item xs={12} md={6}>
+            <Card sx={{ background: 'rgba(255,255,255,0.05)', backdropFilter: 'blur(10px)' }}>
+              <CardHeader title={<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}><BookOpen size={20} /> Tabla EC</Box>} />
+              <CardContent sx={{ p: 0 }}>
+                <TableContainer sx={{ maxHeight: 400 }}>
+                  <Table size="small" stickyHeader>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>EC</TableCell>
+                        <TableCell align="right">Grow/Bloom</TableCell>
+                        <TableCell align="right">Core</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {PRO_LINE_DOSING.map((row) => (
+                        <TableRow key={row.targetEC} sx={{ bgcolor: Math.abs(row.targetEC - targetEC) < 0.3 ? 'rgba(34, 197, 94, 0.15)' : 'inherit' }}>
+                          <TableCell>{row.targetEC.toFixed(1)}</TableCell>
+                          <TableCell align="right">{row.proGrowBloom} mL</TableCell>
+                          <TableCell align="right">{row.proCore} mL</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </CardContent>
+            </Card>
+          </Grid>
+          <Grid item xs={12} md={6}>
+            <Card sx={{ background: 'rgba(255,255,255,0.05)', backdropFilter: 'blur(10px)' }}>
+              <CardHeader title="Entorno por Fase" />
+              <CardContent sx={{ p: 0 }}>
+                <TableContainer>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Fase</TableCell>
+                        <TableCell>Temp</TableCell>
+                        <TableCell>HR</TableCell>
+                        <TableCell>VPD</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {ENVIRONMENT_BY_PHASE.map((row) => (
+                        <TableRow key={row.phase}>
+                          <TableCell sx={{ textTransform: 'capitalize' }}>{row.phase}</TableCell>
+                          <TableCell>{row.tempMin}-{row.tempMax}°C</TableCell>
+                          <TableCell>{row.rhMin}-{row.rhMax}%</TableCell>
+                          <TableCell>{row.vpdMin}-{row.vpdMax}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
+      )}
     </Box>
   );
 };
