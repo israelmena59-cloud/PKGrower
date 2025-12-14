@@ -2841,6 +2841,158 @@ app.get('/api/settings', (req, res) => {
     res.json(appSettings);
 });
 
+// --- API CROP STEERING ---
+app.get('/api/cropsteering/settings', async (req, res) => {
+    try {
+        const settings = await firestore.getCropSteeringSettings();
+        res.json({ success: true, settings: settings || appSettings.cropSteering });
+    } catch (error) {
+        console.error('[CROPSTEERING] Error getting settings:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/api/cropsteering/settings', async (req, res) => {
+    try {
+        const newSettings = req.body;
+
+        // Update in-memory settings
+        appSettings.cropSteering = { ...appSettings.cropSteering, ...newSettings };
+
+        // Persist to Firestore
+        await firestore.saveCropSteeringSettings(newSettings);
+
+        console.log('[CROPSTEERING] Settings updated:', Object.keys(newSettings).join(', '));
+        res.json({ success: true, settings: appSettings.cropSteering });
+    } catch (error) {
+        console.error('[CROPSTEERING] Error saving settings:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// --- API AUTOMATION RULES ---
+app.get('/api/automation/rules', async (req, res) => {
+    try {
+        const rules = await firestore.getAutomationRules();
+        res.json({ success: true, rules });
+    } catch (error) {
+        console.error('[AUTOMATION] Error getting rules:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/api/automation/rules', async (req, res) => {
+    try {
+        const { rules } = req.body;
+
+        if (!Array.isArray(rules)) {
+            return res.status(400).json({ error: 'Rules must be an array' });
+        }
+
+        await firestore.saveAutomationRules(rules);
+        console.log(`[AUTOMATION] ${rules.length} rules saved`);
+        res.json({ success: true, count: rules.length });
+    } catch (error) {
+        console.error('[AUTOMATION] Error saving rules:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/api/automation/rules/:ruleId/toggle', async (req, res) => {
+    try {
+        const { ruleId } = req.params;
+        const { enabled } = req.body;
+
+        const rules = await firestore.getAutomationRules();
+        const ruleIndex = rules.findIndex(r => r.id === ruleId);
+
+        if (ruleIndex === -1) {
+            return res.status(404).json({ error: 'Rule not found' });
+        }
+
+        rules[ruleIndex].enabled = enabled;
+        await firestore.saveAutomationRules(rules);
+
+        console.log(`[AUTOMATION] Rule ${ruleId} ${enabled ? 'enabled' : 'disabled'}`);
+        res.json({ success: true, rule: rules[ruleIndex] });
+    } catch (error) {
+        console.error('[AUTOMATION] Error toggling rule:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/api/automation/event', async (req, res) => {
+    try {
+        const event = req.body;
+        await firestore.logAutomationEvent(event);
+        res.json({ success: true });
+    } catch (error) {
+        console.error('[AUTOMATION] Error logging event:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// --- API IRRIGATION TRIGGER ---
+app.post('/api/irrigation/trigger', async (req, res) => {
+    try {
+        const { shotSize = 100, phase = 'manual' } = req.body;
+
+        // Find pump device
+        const pumpDevice = tuyaDevices['bombaControlador'];
+        if (!pumpDevice) {
+            return res.status(404).json({ error: 'Pump controller not found' });
+        }
+
+        // Turn on pump
+        console.log(`[IRRIGATION] Triggering irrigation: ${shotSize}ml`);
+
+        // Calculate duration based on pump rate (default 70ml/min)
+        const pumpRate = appSettings.irrigation?.pumpRate || 70;
+        const durationMs = (shotSize / pumpRate) * 60 * 1000;
+
+        // Send command to turn on
+        if (tuyaConnected && tuyaClient) {
+            await tuyaClient.request({
+                method: 'POST',
+                path: `/v1.0/devices/${pumpDevice.id}/commands`,
+                body: { commands: [{ code: 'switch_1', value: true }] }
+            });
+
+            // Schedule turn off
+            setTimeout(async () => {
+                try {
+                    await tuyaClient.request({
+                        method: 'POST',
+                        path: `/v1.0/devices/${pumpDevice.id}/commands`,
+                        body: { commands: [{ code: 'switch_1', value: false }] }
+                    });
+                    console.log('[IRRIGATION] Pump off after', durationMs, 'ms');
+                } catch (e) {
+                    console.error('[IRRIGATION] Failed to turn off pump:', e.message);
+                }
+            }, durationMs);
+
+            // Log irrigation event
+            await firestore.saveIrrigationLog({
+                shotSize,
+                phase,
+                pumpDuration: durationMs,
+                source: 'api'
+            });
+
+            res.json({
+                success: true,
+                message: `Irrigation triggered: ${shotSize}ml for ${(durationMs/1000).toFixed(1)}s`
+            });
+        } else {
+            res.status(503).json({ error: 'Tuya not connected' });
+        }
+    } catch (error) {
+        console.error('[IRRIGATION] Error triggering:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // --- API CALENDARIO ---
 app.get('/api/calendar', (req, res) => {
     res.json(calendarEvents);

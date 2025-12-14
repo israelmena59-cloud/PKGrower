@@ -188,12 +188,155 @@ module.exports = {
   getLastIrrigationLog,
   saveDeviceConfig,
   getDeviceConfigs,
-  deleteDeviceConfig, // Added export
+  deleteDeviceConfig,
   saveGlobalSettings,
   getGlobalSettings,
   saveRules,
-  getRules
+  getRules,
+  // Crop Steering
+  saveCropSteeringSettings,
+  getCropSteeringSettings,
+  saveAutomationRules,
+  getAutomationRules,
+  logAutomationEvent
 };
+
+/**
+ * Save crop steering settings
+ * @param {Object} settings - Crop steering settings object
+ */
+async function saveCropSteeringSettings(settings) {
+  if (!db) {
+    console.log('[FIRESTORE] No DB - saving crop steering to local');
+    try {
+      const localPath = path.join(BACKUP_DIR, 'crop_steering_settings.json');
+      fs.writeFileSync(localPath, JSON.stringify(settings, null, 2));
+      console.log('[BACKUP] Crop steering settings saved locally.');
+    } catch (e) {
+      console.error('[BACKUP] Error saving crop steering locally:', e.message);
+    }
+    return;
+  }
+
+  try {
+    await db.collection('settings').doc('cropSteering').set({
+      ...settings,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+    console.log('[FIRESTORE] Crop steering settings saved.');
+  } catch (error) {
+    console.error('[FIRESTORE] Error saving crop steering settings:', error.message);
+    throw error;
+  }
+}
+
+/**
+ * Get crop steering settings
+ * @returns {Promise<Object>}
+ */
+async function getCropSteeringSettings() {
+  if (!db) {
+    // Try local backup
+    try {
+      const localPath = path.join(BACKUP_DIR, 'crop_steering_settings.json');
+      if (fs.existsSync(localPath)) {
+        return JSON.parse(fs.readFileSync(localPath, 'utf8'));
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  try {
+    const doc = await db.collection('settings').doc('cropSteering').get();
+    if (!doc.exists) return null;
+    return doc.data();
+  } catch (error) {
+    console.error('[FIRESTORE] Error getting crop steering settings:', error.message);
+    return null;
+  }
+}
+
+/**
+ * Save automation rules for crop steering
+ * @param {Array} rules - Array of automation rule objects
+ */
+async function saveAutomationRules(rules) {
+  if (!db) {
+    try {
+      const localPath = path.join(BACKUP_DIR, 'automation_rules.json');
+      fs.writeFileSync(localPath, JSON.stringify(rules, null, 2));
+      console.log('[BACKUP] Automation rules saved locally.');
+    } catch (e) {
+      console.error('[BACKUP] Error saving automation rules locally:', e.message);
+    }
+    return;
+  }
+
+  try {
+    await db.collection('automation').doc('rules').set({
+      list: rules,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+    console.log('[FIRESTORE] Automation rules saved.');
+  } catch (error) {
+    console.error('[FIRESTORE] Error saving automation rules:', error.message);
+    throw error;
+  }
+}
+
+/**
+ * Get automation rules
+ * @returns {Promise<Array>}
+ */
+async function getAutomationRules() {
+  if (!db) {
+    try {
+      const localPath = path.join(BACKUP_DIR, 'automation_rules.json');
+      if (fs.existsSync(localPath)) {
+        return JSON.parse(fs.readFileSync(localPath, 'utf8'));
+      }
+    } catch (e) {}
+    return [];
+  }
+
+  try {
+    const doc = await db.collection('automation').doc('rules').get();
+    if (!doc.exists) return [];
+    return doc.data().list || [];
+  } catch (error) {
+    console.error('[FIRESTORE] Error getting automation rules:', error.message);
+    return [];
+  }
+}
+
+/**
+ * Log automation event
+ * @param {Object} event - Automation event details
+ */
+async function logAutomationEvent(event) {
+  const record = {
+    ...event,
+    timestamp: new Date().toISOString()
+  };
+
+  if (!db) {
+    try {
+      const logPath = path.join(BACKUP_DIR, 'automation_log.jsonl');
+      fs.appendFileSync(logPath, JSON.stringify(record) + '\n');
+    } catch (e) {}
+    return;
+  }
+
+  try {
+    await db.collection('automation_logs').add({
+      ...record,
+      createdAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+    console.log('[FIRESTORE] Automation event logged:', event.ruleId);
+  } catch (error) {
+    console.error('[FIRESTORE] Error logging automation event:', error.message);
+  }
+}
 
 /**
  * Save automation rules
