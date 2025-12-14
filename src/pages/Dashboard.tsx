@@ -6,6 +6,8 @@ import { apiClient, type SensorData, type DeviceStates } from '../api/client';
 import ConfigModal from '../components/dashboard/ConfigModal';
 import RulesModal from '../components/dashboard/RulesModal';
 import HistoryChart from '../components/dashboard/HistoryChart';
+import CropSteeringWidget from '../components/dashboard/CropSteeringWidget';
+import QuickActionsWidget from '../components/dashboard/QuickActionsWidget';
 import { Thermometer, Droplet, Wind, Droplets, Lightbulb, RefreshCw, Settings, Plus, X, Zap } from 'lucide-react';
 import { Box, Paper, Typography, IconButton, CircularProgress, Button, Tabs, Tab, TextField, Dialog, DialogTitle, DialogContent, DialogActions, Tooltip, Grid } from '@mui/material';
 import _ from 'lodash';
@@ -342,6 +344,28 @@ const Dashboard: React.FC = () => {
             <RulesModal open={isRulesOpen} onClose={() => setIsRulesOpen(false)} />
 
             {/* STATIC CHARTS SECTION */}
+            {/* Crop Steering Widgets Row */}
+            <Grid container spacing={2} sx={{ mb: 3 }}>
+                <Grid item xs={12} md={4}>
+                    <CropSteeringWidget />
+                </Grid>
+                <Grid item xs={12} md={4}>
+                    <QuickActionsWidget />
+                </Grid>
+                <Grid item xs={12} md={4}>
+                    <HistoryChart
+                        type="substrate"
+                        title="VWC Rápido"
+                        data={sensorHistory}
+                        targets={{
+                            vwc: settings?.cropSteering?.targetVWC || 50,
+                            dryback: settings?.cropSteering?.targetDryback || 15
+                        }}
+                    />
+                </Grid>
+            </Grid>
+
+            {/* Environment Charts Row */}
             <Grid container spacing={2} sx={{ mb: 3 }}>
                 <Grid item xs={12} md={6}>
                     <HistoryChart
