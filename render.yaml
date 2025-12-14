@@ -1,13 +1,13 @@
 services:
   - type: web
-    name: pkgrower-backend
+    name: pkgrower
     env: node
     plan: free
     buildCommand: npm install && npm run build && cd backend && npm install
     startCommand: cd backend && node index.js
     envVars:
       - key: VITE_API_URL
-        value: https://pkgrower-backend.onrender.com
+        value: https://pkgrower.onrender.com
       - key: TUYA_ACCESS_KEY
         sync: false
       - key: TUYA_SECRET_KEY
@@ -16,3 +16,4 @@ services:
         sync: false
       - key: API_KEY
         sync: false
+
