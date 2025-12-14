@@ -8,6 +8,7 @@ import { Thermometer, Droplets, Power, ToggleLeft } from 'lucide-react';
 import { apiClient } from '../../api/client';
 import { SensorWidget } from './SensorWidget';
 import { ChartWidget } from './ChartWidget';
+import { useCropSteering } from '../../context/CropSteeringContext';
 
 interface DeviceData {
     id: string;
@@ -33,6 +34,7 @@ export const DeviceDataWidget: React.FC<DeviceDataWidgetProps> = ({
     deviceName,
     widgetType = 'sensor'
 }) => {
+    const { currentStage } = useCropSteering();
     const [device, setDevice] = useState<DeviceData | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -153,6 +155,8 @@ export const DeviceDataWidget: React.FC<DeviceDataWidgetProps> = ({
     if (widgetType === 'sensor' && hasTempHumidity) {
         const value = device.temperature ?? device.humidity ?? device.value ?? '--';
         const unit = device.capabilities?.includes('temperature') ? '°C' : '%';
+        // Map crop steering stage to simple veg/flower
+        const stage = currentStage?.includes('flower') ? 'flower' : currentStage?.includes('veg') ? 'veg' : 'none';
 
         return (
             <SensorWidget
@@ -162,6 +166,7 @@ export const DeviceDataWidget: React.FC<DeviceDataWidgetProps> = ({
                 unit={unit}
                 color={device.capabilities?.includes('temperature') ? '#FF3B30' : '#007AFF'}
                 metricKey={device.capabilities?.includes('temperature') ? 'temp' : 'hum'}
+                growthStage={stage as 'veg' | 'flower' | 'none'}
             />
         );
     }

@@ -337,6 +337,10 @@ let appSettings = {
     stage: 'none', // 'veg', 'flower', 'none'
     targetVWC: 50,
     targetDryback: 15
+  },
+  ai: {
+    apiKey: process.env.GEMINI_API_KEY || '',
+    model: 'gemini-1.5-flash'
   }
 };
 
@@ -3037,6 +3041,101 @@ app.post('/api/settings', (req, res) => {
 
 app.get('/api/settings', (req, res) => {
     res.json(appSettings);
+});
+
+// --- AI COPILOT CHAT (Gemini) ---
+app.post('/api/chat', async (req, res) => {
+    try {
+        const { message, context } = req.body;
+
+        if (!message) {
+            return res.status(400).json({ error: 'Message is required' });
+        }
+
+        // Get API key (from env or saved in appSettings)
+        const apiKey = process.env.GEMINI_API_KEY || appSettings.ai?.apiKey;
+
+        if (!apiKey) {
+            return res.status(400).json({
+                error: 'API key not configured. Go to Settings to add your Gemini API key.',
+                reply: '⚠️ No hay API key de Gemini configurada. Ve a Configuración para añadirla.'
+            });
+        }
+
+        // Gather live sensor data
+        let sensorData = {};
+        try {
+            // Get from Tuya cache
+            const ambientSensor = tuyaDevices['sensorAmbiente'];
+            if (ambientSensor) {
+                sensorData.temperature = ambientSensor.temperature || context?.temp || 24;
+                sensorData.humidity = ambientSensor.humidity || context?.hum || 60;
+            }
+
+            // Soil sensors average
+            let soilHums = [];
+            ['sensorSustrato1', 'sensorSustrato2', 'sensorSustrato3'].forEach(k => {
+                if (tuyaDevices[k]?.humidity) soilHums.push(tuyaDevices[k].humidity);
+            });
+            sensorData.soilHumidity = soilHums.length > 0
+                ? Math.round(soilHums.reduce((a,b) => a+b, 0) / soilHums.length)
+                : context?.vwc || 45;
+
+            // Calculate VPD
+            const t = sensorData.temperature || 24;
+            const rh = sensorData.humidity || 60;
+            const svp = 0.6108 * Math.exp((17.27 * t) / (t + 237.3));
+            sensorData.vpd = Math.round((svp * (1 - rh/100)) * 100) / 100;
+        } catch (e) {
+            console.error('[AI] Error getting sensor data:', e);
+        }
+
+        // Build system prompt with crop steering context
+        const stage = appSettings.cropSteering?.stage || 'veg';
+        const systemPrompt = `Eres un asistente agrónomo experto en cultivo de cannabis con Crop Steering.
+
+DATOS EN TIEMPO REAL:
+- Temperatura: ${sensorData.temperature || 24}°C
+- Humedad Relativa: ${sensorData.humidity || 60}%
+- VPD: ${sensorData.vpd || 1.1} kPa
+- Humedad Sustrato (VWC): ${sensorData.soilHumidity || 45}%
+- Etapa: ${stage === 'veg' ? 'Vegetación' : stage === 'flower' ? 'Floración' : 'No definida'}
+
+CONOCIMIENTO (basado en Athena Agriculture & CCI):
+- VPD ideal Veg: 0.8-1.2 kPa | Flower: 1.2-1.6 kPa
+- Dryback ideal: Veg 10-15% | Flower 15-20%
+- Fases de riego: P0 (saturación), P1 (mantenimiento), P2 (ajuste), P3 (dryback nocturno)
+- Temperatura ideal: 22-28°C día, 18-22°C noche
+- Humedad ideal: Veg 60-70% | Flower 45-55%
+
+Responde en español, de forma concisa y práctica. Si detectas problemas, sugiere acciones específicas.`;
+
+        // Call Gemini
+        const { GoogleGenerativeAI } = require('@google/generative-ai');
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+
+        const chat = model.startChat({
+            history: [
+                { role: 'user', parts: [{ text: systemPrompt }] },
+                { role: 'model', parts: [{ text: 'Entendido. Soy tu asistente de cultivo PKGrower. Analizando datos en tiempo real...' }] }
+            ],
+            generationConfig: { maxOutputTokens: 500 }
+        });
+
+        const result = await chat.sendMessage(message);
+        const reply = result.response.text();
+
+        console.log('[AI] Chat response generated successfully');
+        res.json({ reply, sensorData });
+
+    } catch (error) {
+        console.error('[AI] Chat error:', error);
+        res.status(500).json({
+            error: error.message,
+            reply: `❌ Error de conexión: ${error.message}. Verifica tu API key.`
+        });
+    }
 });
 
 // --- API CROP STEERING ---
