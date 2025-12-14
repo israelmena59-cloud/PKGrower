@@ -94,19 +94,30 @@ export const ConfigModal: React.FC<ConfigModalProps> = ({ open, onClose }) => {
 
   const handleSaveDevice = async (device: any) => {
       try {
-           await apiClient.request('/api/devices/configure', {
+           const result = await apiClient.request<any>('/api/devices/configure', {
                method: 'POST',
                body: JSON.stringify({
                    id: device.id,
                    name: device.name,
                    type: device.type,
                    category: device.category,
-                   platform: device.platform
+                   platform: device.platform,
+                   integrate: true // Flag to integrate into app
                })
            });
-           setSuccessMsg(`Dispositivo ${device.name} guardado.`);
-           fetchDevices(); // Refresh
+
+           // Show capabilities detected
+           const caps = result.config?.capabilities || [];
+           const capDisplay = caps.length > 0 ? ` (${caps.join(', ')})` : '';
+
+           setSuccessMsg(`✅ ${device.name} guardado e integrado${capDisplay}`);
+
+           // Update local state with new config
+           setAvailableDevices(prev => prev.map(d =>
+               d.id === device.id ? { ...d, ...result.config } : d
+           ));
       } catch (e) {
+           console.error('Save device error:', e);
            setErrorMsg("Error guardando dispositivo.");
       }
   };
@@ -397,7 +408,33 @@ export const ConfigModal: React.FC<ConfigModalProps> = ({ open, onClose }) => {
                                         </Select>
                                     </TableCell>
                                     <TableCell>
-                                        {dev.configured ? <Chip label="Guardado" size="small" color="success" /> : <Chip label="Nuevo" size="small" />}
+                                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                                            {dev.configured ? (
+                                                <Chip label="✓ Integrado" size="small" color="success" />
+                                            ) : (
+                                                <Chip label="Nuevo" size="small" variant="outlined" />
+                                            )}
+                                            {dev.capabilities && dev.capabilities.length > 0 && (
+                                                <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                                                    {dev.capabilities.slice(0, 2).map((cap: string) => (
+                                                        <Chip
+                                                            key={cap}
+                                                            label={cap}
+                                                            size="small"
+                                                            variant="outlined"
+                                                            sx={{ fontSize: '0.65rem' }}
+                                                        />
+                                                    ))}
+                                                    {dev.capabilities.length > 2 && (
+                                                        <Chip
+                                                            label={`+${dev.capabilities.length - 2}`}
+                                                            size="small"
+                                                            sx={{ fontSize: '0.65rem' }}
+                                                        />
+                                                    )}
+                                                </Box>
+                                            )}
+                                        </Box>
                                     </TableCell>
                                     <TableCell align="right">
                                         <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>

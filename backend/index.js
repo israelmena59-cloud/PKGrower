@@ -371,14 +371,17 @@ app.post('/api/devices/scan', async (req, res) => {
     }
 });
 
-// 2. CONFIGURE: Guardar metadatos (Nombre, Tipo)
-// [NEW] Configure Device (Save Name/Type)
+// 2. CONFIGURE: Guardar metadatos (Nombre, Tipo) con detección de capabilities
+// [ENHANCED] Configure Device with auto-detection
 app.post('/api/devices/configure', async (req, res) => {
     try {
-        const { id, name, type, category, platform } = req.body;
+        const { id, name, type, category, platform, integrate = true } = req.body;
         if (!id) return res.status(400).json({ error: 'Missing ID' });
 
-        console.log(`[CONFIG] Saving device: ${id} (${name})`);
+        console.log(`[CONFIG] Saving device: ${id} (${name}) - Platform: ${platform}`);
+
+        // Auto-detect capabilities based on type
+        const capabilities = detectCapabilities(type, category, platform);
 
         const config = {
             id,
@@ -386,7 +389,10 @@ app.post('/api/devices/configure', async (req, res) => {
             type: type || 'switch',
             category: category || 'other',
             platform: platform || 'unknown',
-            configured: true
+            capabilities,
+            configured: true,
+            integrated: integrate, // Flag for dashboard integration
+            createdAt: new Date().toISOString()
         };
 
         // 1. Save to Firestore
@@ -398,14 +404,75 @@ app.post('/api/devices/configure', async (req, res) => {
         // 3. Update Dynamic Objects if present
         if (platform === 'tuya' && tuyaDevices[id]) {
             tuyaDevices[id].name = config.name;
+            tuyaDevices[id].capabilities = capabilities;
+        }
+        if (platform === 'meross' && merossDevices[id]) {
+            merossDevices[id].customName = config.name;
+            merossDevices[id].capabilities = capabilities;
         }
 
-        res.json({ success: true, config });
+        console.log(`[CONFIG] Device saved with capabilities: ${capabilities.join(', ')}`);
+
+        res.json({
+            success: true,
+            config,
+            message: `Dispositivo "${config.name}" guardado e integrado`,
+            widgetInfo: {
+                canCreateSensorWidget: capabilities.includes('temperature') || capabilities.includes('humidity'),
+                canCreateControlWidget: capabilities.includes('switch') || capabilities.includes('dimmer'),
+                suggestedWidgetType: capabilities.includes('temperature') ? 'sensor' : 'control'
+            }
+        });
     } catch (e) {
         console.error('[CONFIG] Error:', e);
         res.status(500).json({ error: e.message });
     }
 });
+
+// Helper: Detect device capabilities based on type
+function detectCapabilities(type, category, platform) {
+    const capabilities = [];
+
+    // Type-based detection
+    switch (type) {
+        case 'sensor':
+            capabilities.push('temperature', 'humidity');
+            break;
+        case 'humidifier':
+            capabilities.push('switch', 'humidity_control');
+            break;
+        case 'light':
+            capabilities.push('switch', 'dimmer');
+            break;
+        case 'fan':
+        case 'pump':
+        case 'switch':
+        case 'outlet':
+            capabilities.push('switch');
+            break;
+        case 'thermostat':
+            capabilities.push('temperature', 'switch', 'temperature_control');
+            break;
+        case 'camera':
+            capabilities.push('stream', 'snapshot');
+            break;
+        default:
+            capabilities.push('switch');
+    }
+
+    // Category-based enhancements
+    if (category?.includes('temp') || category?.includes('sensor')) {
+        if (!capabilities.includes('temperature')) capabilities.push('temperature');
+    }
+    if (category?.includes('humid')) {
+        if (!capabilities.includes('humidity')) capabilities.push('humidity');
+    }
+    if (category?.includes('power') || category?.includes('energy')) {
+        capabilities.push('power_monitoring');
+    }
+
+    return [...new Set(capabilities)]; // Remove duplicates
+}
 
 // 2b. DELETE: Eliminar dispositivo (Ghost Busters)
 app.delete('/api/devices/:id', async (req, res) => {
