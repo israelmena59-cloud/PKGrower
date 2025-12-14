@@ -390,7 +390,7 @@ app.post('/api/devices/configure', async (req, res) => {
         };
 
         // 1. Save to Firestore
-        await firestore.saveDeviceConfig(id, config);
+        await firestore.saveDeviceConfig(config);
 
         // 2. Update Memory Cache
         customDeviceConfigs[id] = config;
