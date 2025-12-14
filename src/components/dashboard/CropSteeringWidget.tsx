@@ -19,11 +19,11 @@ const CropSteeringWidget: React.FC<CropSteeringWidgetProps> = ({ compact = false
     conditions,
     environmentStatus,
     getTargetVPD,
-    getCurrentVPD,
+    currentVPD,
     recommendations
   } = useCropSteering();
 
-  const vpd = getCurrentVPD();
+  const vpd = currentVPD;
   const targets = getTargetVPD();
   const stageLabel = currentStage.replace(/_/g, ' ').toUpperCase();
 
