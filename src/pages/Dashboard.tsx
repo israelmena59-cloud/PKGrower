@@ -198,9 +198,15 @@ const Dashboard: React.FC = () => {
         });
     };
 
-    const handleAddWidget = (type: string) => {
+    const handleAddWidget = (type: string, deviceId?: string, deviceName?: string) => {
         const id = `widget_${Date.now()}`;
-        const newWidget = { id, type: type as any, title: 'Nuevo Widget' };
+        const title = deviceName || 'Nuevo Widget';
+        const newWidget = {
+            id,
+            type: type as any,
+            title,
+            props: deviceId ? { deviceId, deviceName } : {}
+        };
         setPages(prev => ({
             ...prev,
             [activePage]: [...(prev[activePage] || []), newWidget]
