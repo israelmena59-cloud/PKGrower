@@ -201,11 +201,13 @@ const Dashboard: React.FC = () => {
     const handleAddWidget = (type: string, deviceId?: string, deviceName?: string) => {
         const id = `widget_${Date.now()}`;
         const title = deviceName || 'Nuevo Widget';
+        // If deviceId is provided, use 'device' type which auto-fetches data
+        const widgetType = deviceId ? 'device' : type;
         const newWidget = {
             id,
-            type: type as any,
+            type: widgetType as any,
             title,
-            props: deviceId ? { deviceId, deviceName } : {}
+            props: deviceId ? { deviceId, deviceName, widgetType: type } : {}
         };
         setPages(prev => ({
             ...prev,
