@@ -128,21 +128,62 @@ const SettingsPage: React.FC = () => {
 
   // Xiaomi Login State
   const [xiaomiLogin, setXiaomiLogin] = useState({ username: '', password: '' });
-  const [twoFA, setTwoFA] = useState({ open: false, code: '', context: null as any });
+  const [xiaomiAuthSession, setXiaomiAuthSession] = useState<string | null>(null);
+  const [xiaomiAuthStatus, setXiaomiAuthStatus] = useState<string>('');
+  const [twoFA, setTwoFA] = useState({ open: false, code: '' });
 
   const handleXiaomiLogin = async () => {
     try {
         setLoading(true);
+        setXiaomiAuthStatus('Iniciando sesión con Puppeteer...');
+
         const res = await apiClient.loginXiaomi(xiaomiLogin);
-        if (res.status === 'ok') {
-            alert('✅ Conexión Exitosa con Xiaomi Cloud!');
-            loadSettings(); // Refresh
-        } else if (res.status === '2fa_required') {
-            setTwoFA({ open: true, code: '', context: res.context });
+
+        if (res.success && res.sessionId) {
+            setXiaomiAuthSession(res.sessionId);
+            setXiaomiAuthStatus('Procesando login... verificando 2FA');
+
+            // Poll for status
+            let attempts = 0;
+            const maxAttempts = 30; // 30 seconds max
+
+            const pollStatus = async () => {
+                attempts++;
+                const status = await apiClient.getXiaomiAuthStatus(res.sessionId);
+
+                if (status.status === '2fa_required') {
+                    setXiaomiAuthStatus('Se requiere código 2FA');
+                    setTwoFA({ open: true, code: '' });
+                    return;
+                }
+
+                if (status.status === 'authenticated') {
+                    setXiaomiAuthStatus('✅ Autenticación exitosa!');
+                    alert('✅ Conexión exitosa con Xiaomi Cloud!');
+                    loadSettings();
+                    return;
+                }
+
+                if (status.status === 'error') {
+                    setXiaomiAuthStatus(`❌ Error: ${status.error}`);
+                    alert('Error: ' + status.error);
+                    return;
+                }
+
+                if (attempts < maxAttempts && status.status === 'processing') {
+                    setTimeout(pollStatus, 1000);
+                } else if (attempts >= maxAttempts) {
+                    setXiaomiAuthStatus('Tiempo de espera agotado');
+                }
+            };
+
+            setTimeout(pollStatus, 2000);
         } else {
             alert('Error: ' + JSON.stringify(res));
         }
     } catch (e: any) {
+        console.error('Xiaomi login error:', e);
+        setXiaomiAuthStatus(`❌ Error: ${e.message}`);
         alert('Error Login: ' + e.message);
     } finally {
         setLoading(false);
@@ -150,21 +191,33 @@ const SettingsPage: React.FC = () => {
   };
 
   const handleVerify2FA = async () => {
+      if (!xiaomiAuthSession) {
+          alert('No hay sesión activa');
+          return;
+      }
+
       try {
           setLoading(true);
+          setXiaomiAuthStatus('Verificando código 2FA...');
+
           const res = await apiClient.verifyXiaomi2FA({
-              code: twoFA.code,
-              context: twoFA.context,
-              password: xiaomiLogin.password
+              sessionId: xiaomiAuthSession,
+              code: twoFA.code
           });
-          if (res.status === 'ok') {
+
+          if (res.success || res.status === 'authenticated') {
+              setXiaomiAuthStatus('✅ Verificación 2FA Exitosa!');
               alert('✅ Verificación 2FA Exitosa! Tokens guardados.');
               setTwoFA({ ...twoFA, open: false });
               loadSettings();
+          } else if (res.status === '2fa_required') {
+              setXiaomiAuthStatus('Código incorrecto, intenta de nuevo');
+              alert('Código incorrecto, intenta con otro código');
           } else {
               alert('Error 2FA: ' + JSON.stringify(res));
           }
       } catch (e: any) {
+          setXiaomiAuthStatus(`❌ Error: ${e.message}`);
           alert('Error 2FA Verification: ' + e.message);
       } finally {
           setLoading(false);
@@ -469,9 +522,10 @@ const SettingsPage: React.FC = () => {
 
             {/* LOGIN AUTOMATICO */}
             <Paper variant="outlined" sx={{ p: 2, bgcolor: 'background.default' }}>
-                <Typography variant="h6" gutterBottom>🔐 Conexión Automática (2FA)</Typography>
+                <Typography variant="h6" gutterBottom>🔐 Conexión Automática (Puppeteer OAuth)</Typography>
                 <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
-                    Ingresa tu cuenta de Xiaomi. Si se requiere verificación (SMS/Email), aparecerá una ventana emergente.
+                    Ingresa tu cuenta de Xiaomi. El sistema abrirá un navegador headless para autenticarse.
+                    Si se requiere 2FA, recibirás el código en tu dispositivo/email.
                 </Typography>
                 <Box sx={{ display: 'flex', gap: 2, flexDirection: 'column' }}>
                     <TextField
@@ -480,6 +534,7 @@ const SettingsPage: React.FC = () => {
                         fullWidth
                         value={xiaomiLogin.username}
                         onChange={(e) => setXiaomiLogin({ ...xiaomiLogin, username: e.target.value })}
+                        disabled={loading}
                     />
                     <TextField
                         label="Contraseña"
@@ -488,10 +543,30 @@ const SettingsPage: React.FC = () => {
                         fullWidth
                         value={xiaomiLogin.password}
                         onChange={(e) => setXiaomiLogin({ ...xiaomiLogin, password: e.target.value })}
+                        disabled={loading}
                     />
-                    <Button variant="contained" onClick={handleXiaomiLogin}>
-                        Conectar Cuenta Xiaomi
+                    <Button
+                        variant="contained"
+                        onClick={handleXiaomiLogin}
+                        disabled={loading || !xiaomiLogin.username || !xiaomiLogin.password}
+                        startIcon={loading ? <CircularProgress size={16} color="inherit" /> : null}
+                    >
+                        {loading ? 'Conectando...' : 'Conectar Cuenta Xiaomi'}
                     </Button>
+
+                    {/* Status Indicator */}
+                    {xiaomiAuthStatus && (
+                        <Alert
+                            severity={
+                                xiaomiAuthStatus.includes('✅') ? 'success' :
+                                xiaomiAuthStatus.includes('❌') ? 'error' :
+                                'info'
+                            }
+                            sx={{ mt: 1 }}
+                        >
+                            {xiaomiAuthStatus}
+                        </Alert>
+                    )}
                 </Box>
             </Paper>
 
