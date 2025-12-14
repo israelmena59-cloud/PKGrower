@@ -214,23 +214,56 @@ const Environment: React.FC = () => {
                                     <stop offset="5%" stopColor="#34C759" stopOpacity={0.4}/>
                                     <stop offset="95%" stopColor="#34C759" stopOpacity={0}/>
                                 </linearGradient>
+                                <linearGradient id="colorTempEnv" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#FF9500" stopOpacity={0.3}/>
+                                    <stop offset="95%" stopColor="#FF9500" stopOpacity={0}/>
+                                </linearGradient>
+                                <linearGradient id="colorHumEnv" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#007AFF" stopOpacity={0.3}/>
+                                    <stop offset="95%" stopColor="#007AFF" stopOpacity={0}/>
+                                </linearGradient>
                             </defs>
                             <CartesianGrid strokeDasharray="3 3" opacity={0.1} stroke="white" />
                             <XAxis dataKey="time" stroke="rgba(255,255,255,0.5)" tick={{ fontSize: 10 }} />
-                            <YAxis domain={[0, 2.5]} stroke="rgba(255,255,255,0.5)" tick={{ fontSize: 10 }} />
-                            <RechartsTooltip contentStyle={{ backgroundColor: 'rgba(28, 28, 30, 0.95)', borderRadius: '16px' }} />
+                            <YAxis
+                              yAxisId="vpd"
+                              domain={[0, 2.5]}
+                              stroke="#34C759"
+                              tick={{ fontSize: 10 }}
+                              label={{ value: 'VPD (kPa)', angle: -90, position: 'insideLeft', fill: '#34C759', fontSize: 10 }}
+                            />
+                            <YAxis
+                              yAxisId="temp"
+                              orientation="right"
+                              domain={[15, 35]}
+                              stroke="#FF9500"
+                              tick={{ fontSize: 10 }}
+                              label={{ value: '°C / %', angle: 90, position: 'insideRight', fill: '#FF9500', fontSize: 10 }}
+                            />
+                            <RechartsTooltip
+                              contentStyle={{ backgroundColor: 'rgba(28, 28, 30, 0.95)', borderRadius: '16px', border: 'none' }}
+                              formatter={(value: any, name: string) => {
+                                if (name === 'VPD') return [`${Number(value).toFixed(2)} kPa`, name];
+                                if (name === 'Temp') return [`${Number(value).toFixed(1)}°C`, 'Temperatura'];
+                                if (name === 'Hum') return [`${Number(value).toFixed(0)}%`, 'Humedad'];
+                                return [value, name];
+                              }}
+                            />
 
-                            {/* Optimal Zone from Crop Steering */}
-                            <ReferenceArea y1={targets.vpd.min} y2={targets.vpd.max} fill="#34C759" fillOpacity={0.1} />
-                            <ReferenceLine y={targets.vpd.min} stroke="#34C759" strokeDasharray="3 3" label={{ value: 'Min', fill: '#34C759', fontSize: 10 }} />
-                            <ReferenceLine y={targets.vpd.target} stroke="#34C759" strokeWidth={2} label={{ value: 'Target', fill: '#34C759', fontSize: 10 }} />
-                            <ReferenceLine y={targets.vpd.max} stroke="#34C759" strokeDasharray="3 3" label={{ value: 'Max', fill: '#34C759', fontSize: 10 }} />
+                            {/* Optimal VPD Zone from Crop Steering */}
+                            <ReferenceArea yAxisId="vpd" y1={targets.vpd.min} y2={targets.vpd.max} fill="#34C759" fillOpacity={0.1} />
+                            <ReferenceLine yAxisId="vpd" y={targets.vpd.min} stroke="#34C759" strokeDasharray="3 3" />
+                            <ReferenceLine yAxisId="vpd" y={targets.vpd.target} stroke="#34C759" strokeWidth={2} />
+                            <ReferenceLine yAxisId="vpd" y={targets.vpd.max} stroke="#34C759" strokeDasharray="3 3" />
 
                             {/* Danger zones */}
-                            <ReferenceArea y1={0} y2={0.4} fill="#FF3B30" fillOpacity={0.1} />
-                            <ReferenceArea y1={1.8} y2={2.5} fill="#FF3B30" fillOpacity={0.1} />
+                            <ReferenceArea yAxisId="vpd" y1={0} y2={0.4} fill="#FF3B30" fillOpacity={0.05} />
+                            <ReferenceArea yAxisId="vpd" y1={1.8} y2={2.5} fill="#FF3B30" fillOpacity={0.05} />
 
-                            <Area type="monotone" dataKey="vpd" stroke="#34C759" strokeWidth={3} fillOpacity={1} fill="url(#colorVpdEnv)" name="VPD kPa" />
+                            {/* Data Lines */}
+                            <Area yAxisId="vpd" type="monotone" dataKey="vpd" stroke="#34C759" strokeWidth={3} fillOpacity={1} fill="url(#colorVpdEnv)" name="VPD" />
+                            <Area yAxisId="temp" type="monotone" dataKey="temp" stroke="#FF9500" strokeWidth={2} fillOpacity={0.3} fill="url(#colorTempEnv)" name="Temp" />
+                            <Area yAxisId="temp" type="monotone" dataKey="hum" stroke="#007AFF" strokeWidth={2} fillOpacity={0.3} fill="url(#colorHumEnv)" name="Hum" />
                         </AreaChart>
                     </ResponsiveContainer>
                 </Box>
