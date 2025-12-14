@@ -15,15 +15,17 @@ import {
   User
 } from 'firebase/auth';
 
-// Firebase config - same project as backend Firestore
+// Firebase config - from Firebase Console
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyDummy",
+  apiKey: "AIzaSyCy6KzSqt5-751gkdX_S-7XvwK2Ly8fJSo",
   authDomain: "pk-grower.firebaseapp.com",
   projectId: "pk-grower",
-  storageBucket: "pk-grower.appspot.com",
-  messagingSenderId: "115922814135577280107",
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:dummy:web:dummy"
+  storageBucket: "pk-grower.firebasestorage.app",
+  messagingSenderId: "664237832244",
+  appId: "1:664237832244:web:14f6b72c15118cb18f7261",
+  measurementId: "G-7FY8Z2522E"
 };
+
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
