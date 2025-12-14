@@ -17,6 +17,7 @@ const Devices = lazy(() => import('./pages/Devices'));
 const Camera = lazy(() => import('./pages/Camera'));
 const Settings = lazy(() => import('./pages/Settings'));
 const CropSteering = lazy(() => import('./pages/CropSteering'));
+const Nutrients = lazy(() => import('./pages/Nutrients'));
 
 function AppContent() {
   const [activePage, setActivePage] = useState<Page>('dashboard');
@@ -28,6 +29,7 @@ function AppContent() {
       case 'irrigation': return <Irrigation />;
       case 'environment': return <Environment />;
       case 'cropsteering': return <CropSteering />;
+      case 'nutrients': return <Nutrients />;
       case 'ai_assistant': return <AIAssistant />;
       case 'calendar': return <Calendar />;
       case 'devices': return <Devices />;

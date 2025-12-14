@@ -3,11 +3,11 @@
 import React, { useState, useEffect } from 'react';
 import Alerts, { Alert } from './Alerts';
 import { Box, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Typography, Divider, GlobalStyles, Fade, IconButton, Tooltip, useMediaQuery, Drawer, AppBar, Toolbar } from '@mui/material';
-import { LayoutDashboard, Zap, Droplets, Wind, Bot, Calendar, Settings, Camera, Cpu, Sun, Moon, Menu as MenuIcon, Leaf } from 'lucide-react';
+import { LayoutDashboard, Zap, Droplets, Wind, Bot, Calendar, Settings, Camera, Cpu, Sun, Moon, Menu as MenuIcon, Leaf, Beaker } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 
 // Define the type for the pages
-export type Page = 'dashboard' | 'lighting' | 'irrigation' | 'environment' | 'cropsteering' | 'ai_assistant' | 'calendar' | 'devices' | 'camera' | 'settings';
+export type Page = 'dashboard' | 'lighting' | 'irrigation' | 'environment' | 'cropsteering' | 'nutrients' | 'ai_assistant' | 'calendar' | 'devices' | 'camera' | 'settings';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -132,6 +132,7 @@ const Layout: React.FC<LayoutProps> = ({ children, onNavigate, activePage }) => 
                 <NavItem page="irrigation" icon={<Droplets size={20} />} label="Riego y Estrategia" />
                 <NavItem page="environment" icon={<Wind size={20} />} label="Atmósfera" />
                 <NavItem page="cropsteering" icon={<Leaf size={20} />} label="Crop Steering" />
+                <NavItem page="nutrients" icon={<Beaker size={20} />} label="Nutrientes" />
             </List>
 
             <Divider sx={{ my: 2, borderColor: mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)', mx: 3 }} />
