@@ -2854,7 +2854,7 @@ app.post('/api/settings', async (req, res) => {
         return res.json({ success: true, require2FA: true, context: authContext });
     }
 
-    res.json({ success: true, message: "Settings saved to database." }); // Return early
+    return res.json({ success: true, message: "Settings saved to database." }); // Return early
     /*
     Object.entries(envChanges).forEach(([key, value]) => {
         const regex = new RegExp(`^${key}=.*`, 'm');

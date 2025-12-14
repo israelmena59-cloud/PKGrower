@@ -137,13 +137,15 @@ export const DeviceDataWidget: React.FC<DeviceDataWidgetProps> = ({
     // Chart widget for sensors
     if (widgetType === 'chart' && hasTempHumidity) {
         return (
-            <ChartWidget
-                data={historyData}
-                dataKey={device.capabilities?.includes('temperature') ? 'temperature' : 'humidity'}
-                color={device.capabilities?.includes('temperature') ? '#FF3B30' : '#007AFF'}
-                unit={device.capabilities?.includes('temperature') ? '°C' : '%'}
-                chartTitle={device.name}
-            />
+            <Box sx={{ width: '100%', height: '100%', minWidth: 200, minHeight: 150 }}>
+                <ChartWidget
+                    data={historyData}
+                    dataKey={device.capabilities?.includes('temperature') ? 'temperature' : 'humidity'}
+                    color={device.capabilities?.includes('temperature') ? '#FF3B30' : '#007AFF'}
+                    unit={device.capabilities?.includes('temperature') ? '°C' : '%'}
+                    chartTitle={device.name}
+                />
+            </Box>
         );
     }
 
