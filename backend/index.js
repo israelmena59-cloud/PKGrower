@@ -231,6 +231,8 @@ const DEVICE_MAP = {
 // --- INICIALIZACIÃ“N DE LA APP Y CONECTORES ---
 const app = express();
 app.use(compression()); // Enable GZIP compression
+app.use(express.json()); // Parse JSON request bodies
+app.use(express.urlencoded({ extended: true })); // Parse URL-encoded bodies
 // Import path removed (duplicate)
 app.use(cors()); // Safe toggle
 const PORT = process.env.PORT || 3000;
