@@ -1263,6 +1263,21 @@ if (!MODO_SIMULACION) {
   }, 1000);
 }
 
+// --- CORS Configuration ---
+// Allow requests from Firebase Hosting frontend
+const corsOptions = {
+  origin: [
+    'https://pk-grower.web.app',
+    'https://pk-grower.firebaseapp.com',
+    'http://localhost:5173',  // Vite dev
+    'http://localhost:3000'   // Local dev
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key']
+};
+app.use(cors(corsOptions));
+
 app.use(express.json());
 
 // --- LÃ“GICA DE SIMULACIÃ“N (SI ESTÃ ACTIVADA) ---
