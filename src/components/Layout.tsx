@@ -146,7 +146,7 @@ const Layout: React.FC<LayoutProps> = ({ children, onNavigate, activePage }) => 
 
             <Typography variant="caption" sx={{ px: 4, mb: 1, display: 'block', fontWeight: 'bold', color: mode === 'dark' ? 'rgba(255,255,255,0.4)' : 'text.disabled', letterSpacing: 1 }}>SYSTEM</Typography>
             <List component="nav">
-                <NavItem page="devices" icon={<Cpu size={20} />} label="Hardware" />
+                <NavItem page="devices" icon={<Cpu size={20} />} label="Dispositivos" />
                 <NavItem page="camera" icon={<Camera size={20} />} label="Visión" />
                 <NavItem page="settings" icon={<Settings size={20} />} label="Configuración" />
             </List>
