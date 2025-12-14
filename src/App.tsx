@@ -3,6 +3,7 @@ import Layout, { Page } from './components/Layout';
 import DebugOverlay from './components/DebugOverlay';
 import { ThemeProvider } from './context/ThemeContext';
 import { CropSteeringProvider } from './context/CropSteeringContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { Box, CircularProgress } from '@mui/material';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
@@ -18,6 +19,7 @@ const Camera = lazy(() => import('./pages/Camera'));
 const Settings = lazy(() => import('./pages/Settings'));
 const CropSteering = lazy(() => import('./pages/CropSteering'));
 const Nutrients = lazy(() => import('./pages/Nutrients'));
+const Login = lazy(() => import('./pages/Login'));
 
 function AppContent() {
   const [activePage, setActivePage] = useState<Page>('dashboard');
@@ -54,16 +56,54 @@ function AppContent() {
   );
 }
 
+// Protected App wrapper - shows Login if not authenticated
+function ProtectedApp() {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <Box sx={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        height: '100vh',
+        background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)'
+      }}>
+        <CircularProgress sx={{ color: '#22c55e' }} />
+      </Box>
+    );
+  }
+
+  if (!user) {
+    return (
+      <Suspense fallback={
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+          <CircularProgress />
+        </Box>
+      }>
+        <Login />
+      </Suspense>
+    );
+  }
+
+  return (
+    <>
+      <DebugOverlay />
+      <AppContent />
+    </>
+  );
+}
+
 function App() {
   return (
     <ThemeProvider>
       <CropSteeringProvider>
-        <DebugOverlay />
-        <AppContent />
+        <AuthProvider>
+          <ProtectedApp />
+        </AuthProvider>
       </CropSteeringProvider>
     </ThemeProvider>
   );
 }
 
 export default App;
-
