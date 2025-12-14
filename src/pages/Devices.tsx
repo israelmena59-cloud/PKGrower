@@ -28,6 +28,7 @@ import {
   Video,
 } from 'lucide-react';
 import { apiClient } from '../api/client';
+import DeviceConfigModal from '../components/devices/DeviceConfigModal';
 
 interface Device {
   id: string;
@@ -47,6 +48,8 @@ const DevicesPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
   const [openControlDialog, setOpenControlDialog] = useState(false);
+  const [openConfigModal, setOpenConfigModal] = useState(false);
+  const [configDevice, setConfigDevice] = useState<any>(null);
   const [controlValue, setControlValue] = useState<number>(50);
 
   // Obtener dispositivos
@@ -369,6 +372,16 @@ const DevicesPage: React.FC = () => {
                         <SettingsIcon size={16} />
                       </Button>
                     )}
+                    <Button
+                      size="small"
+                      variant="text"
+                      onClick={() => {
+                        setConfigDevice(device);
+                        setOpenConfigModal(true);
+                      }}
+                    >
+                      Configurar
+                    </Button>
                   </CardActions>
                 </Card>
               </Grid>
@@ -509,6 +522,17 @@ const DevicesPage: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Device Config Modal */}
+      <DeviceConfigModal
+        open={openConfigModal}
+        onClose={() => setOpenConfigModal(false)}
+        device={configDevice}
+        onSave={() => {
+          fetchDevices();
+          setOpenConfigModal(false);
+        }}
+      />
     </Box>
   );
 };
