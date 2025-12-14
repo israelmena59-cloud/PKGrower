@@ -253,16 +253,36 @@ class APIClient {
     })
   }
 
-  // Xiaomi Auth
-  async loginXiaomi(credentials: { username: string; password: string }): Promise<any> {
-    return this.request('/api/settings/xiaomi-login', {
+  // Xiaomi Auth (Puppeteer-based OAuth)
+  async loginXiaomi(credentials: { username: string; password: string }): Promise<{
+    success: boolean;
+    sessionId: string;
+    status: string;
+    message?: string;
+  }> {
+    return this.request('/api/xiaomi/auth/start', {
       method: 'POST',
       body: JSON.stringify(credentials)
     });
   }
 
-  async verifyXiaomi2FA(data: { code: string; context: any; password?: string }): Promise<any> {
-    return this.request('/api/settings/verify-2fa', {
+  async getXiaomiAuthStatus(sessionId: string): Promise<{
+    status: string;
+    message?: string;
+    error?: string;
+    tokens?: any;
+  }> {
+    return this.request(`/api/xiaomi/auth/status/${sessionId}`, {
+      method: 'GET'
+    });
+  }
+
+  async verifyXiaomi2FA(data: { sessionId: string; code: string }): Promise<{
+    success: boolean;
+    status: string;
+    error?: string;
+  }> {
+    return this.request('/api/xiaomi/auth/2fa', {
       method: 'POST',
       body: JSON.stringify(data)
     });

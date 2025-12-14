@@ -21,6 +21,7 @@ const MerossCloud = require('meross-cloud'); // Meross Integration
 // Load environment variables from .env file
 require('dotenv').config({ path: require('path').join(__dirname, '.env') });
 const firestore = require('./firestore');
+const xiaomiBrowserAuth = require('./xiaomi-browser-auth');
 
 // Log para debugging - ver quÃ© se estÃ¡ leyendo del .env
 console.log('\n[DEBUG] Variables de entorno cargadas:');
@@ -582,6 +583,56 @@ app.get('/api/devices/list', (req, res) => {
         res.status(500).json({ error: e.message });
     }
 });
+
+// === XIAOMI BROWSER AUTH ENDPOINTS ===
+// Start Xiaomi browser-based login (Puppeteer OAuth)
+app.post('/api/xiaomi/auth/start', async (req, res) => {
+    try {
+        const { username, password } = req.body;
+        if (!username || !password) {
+            return res.status(400).json({ error: 'Missing username or password' });
+        }
+
+        console.log('[API] Starting Xiaomi browser auth for:', username);
+        const result = await xiaomiBrowserAuth.startLogin(username, password);
+
+        res.json({
+            success: true,
+            sessionId: result.sessionId,
+            status: result.status,
+            message: 'Login initiated. Check status for 2FA requirement.'
+        });
+    } catch (e) {
+        console.error('[API] Xiaomi auth start error:', e.message);
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Submit 2FA verification code
+app.post('/api/xiaomi/auth/2fa', async (req, res) => {
+    try {
+        const { sessionId, code } = req.body;
+        if (!sessionId || !code) {
+            return res.status(400).json({ error: 'Missing sessionId or code' });
+        }
+
+        console.log('[API] Submitting Xiaomi 2FA code for session:', sessionId);
+        const result = await xiaomiBrowserAuth.submit2FA(sessionId, code);
+
+        res.json(result);
+    } catch (e) {
+        console.error('[API] Xiaomi 2FA submit error:', e.message);
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Get auth session status
+app.get('/api/xiaomi/auth/status/:sessionId', (req, res) => {
+    const { sessionId } = req.params;
+    const status = xiaomiBrowserAuth.getSessionStatus(sessionId);
+    res.json(status);
+});
+
 // --- PERSISTENCIA ---
 // const fs = require('fs'); // Removed duplicate
 
