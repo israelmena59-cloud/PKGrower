@@ -1,11 +1,13 @@
 // src/api/client.ts
 // Centralized API client for backend calls
 
-// Read API base URL from environment or use default
-// Read API base URL from environment (Vite/Firebase) or use default (Localhost)
-// NOTE: We prefer VITE_API_URL to allow switching between Local and Cloud.
-// export const API_BASE_URL = 'https://pkgrower.onrender.com'; // Hardcoded
-export const API_BASE_URL = (import.meta as any).env.VITE_API_URL || ((import.meta as any).env.PROD ? '' : 'http://localhost:3000');
+// API Base URL Configuration:
+// - Development: localhost:3000
+// - Production: Render backend (pkgrower.onrender.com)
+// - Override: Set VITE_API_URL environment variable
+const RENDER_BACKEND = 'https://pkgrower.onrender.com';
+export const API_BASE_URL = (import.meta as any).env.VITE_API_URL ||
+  ((import.meta as any).env.PROD ? RENDER_BACKEND : 'http://localhost:3000');
 
 export interface SensorData {
   timestamp: string

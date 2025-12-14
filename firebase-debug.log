@@ -1,0 +1,21 @@
+[debug] [2025-12-14T22:01:59.604Z] ----------------------------------------------------------------------
+[debug] [2025-12-14T22:01:59.609Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\Israel\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js deploy --only hosting
+[debug] [2025-12-14T22:01:59.609Z] CLI Version:   15.0.0
+[debug] [2025-12-14T22:01:59.609Z] Platform:      win32
+[debug] [2025-12-14T22:01:59.609Z] Node Version:  v25.2.1
+[debug] [2025-12-14T22:01:59.610Z] Time:          Sun Dec 14 2025 19:01:59 GMT-0300 (hora de verano de Chile)
+[debug] [2025-12-14T22:01:59.610Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2025-12-14T22:02:05.881Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-12-14T22:02:05.886Z] > authorizing via signed-in user (israelmena59@gmail.com)
+[debug] [2025-12-14T22:02:05.888Z] [iam] checking project pk-grower for permissions ["firebase.projects.get","firebasehosting.sites.update"]
+[debug] [2025-12-14T22:02:05.904Z] Checked if tokens are valid: false, expires at: 1765745730057
+[debug] [2025-12-14T22:02:05.905Z] Checked if tokens are valid: false, expires at: 1765745730057
+[debug] [2025-12-14T22:02:05.908Z] > refreshing access token with scopes: []
+[debug] [2025-12-14T22:02:05.928Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2025-12-14T22:02:05.928Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-12-14T22:02:06.299Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2025-12-14T22:02:06.299Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-12-14T22:02:06.318Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/pk-grower:testIamPermissions [none]
+[debug] [2025-12-14T22:02:06.318Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/pk-grower:testIamPermissions x-goog-quota-user=projects/pk-grower
+[debug] [2025-12-14T22:02:06.319Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/pk-grower:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
