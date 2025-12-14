@@ -19,6 +19,7 @@ import {
   CircularProgress,
   Tabs,
   Tab,
+  Avatar,
 } from '@mui/material';
 import {
   Settings as SettingsIcon,
@@ -31,9 +32,13 @@ import {
   Database,
   Leaf,
   Sun,
-  Moon
+  Moon,
+  LogOut,
+  User
 } from 'lucide-react';
 import { apiClient } from '../api/client';
+import { useAuth } from '../context/AuthContext';
+
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -74,6 +79,7 @@ interface XiaomiCredentials {
 }
 
 const SettingsPage: React.FC = () => {
+  const { user, logout } = useAuth();
   const [tabValue, setTabValue] = useState(0);
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -755,6 +761,32 @@ const SettingsPage: React.FC = () => {
         {/* Tab: Sistema */}
         <TabPanel value={tabValue} index={4}>
           <Box sx={{ p: 3 }}>
+            {/* User Profile Section */}
+            <Card sx={{ mb: 3, background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
+              <CardContent>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, color: 'white' }}>
+                  <Avatar sx={{ width: 56, height: 56, bgcolor: 'rgba(255,255,255,0.2)' }}>
+                    <User size={28} />
+                  </Avatar>
+                  <Box sx={{ flex: 1 }}>
+                    <Typography variant="h6" fontWeight="bold">Mi Cuenta</Typography>
+                    <Typography variant="body2" sx={{ opacity: 0.9 }}>
+                      {user?.email || 'No conectado'}
+                    </Typography>
+                  </Box>
+                  <Button
+                    variant="contained"
+                    color="error"
+                    startIcon={<LogOut size={18} />}
+                    onClick={logout}
+                    sx={{ bgcolor: 'rgba(255,255,255,0.2)', '&:hover': { bgcolor: 'rgba(255,59,48,0.8)' } }}
+                  >
+                    Cerrar Sesión
+                  </Button>
+                </Box>
+              </CardContent>
+            </Card>
+
             <Grid container spacing={2}>
               <Grid item xs={12} md={6}>
                 <Card>
