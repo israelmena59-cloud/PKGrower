@@ -133,15 +133,41 @@ async function getSensorHistoryRange(start, end) {
  * @param {Object} deviceConfig - { id, name, type, ... }
  */
 async function saveDeviceConfig(deviceConfig) {
-  if (!db || !deviceConfig.id) return;
+  if (!deviceConfig || !deviceConfig.id) {
+    console.warn('[FIRESTORE] saveDeviceConfig called without valid config');
+    return;
+  }
+
+  // Try Firestore first
+  if (db) {
+    try {
+      await db.collection('device_configs').doc(deviceConfig.id).set({
+          ...deviceConfig,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+      console.log(`[FIRESTORE] Device config saved: ${deviceConfig.id}`);
+      return;
+    } catch (error) {
+      console.error('[FIRESTORE] Error saving device config:', error.message);
+      // Continue to local fallback
+    }
+  }
+
+  // Local file fallback
+  const localPath = path.join(BACKUP_DIR, 'device_configs.json');
   try {
-    await db.collection('device_configs').doc(deviceConfig.id).set({
-        ...deviceConfig,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
-    }, { merge: true });
-    console.log(`[FIRESTORE] Device config saved: ${deviceConfig.id}`);
-  } catch (error) {
-    console.error('[FIRESTORE] Error saving device config:', error.message);
+    let configs = {};
+    if (fs.existsSync(localPath)) {
+      configs = JSON.parse(fs.readFileSync(localPath, 'utf8'));
+    }
+    configs[deviceConfig.id] = {
+      ...deviceConfig,
+      updatedAt: new Date().toISOString()
+    };
+    fs.writeFileSync(localPath, JSON.stringify(configs, null, 2));
+    console.log(`[LOCAL] Device config saved locally: ${deviceConfig.id}`);
+  } catch (localError) {
+    console.error('[LOCAL] Error saving device config locally:', localError.message);
   }
 }
 
@@ -150,20 +176,36 @@ async function saveDeviceConfig(deviceConfig) {
  * @returns {Promise<Object>} Map of id -> config
  */
 async function getDeviceConfigs() {
-  if (!db) return {};
-  try {
-    const snapshot = await db.collection('device_configs').get();
-    const configs = {};
-    if (snapshot.empty) return {};
-
-    snapshot.forEach(doc => {
-        configs[doc.id] = doc.data();
-    });
-    return configs;
-  } catch (error) {
-    console.error('[FIRESTORE] Error getting device configs:', error.message);
-    return {};
+  // Try Firestore first
+  if (db) {
+    try {
+      const snapshot = await db.collection('device_configs').get();
+      const configs = {};
+      if (!snapshot.empty) {
+        snapshot.forEach(doc => {
+            configs[doc.id] = doc.data();
+        });
+        return configs;
+      }
+    } catch (error) {
+      console.error('[FIRESTORE] Error getting device configs:', error.message);
+      // Continue to local fallback
+    }
   }
+
+  // Local file fallback
+  const localPath = path.join(BACKUP_DIR, 'device_configs.json');
+  try {
+    if (fs.existsSync(localPath)) {
+      const configs = JSON.parse(fs.readFileSync(localPath, 'utf8'));
+      console.log(`[LOCAL] Loaded ${Object.keys(configs).length} device configs from local file`);
+      return configs;
+    }
+  } catch (localError) {
+    console.error('[LOCAL] Error reading device configs:', localError.message);
+  }
+
+  return {};
 }
 
 /**
