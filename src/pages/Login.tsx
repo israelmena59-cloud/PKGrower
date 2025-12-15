@@ -15,7 +15,14 @@ import {
   InputAdornment,
   CircularProgress,
   Tabs,
-  Tab
+  Tab,
+  FormControlLabel,
+  Checkbox,
+  Link,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions
 } from '@mui/material';
 import { Leaf, Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -46,6 +53,8 @@ const Login: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [localError, setLocalError] = useState('');
+  const [acceptTerms, setAcceptTerms] = useState(false);
+  const [showTerms, setShowTerms] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,6 +68,11 @@ const Login: React.FC = () => {
 
     if (tab === 1 && password !== confirmPassword) {
       setLocalError('Las contraseñas no coinciden');
+      return;
+    }
+
+    if (tab === 1 && !acceptTerms) {
+      setLocalError('Debes aceptar los términos y condiciones');
       return;
     }
 
@@ -228,6 +242,33 @@ const Login: React.FC = () => {
             />
           )}
 
+          {/* Terms Checkbox - Only for Register */}
+          {tab === 1 && (
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={acceptTerms}
+                  onChange={(e) => setAcceptTerms(e.target.checked)}
+                  sx={{ color: 'rgba(255,255,255,0.6)', '&.Mui-checked': { color: '#22c55e' } }}
+                />
+              }
+              label={
+                <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.7)' }}>
+                  Acepto los{' '}
+                  <Link
+                    href="#"
+                    onClick={(e: React.MouseEvent) => { e.preventDefault(); setShowTerms(true); }}
+                    sx={{ color: '#22c55e', textDecoration: 'underline', cursor: 'pointer' }}
+                  >
+                    términos y condiciones
+                  </Link>
+                  {' '}y la política de privacidad
+                </Typography>
+              }
+              sx={{ mb: 2 }}
+            />
+          )}
+
           <Button
             type="submit"
             fullWidth
@@ -289,6 +330,68 @@ const Login: React.FC = () => {
           </Button>
         </Box>
       </Paper>
+
+      {/* Terms Modal */}
+      <Dialog
+        open={showTerms}
+        onClose={() => setShowTerms(false)}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          sx: { bgcolor: 'rgba(30, 41, 59, 0.98)', backdropFilter: 'blur(20px)', borderRadius: 3 }
+        }}
+      >
+        <DialogTitle sx={{ color: 'white', fontWeight: 'bold' }}>
+          📋 Términos y Condiciones
+        </DialogTitle>
+        <DialogContent sx={{ color: 'rgba(255,255,255,0.8)' }}>
+          <Typography variant="h6" sx={{ color: '#22c55e', mb: 2 }}>
+            1. Aceptación de Términos
+          </Typography>
+          <Typography variant="body2" sx={{ mb: 3, lineHeight: 1.8 }}>
+            Al utilizar PKGrower, usted acepta estos términos en su totalidad.
+            Este servicio está destinado para uso personal cumpliendo con la legislación chilena.
+          </Typography>
+
+          <Typography variant="h6" sx={{ color: '#22c55e', mb: 2 }}>
+            2. Protección de Datos (Ley 19.628)
+          </Typography>
+          <Typography variant="body2" sx={{ mb: 1, lineHeight: 1.8 }}>
+            En cumplimiento con la Ley 19.628 sobre Protección de Datos Personales de Chile:
+          </Typography>
+          <Box component="ul" sx={{ pl: 2, mb: 3 }}>
+            <li>Sus datos personales <strong>NO serán compartidos</strong> con terceros.</li>
+            <li>La información es de uso <strong>estrictamente privado</strong> y confidencial.</li>
+            <li>Puede solicitar <strong>eliminar su cuenta</strong> en cualquier momento.</li>
+          </Box>
+
+          <Typography variant="h6" sx={{ color: '#22c55e', mb: 2 }}>
+            3. Datos Recopilados
+          </Typography>
+          <Typography variant="body2" sx={{ mb: 3, lineHeight: 1.8 }}>
+            Correo electrónico, datos de sensores, configuraciones de dispositivos e historial de eventos.
+            Todos almacenados con encriptación y acceso restringido.
+          </Typography>
+
+          <Alert severity="info" sx={{ mt: 2 }}>
+            <strong>Resumen:</strong> Sus datos son privados y confidenciales.
+            NO compartimos información con terceros.
+            Cumplimos con la Ley 19.628 de Chile.
+          </Alert>
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setShowTerms(false)} sx={{ color: 'white' }}>
+            Cerrar
+          </Button>
+          <Button
+            onClick={() => { setAcceptTerms(true); setShowTerms(false); }}
+            variant="contained"
+            sx={{ background: 'linear-gradient(135deg, #22c55e, #16a34a)' }}
+          >
+            Aceptar Términos
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

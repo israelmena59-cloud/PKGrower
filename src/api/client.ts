@@ -223,7 +223,7 @@ class APIClient {
 
   // Devices - Get all
   async getAllDevices(): Promise<any[]> {
-    return this.request('/api/devices/all', {
+    return this.request('/api/devices/list', {
       method: 'GET',
     })
   }
