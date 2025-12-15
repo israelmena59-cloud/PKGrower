@@ -1142,9 +1142,14 @@ async function initTuyaDevices() {
 
     // Check data.success, not response.success
     if (!data || !data.success || !data.result || !data.result.devices) {
+        // LOG THE ACTUAL ERROR FROM TUYA
+        console.error('[TUYA-ERROR] API returned error:');
+        console.error(`  Code: ${data?.code || 'unknown'}`);
+        console.error(`  Message: ${data?.msg || 'no message'}`);
+        console.error(`  Success: ${data?.success}`);
         console.log('[DEBUG-TUYA-FAIL] Invalid Data Structure:', Object.keys(data || {}));
 
-        console.warn('[WARN] Tuya no devolviÃ³ lista masiva. Iniciando Plan B...');
+        console.warn('[WARN] Tuya no devolvió lista masiva. Iniciando Plan B...');
         // ... Log logic ...
 
         await syncTuyaDevicesIndividual();
@@ -1218,8 +1223,13 @@ const syncTuyaDevicesIndividual = async () => {
     for (const [key, mapDef] of Object.entries(TUYA_DEVICES_MAP)) {
          if (!mapDef.id) continue;
          try {
-             // console.log(`[Plan B] Consultando ${mapDef.name} (${mapDef.id})...`);
+             console.log(`[Plan B] Consultando ${mapDef.name} (${mapDef.id})...`);
              const res = await tuyaClient.request({ method: 'GET', path: `/v1.0/devices/${mapDef.id}` });
+
+             // Log raw response for debugging
+             if (res.data && !res.data.success) {
+                 console.error(`[Plan B] Device ${key} error: Code=${res.data.code}, Msg=${res.data.msg}`);
+             }
 
              // Extract data from Axios response
              const devData = (res.data && res.data.result) ? res.data.result : null;
@@ -1229,13 +1239,10 @@ const syncTuyaDevicesIndividual = async () => {
                   if (devData.online === undefined) devData.online = true;
 
                   fallbackDevices.push(devData);
-                  // Log status for first device to debug mapping
-                  // if (fallbackDevices.length === 1) {
-                  //    console.log(`[DEBUG-TUYA-STATUS] Sample status for ${devData.name}:`, JSON.stringify(devData.status));
-                  // }
+                  console.log(`[Plan B] ✓ ${mapDef.name} recuperado OK`);
              }
          } catch(e) {
-            console.warn(`  âœ— Error consultando ${mapDef.name}: ${e.message}`);
+            console.warn(`  ✗ Error consultando ${mapDef.name}: ${e.message}`);
          }
     }
 
