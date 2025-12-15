@@ -14,6 +14,7 @@ import {
   signOut,
   onAuthStateChanged,
   sendEmailVerification as firebaseSendEmailVerification,
+  sendPasswordResetEmail as firebaseSendPasswordResetEmail,
   updatePassword as firebaseUpdatePassword,
   linkWithCredential,
   User
@@ -70,6 +71,11 @@ export const sendVerificationEmail = async () => {
 
 export const isEmailVerified = () => {
   return auth.currentUser?.emailVerified || false;
+};
+
+// Password Reset
+export const resetPassword = async (email: string) => {
+  await firebaseSendPasswordResetEmail(auth, email);
 };
 
 // Password Management for OAuth Users

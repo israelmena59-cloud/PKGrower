@@ -26,6 +26,7 @@ import {
 } from '@mui/material';
 import { Leaf, Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { resetPassword } from '../config/firebase';
 
 // Google icon component
 const GoogleIcon = () => (
@@ -55,6 +56,9 @@ const Login: React.FC = () => {
   const [localError, setLocalError] = useState('');
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetSuccess, setResetSuccess] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -107,6 +111,23 @@ const Login: React.FC = () => {
       await loginApple();
     } catch (e) {
       // Error handled by context
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (!resetEmail) {
+      setLocalError('Ingresa tu email');
+      return;
+    }
+    setLoading(true);
+    try {
+      await resetPassword(resetEmail);
+      setResetSuccess(true);
+      setLocalError('');
+    } catch (e: any) {
+      setLocalError('Error al enviar email. Verifica el correo.');
     } finally {
       setLoading(false);
     }
@@ -223,6 +244,19 @@ const Login: React.FC = () => {
               )
             }}
           />
+
+          {/* Forgot Password Link - Only on Login Tab */}
+          {tab === 0 && (
+            <Box sx={{ textAlign: 'right', mb: 2 }}>
+              <Link
+                href="#"
+                onClick={(e: React.MouseEvent) => { e.preventDefault(); setShowForgotPassword(true); setResetEmail(email); }}
+                sx={{ color: '#22c55e', fontSize: '0.875rem', cursor: 'pointer' }}
+              >
+                ¿Olvidaste tu contraseña?
+              </Link>
+            </Box>
+          )}
 
           {tab === 1 && (
             <TextField
@@ -390,6 +424,66 @@ const Login: React.FC = () => {
           >
             Aceptar Términos
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Forgot Password Modal */}
+      <Dialog
+        open={showForgotPassword}
+        onClose={() => { setShowForgotPassword(false); setResetSuccess(false); }}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: { bgcolor: 'rgba(30, 41, 59, 0.98)', backdropFilter: 'blur(20px)', borderRadius: 3 }
+        }}
+      >
+        <DialogTitle sx={{ color: 'white', fontWeight: 'bold' }}>
+          🔐 Recuperar Contraseña
+        </DialogTitle>
+        <DialogContent sx={{ color: 'rgba(255,255,255,0.8)' }}>
+          {resetSuccess ? (
+            <Alert severity="success" sx={{ mt: 2 }}>
+              ✅ <strong>Email enviado!</strong> Revisa tu correo (incluyendo spam) para restablecer tu contraseña.
+            </Alert>
+          ) : (
+            <>
+              <Typography variant="body2" sx={{ mb: 3 }}>
+                Ingresa tu correo electrónico y te enviaremos un enlace para restablecer tu contraseña.
+              </Typography>
+              <TextField
+                fullWidth
+                label="Email"
+                type="email"
+                value={resetEmail}
+                onChange={(e) => setResetEmail(e.target.value)}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <Mail size={20} color="#64748b" />
+                    </InputAdornment>
+                  )
+                }}
+              />
+              {localError && (
+                <Alert severity="error" sx={{ mt: 2 }}>{localError}</Alert>
+              )}
+            </>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => { setShowForgotPassword(false); setResetSuccess(false); setLocalError(''); }} sx={{ color: 'white' }}>
+            Cerrar
+          </Button>
+          {!resetSuccess && (
+            <Button
+              onClick={handleResetPassword}
+              variant="contained"
+              disabled={loading}
+              sx={{ background: 'linear-gradient(135deg, #22c55e, #16a34a)' }}
+            >
+              {loading ? <CircularProgress size={20} color="inherit" /> : 'Enviar Email'}
+            </Button>
+          )}
         </DialogActions>
       </Dialog>
     </Box>
