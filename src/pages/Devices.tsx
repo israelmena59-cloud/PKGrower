@@ -35,7 +35,7 @@ interface Device {
   name: string;
   type: 'light' | 'sensor' | 'switch' | 'camera' | 'humidifier' | 'pump' | 'other';
   status: boolean;
-  platform: 'tuya' | 'xiaomi';
+  platform: 'tuya' | 'xiaomi' | 'meross';
   value?: number | string;
   unit?: string;
   description?: string;
@@ -236,6 +236,7 @@ const DevicesPage: React.FC = () => {
   // Agrupar dispositivos por plataforma
   const tuyaDevices = devices.filter(d => d.platform === 'tuya');
   const xiaomiDevices = devices.filter(d => d.platform === 'xiaomi');
+  const merossDevices = devices.filter(d => d.platform === 'meross');
 
   if (loading) {
     return (
@@ -297,10 +298,10 @@ const DevicesPage: React.FC = () => {
         <Grid item xs={12} sm={6} md={3}>
           <Paper sx={{ p: 2, textAlign: 'center' }}>
             <Typography variant="h6" color="info">
-              {tuyaDevices.length} / {xiaomiDevices.length}
+              {tuyaDevices.length} / {xiaomiDevices.length} / {merossDevices.length}
             </Typography>
             <Typography variant="body2" color="textSecondary">
-              Tuya / Xiaomi
+              Tuya / Xiaomi / Meross
             </Typography>
           </Paper>
         </Grid>
@@ -456,6 +457,53 @@ const DevicesPage: React.FC = () => {
                         <SettingsIcon size={16} />
                       </Button>
                     )}
+                  </CardActions>
+                </Card>
+              </Grid>
+            ))}
+          </Grid>
+        </Box>
+      )}
+
+      {/* Dispositivos Meross */}
+      {merossDevices.length > 0 && (
+        <Box sx={{ mb: 4 }}>
+          <Typography variant="h5" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Chip label="Meross Cloud" color="secondary" />
+          </Typography>
+          <Grid container spacing={2}>
+            {merossDevices.map(device => (
+              <Grid item xs={12} sm={6} md={4} key={device.id}>
+                <Card>
+                  <CardContent>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                      <Box sx={{ p: 1.5, bgcolor: '#9C27B0' + '20', borderRadius: 1, color: '#9C27B0' }}>
+                        {getDeviceIcon(device.type)}
+                      </Box>
+                      <Box sx={{ flex: 1 }}>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>{device.name}</Typography>
+                        <Typography variant="caption" color="textSecondary">{device.type}</Typography>
+                      </Box>
+                    </Box>
+                    {device.value !== undefined && (
+                      <Typography variant="body1" sx={{ my: 1 }}>
+                        <strong>Valor:</strong> {device.value} {device.unit || ''}
+                      </Typography>
+                    )}
+                    <Typography variant="caption" color="textSecondary">
+                      Actualizado: {device.lastUpdate}
+                    </Typography>
+                  </CardContent>
+                  <Divider />
+                  <CardActions sx={{ display: 'flex', gap: 1 }}>
+                    <Button
+                      size="small"
+                      variant={device.status ? 'contained' : 'outlined'}
+                      onClick={() => handleToggleDevice(device)}
+                      fullWidth
+                    >
+                      {device.status ? 'Encendido' : 'Apagado'}
+                    </Button>
                   </CardActions>
                 </Card>
               </Grid>
