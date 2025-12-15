@@ -252,7 +252,7 @@ const Calendar: React.FC = () => {
             {/* P1 Shots */}
             <Grid item xs={6} md={3}>
               <Paper sx={{ p: 2, textAlign: 'center', background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)', color: 'white' }}>
-                <Typography variant="overline">Phase 1</Typography>
+                <Typography variant="overline">Fase 1</Typography>
                 <Typography variant="h2" fontWeight="bold">--</Typography>
                 <Typography variant="caption">disparos hoy</Typography>
                 <Chip label="Mantenimiento" size="small" sx={{ mt: 1, bgcolor: 'rgba(255,255,255,0.2)' }} />
@@ -262,7 +262,7 @@ const Calendar: React.FC = () => {
             {/* P2 Shots */}
             <Grid item xs={6} md={3}>
               <Paper sx={{ p: 2, textAlign: 'center', background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)', color: 'white' }}>
-                <Typography variant="overline">Phase 2</Typography>
+                <Typography variant="overline">Fase 2</Typography>
                 <Typography variant="h2" fontWeight="bold">--</Typography>
                 <Typography variant="caption">disparos hoy</Typography>
                 <Chip label="Ajuste" size="small" sx={{ mt: 1, bgcolor: 'rgba(255,255,255,0.2)' }} />
@@ -272,7 +272,7 @@ const Calendar: React.FC = () => {
             {/* P3 Duration */}
             <Grid item xs={6} md={3}>
               <Paper sx={{ p: 2, textAlign: 'center', background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)', color: 'white' }}>
-                <Typography variant="overline">Phase 3</Typography>
+                <Typography variant="overline">Fase 3</Typography>
                 <Typography variant="h2" fontWeight="bold">--</Typography>
                 <Typography variant="caption">horas dryback</Typography>
                 <Chip label="Nocturno" size="small" sx={{ mt: 1, bgcolor: 'rgba(255,255,255,0.2)' }} />

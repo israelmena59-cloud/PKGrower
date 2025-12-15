@@ -87,7 +87,8 @@ const AIAssistant: React.FC = () => {
           });
 
           const data = await res.json();
-          setMessages(prev => [...prev, { id: Date.now()+1, sender: 'ai', text: data.reply }]);
+          const replyText = data.reply || data.error || 'No se recibió respuesta del servidor.';
+          setMessages(prev => [...prev, { id: Date.now()+1, sender: 'ai', text: replyText }]);
 
       } catch (e) {
           setMessages(prev => [...prev, { id: Date.now()+1, sender: 'ai', text: 'Error de conexión con el servidor.' }]);

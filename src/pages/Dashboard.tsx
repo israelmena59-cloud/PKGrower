@@ -276,16 +276,9 @@ const Dashboard: React.FC = () => {
 
         <Box sx={{ maxWidth: 1800, mx: 'auto', p: 2 }}>
              {/* HEADER */}
-             <Paper elevation={0} sx={{ p: 3, mb: 3, borderRadius: 'var(--squircle-radius)', background: 'var(--glass-bg)', backdropFilter: 'var(--backdrop-blur)', border: 'var(--glass-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
-                <Box>
-                    <Typography variant="overline" sx={{ opacity: 0.7 }}>SISTEMA ONLINE</Typography>
-                    <Typography variant="h4" fontWeight="900" sx={{ background: 'linear-gradient(45deg, #fff, #a5f3fc)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                        PKGrower OS
-                    </Typography>
-                </Box>
-
+             <Paper elevation={0} sx={{ p: 2, mb: 3, borderRadius: 'var(--squircle-radius)', background: 'var(--glass-bg)', backdropFilter: 'var(--backdrop-blur)', border: 'var(--glass-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
                 {/* TABS */}
-                <Box sx={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
+                <Box sx={{ flex: 1, display: 'flex', justifyContent: 'flex-start' }}>
                      <Tabs
                         value={activePage}
                         onChange={(_, val) => setActivePage(val)}
@@ -323,28 +316,11 @@ const Dashboard: React.FC = () => {
                     >
                         Refrescar
                     </Button>
-                    <Tooltip title="Restablecer Diseño (Si hay errores)">
-                         <Button
-                            onClick={() => {
-                                if (confirm('¿Restablecer todo el diseño? Se perderán las personalizaciones.')) {
-                                    localStorage.removeItem('dashboard_pages');
-                                    localStorage.removeItem('dashboard_layouts');
-                                    localStorage.removeItem('known_devices');
-                                    window.location.reload();
-                                }
-                            }}
-                            sx={{ color: 'white', borderColor: 'rgba(255,0,0,0.5)', '&:hover': { borderColor: 'red', bgcolor: 'rgba(255,0,0,0.1)' } }}
-                            variant="outlined"
-                        >
-                            Reset
-                        </Button>
+                    <Tooltip title="Motor de Automatización">
+                        <IconButton onClick={() => setIsRulesOpen(true)} sx={{ color: '#fbbf24', bgcolor: 'rgba(251, 191, 36, 0.1)' }}>
+                            <Zap />
+                        </IconButton>
                     </Tooltip>
-                    <IconButton onClick={() => setIsConfigOpen(true)} sx={{ color: 'white', bgcolor: 'rgba(255,255,255,0.1)' }}>
-                        <Settings />
-                    </IconButton>
-                    <IconButton onClick={() => setIsRulesOpen(true)} sx={{ color: '#fbbf24', bgcolor: 'rgba(251, 191, 36, 0.1)' }}>
-                        <Zap />
-                    </IconButton>
                 </Box>
             </Paper>
 
