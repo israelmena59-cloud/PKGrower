@@ -150,16 +150,23 @@ const HistoryChart: React.FC<HistoryChartProps> = ({ type, title, targets, data:
   const fetchSettings = async () => {
       try {
           const settings = await apiClient.getSettings();
+          console.log('[DEBUG-LIGHT] Settings received:', settings?.lighting);
           // Show light overlay whenever onTime/offTime are configured (regardless of enabled flag)
           if (settings?.lighting?.onTime && settings?.lighting?.offTime) {
               const { onTime, offTime } = settings.lighting;
+              console.log(`[DEBUG-LIGHT] onTime=${onTime}, offTime=${offTime}`);
               // Validate format HH:mm
               if (/^\d{2}:\d{2}$/.test(onTime) && /^\d{2}:\d{2}$/.test(offTime)) {
+                  console.log('[DEBUG-LIGHT] Setting lightingSchedule state');
                   setLightingSchedule({
                       on: onTime,
                       off: offTime
                   });
+              } else {
+                  console.log('[DEBUG-LIGHT] Invalid time format');
               }
+          } else {
+              console.log('[DEBUG-LIGHT] No onTime/offTime in settings');
           }
       } catch (e) { console.error("Error fetching lighting settings", e); }
   }
