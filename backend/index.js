@@ -711,7 +711,16 @@ app.use('/api', (req, res, next) => {
         req.path.startsWith('/sensors') ||
         req.path.startsWith('/devices') ||
         req.path.startsWith('/settings') ||
-        req.path.startsWith('/history')
+        req.path.startsWith('/history') ||
+        req.path.startsWith('/meross')
+    )) {
+        return next();
+    }
+
+    // EXEMPTIONS: Allow specific POST endpoints without API key (public endpoints)
+    if (req.method === 'POST' && (
+        req.path === '/chat' ||
+        req.path.startsWith('/meross')
     )) {
         return next();
     }
