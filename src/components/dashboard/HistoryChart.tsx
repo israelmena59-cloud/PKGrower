@@ -57,7 +57,7 @@ const calculateVPD = (T: number, RH: number) => {
     return svp * (1 - (RH / 100));
 };
 
-const HistoryChart: React.FC<HistoryChartProps> = ({ type, title, targets, data: externalData, phase: _phase = 'vegetative', irrigationEvents = [] }) => {
+const HistoryChart: React.FC<HistoryChartProps> = ({ type, title, targets, data: externalData, phase: _phase = 'vegetative', irrigationEvents: propEvents = [] }) => {
   const { mode } = useTheme();
   const [range, setRange] = useState<'day' | 'week' | 'month'>('day');
   const [internalData, setInternalData] = useState<any[]>([]);
@@ -65,6 +65,30 @@ const HistoryChart: React.FC<HistoryChartProps> = ({ type, title, targets, data:
   const [isLive, setIsLive] = useState(true);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [lightingSchedule, setLightingSchedule] = useState<{on: string, off: string} | null>(null);
+  const [fetchedEvents, setFetchedEvents] = useState<IrrigationEvent[]>([]);
+
+  // Merge prop events with fetched events
+  const irrigationEvents = [...propEvents, ...fetchedEvents];
+
+  // Fetch irrigation events from API
+  useEffect(() => {
+    const fetchIrrigationEvents = async () => {
+      try {
+        const today = new Date().toISOString().split('T')[0];
+        const response = await fetch(`${import.meta.env.VITE_API_URL || 'https://pkgrower.onrender.com'}/api/irrigation/events?date=${today}`);
+        const data = await response.json();
+        if (data.success && data.events) {
+          setFetchedEvents(data.events.map((e: any) => ({
+            time: e.time,
+            phase: e.phase as 'p1' | 'p2' | 'p3',
+            vwcValue: e.vwcValue,
+            percentage: e.percentage
+          })));
+        }
+      } catch (e) { console.error('Error fetching irrigation events:', e); }
+    };
+    if (type === 'substrate') fetchIrrigationEvents();
+  }, [type, selectedDate]);
 
   // Use external data if provided and we are in 'day'/'live' mode, otherwise valid internal data
   const rawData = (externalData && range === 'day' && isLive) ? externalData : internalData;

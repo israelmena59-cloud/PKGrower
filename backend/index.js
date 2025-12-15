@@ -4059,6 +4059,123 @@ app.get('/api/meross/status', (req, res) => {
 // In-memory storage for irrigation events (persists until server restart)
 let irrigationEvents = [];
 
+// Pump state tracking for automatic event detection
+let pumpState = {
+    isOn: false,
+    startTime: null,
+    lastCheckedState: false
+};
+
+// Classify irrigation event as P1 or P2 based on stage and time
+function classifyIrrigationPhase(timestamp) {
+    const now = new Date(timestamp);
+    const lighting = appSettings.lighting || {};
+    const stage = appSettings.cropSteering?.stage || 'vegetative'; // 'vegetative' or 'generative'
+
+    if (!lighting.onTime || !lighting.offTime) {
+        return 'p1'; // Default to P1 if no lighting schedule
+    }
+
+    // Parse light times
+    const [onH, onM] = lighting.onTime.split(':').map(Number);
+    const [offH, offM] = lighting.offTime.split(':').map(Number);
+
+    const lightsOn = new Date(now);
+    lightsOn.setHours(onH, onM, 0, 0);
+
+    const lightsOff = new Date(now);
+    lightsOff.setHours(offH, offM, 0, 0);
+    if (lightsOff <= lightsOn) lightsOff.setDate(lightsOff.getDate() + 1);
+
+    const cycleDuration = lightsOff - lightsOn; // ms
+    const midpoint = new Date(lightsOn.getTime() + cycleDuration / 2);
+
+    const currentHour = now.getTime();
+    const lightsOnTime = lightsOn.getTime();
+    const lightsOffTime = lightsOff.getTime();
+    const midpointTime = midpoint.getTime();
+
+    if (stage === 'generative') {
+        // Generative: P1 = 2h after ON → midpoint, P2 = after midpoint → 3h before OFF
+        const p1Start = lightsOnTime + (2 * 60 * 60 * 1000); // 2h after ON
+        const p2End = lightsOffTime - (3 * 60 * 60 * 1000);   // 3h before OFF
+
+        if (currentHour >= p1Start && currentHour <= midpointTime) return 'p1';
+        if (currentHour > midpointTime && currentHour <= p2End) return 'p2';
+    } else {
+        // Vegetative: P1 = 1h after ON → 2h before midpoint, P2 = after last P1 → 1h before OFF
+        const p1Start = lightsOnTime + (1 * 60 * 60 * 1000);  // 1h after ON
+        const p1End = midpointTime - (2 * 60 * 60 * 1000);    // 2h before midpoint
+        const p2End = lightsOffTime - (1 * 60 * 60 * 1000);   // 1h before OFF
+
+        if (currentHour >= p1Start && currentHour <= p1End) return 'p1';
+        if (currentHour > p1End && currentHour <= p2End) return 'p2';
+    }
+
+    return 'p1'; // Default
+}
+
+// Auto-detect irrigation events from pump state changes
+setInterval(() => {
+    try {
+        const pumpDevice = tuyaDevices['bombaControlador'];
+        if (!pumpDevice) return;
+
+        const currentlyOn = pumpDevice.on === true;
+
+        // Pump just turned ON
+        if (currentlyOn && !pumpState.lastCheckedState) {
+            pumpState.isOn = true;
+            pumpState.startTime = new Date();
+            console.log('[IRRIGATION-AUTO] Pump turned ON - tracking started');
+        }
+
+        // Pump just turned OFF
+        if (!currentlyOn && pumpState.lastCheckedState && pumpState.startTime) {
+            const endTime = new Date();
+            const durationSec = (endTime - pumpState.startTime) / 1000;
+
+            // Calculate irrigation percentage
+            const potSize = appSettings.irrigation?.potSize || 7; // L
+            const pumpRate = appSettings.irrigation?.pumpRate || 70; // ml/min
+            const volumeMl = (durationSec / 60) * pumpRate;
+            const percentage = (volumeMl / (potSize * 1000)) * 100;
+
+            // Get current VWC
+            const vwc = sensorHistory.length > 0
+                ? sensorHistory[sensorHistory.length - 1].substrateHumidity
+                : null;
+
+            // Classify phase
+            const phase = classifyIrrigationPhase(endTime);
+
+            // Log event
+            const event = {
+                id: `irr_auto_${Date.now()}`,
+                timestamp: endTime.toISOString(),
+                date: endTime.toISOString().split('T')[0],
+                time: endTime.toTimeString().substring(0, 5),
+                phase: phase,
+                percentage: parseFloat(percentage.toFixed(1)),
+                durationSec: Math.round(durationSec),
+                vwcValue: vwc,
+                autoDetected: true
+            };
+
+            irrigationEvents.push(event);
+            console.log(`[IRRIGATION-AUTO] Event logged: ${phase.toUpperCase()} - ${percentage.toFixed(1)}% (${durationSec}s)`);
+
+            // Reset state
+            pumpState.isOn = false;
+            pumpState.startTime = null;
+        }
+
+        pumpState.lastCheckedState = currentlyOn;
+    } catch (e) {
+        console.error('[IRRIGATION-AUTO] Error:', e.message);
+    }
+}, 5000); // Check every 5 seconds
+
 // POST /api/irrigation/events - Log a new irrigation event
 app.post('/api/irrigation/events', express.json(), (req, res) => {
     try {
