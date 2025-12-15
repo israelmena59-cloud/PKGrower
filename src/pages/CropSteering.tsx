@@ -12,7 +12,8 @@ import {
   EnvironmentStatusCard,
   IrrigationTimeline,
   AutomationPanel,
-  AlertList
+  AlertList,
+  StageDashboard
 } from '../components/cropsteering';
 import { useCropSteering } from '../context/CropSteeringContext';
 import { API_BASE_URL, apiClient } from '../api/client';
@@ -222,6 +223,9 @@ const CropSteering: React.FC = () => {
       <TabPanel value={activeTab} index={0}>
         <Grid container spacing={3}>
           <Grid item xs={12} lg={8}>
+            <Box sx={{ mb: 3 }}>
+              <StageDashboard />
+            </Box>
             <Box sx={{ mb: 3 }}>
               <EnvironmentStatusCard showTargets={true} />
             </Box>

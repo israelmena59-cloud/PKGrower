@@ -4279,6 +4279,206 @@ app.post('/api/irrigation/auto-log', express.json(), (req, res) => {
     }
 });
 
+// =========================================
+// CROP STEERING API ENDPOINTS
+// =========================================
+
+// Growth stage configurations (mirroring frontend cropSteeringConfig.ts)
+const GROWTH_STAGES = {
+    clone: { name: 'Clones', vpd: { min: 0.4, max: 0.8, target: 0.6 }, temp: { day: 25, night: 23 }, humidity: { day: 75, night: 80 }, vwc: { min: 55, target: 65, max: 75 }, dryback: { min: 5, max: 15 }, ec: { input: 1.0, substrate: 1.2 }, light: { ppfd: 150, dli: 8, hours: 18 }, p1Delay: 30 },
+    veg_early: { name: 'Veg Temprano', vpd: { min: 0.6, max: 0.9, target: 0.75 }, temp: { day: 26, night: 22 }, humidity: { day: 70, night: 75 }, vwc: { min: 50, target: 60, max: 70 }, dryback: { min: 10, max: 20 }, ec: { input: 1.4, substrate: 1.8 }, light: { ppfd: 400, dli: 25, hours: 18 }, p1Delay: 45 },
+    veg_late: { name: 'Veg Tardío', vpd: { min: 0.8, max: 1.1, target: 0.95 }, temp: { day: 26, night: 22 }, humidity: { day: 65, night: 70 }, vwc: { min: 45, target: 55, max: 65 }, dryback: { min: 15, max: 25 }, ec: { input: 1.8, substrate: 2.2 }, light: { ppfd: 500, dli: 35, hours: 18 }, p1Delay: 60 },
+    flower_transition: { name: 'Transición', vpd: { min: 0.9, max: 1.2, target: 1.05 }, temp: { day: 26, night: 20 }, humidity: { day: 60, night: 65 }, vwc: { min: 40, target: 50, max: 60 }, dryback: { min: 20, max: 30 }, ec: { input: 2.2, substrate: 2.6 }, light: { ppfd: 650, dli: 40, hours: 12 }, p1Delay: 90 },
+    flower_early: { name: 'Flora Temprana', vpd: { min: 0.9, max: 1.3, target: 1.1 }, temp: { day: 26, night: 20 }, humidity: { day: 57, night: 62 }, vwc: { min: 35, target: 45, max: 55 }, dryback: { min: 25, max: 35 }, ec: { input: 2.4, substrate: 2.8 }, light: { ppfd: 750, dli: 45, hours: 12 }, p1Delay: 90 },
+    flower_mid: { name: 'Flora Media', vpd: { min: 1.0, max: 1.5, target: 1.25 }, temp: { day: 24, night: 20 }, humidity: { day: 52, night: 57 }, vwc: { min: 30, target: 40, max: 50 }, dryback: { min: 30, max: 40 }, ec: { input: 2.6, substrate: 3.2 }, light: { ppfd: 850, dli: 50, hours: 12 }, p1Delay: 120 },
+    flower_late: { name: 'Flora Tardía', vpd: { min: 1.2, max: 1.7, target: 1.45 }, temp: { day: 22, night: 18 }, humidity: { day: 42, night: 47 }, vwc: { min: 25, target: 35, max: 45 }, dryback: { min: 35, max: 45 }, ec: { input: 2.2, substrate: 2.8 }, light: { ppfd: 850, dli: 48, hours: 12 }, p1Delay: 150 },
+    flush: { name: 'Maduración', vpd: { min: 1.4, max: 1.8, target: 1.6 }, temp: { day: 21, night: 16 }, humidity: { day: 37, night: 42 }, vwc: { min: 20, target: 30, max: 40 }, dryback: { min: 40, max: 50 }, ec: { input: 0.3, substrate: 0.8 }, light: { ppfd: 750, dli: 40, hours: 12 }, p1Delay: 180 }
+};
+
+// GET /api/crop-steering/status - Get current stage with targets vs actual
+app.get('/api/crop-steering/status', (req, res) => {
+    try {
+        const currentStage = appSettings.cropSteering?.stage || 'veg_early';
+        const stageConfig = GROWTH_STAGES[currentStage] || GROWTH_STAGES.veg_early;
+
+        // Get current sensor values
+        const latestSensor = sensorHistory.length > 0 ? sensorHistory[sensorHistory.length - 1] : {};
+        const temp = latestSensor.temperature || 0;
+        const humidity = latestSensor.humidity || 0;
+        const vwc = latestSensor.substrateHumidity || 0;
+
+        // Calculate VPD
+        let vpd = 0;
+        if (temp > 0 && humidity > 0) {
+            const svp = 0.6108 * Math.exp((17.27 * temp) / (temp + 237.3));
+            vpd = parseFloat((svp * (1 - humidity / 100)).toFixed(2));
+        }
+
+        // Calculate DLI (if we have PPFD data - estimate from light hours)
+        const lighting = appSettings.lighting || {};
+        const lightHours = stageConfig.light.hours;
+        const estimatedPPFD = stageConfig.light.ppfd;
+        const dli = parseFloat((estimatedPPFD * lightHours * 0.0036).toFixed(1));
+
+        res.json({
+            success: true,
+            stage: {
+                id: currentStage,
+                name: stageConfig.name,
+                startDate: appSettings.cropSteering?.startDate || null,
+                daysInStage: appSettings.cropSteering?.startDate
+                    ? Math.floor((Date.now() - new Date(appSettings.cropSteering.startDate).getTime()) / (1000 * 60 * 60 * 24))
+                    : 0
+            },
+            current: {
+                temperature: temp,
+                humidity: humidity,
+                vpd: vpd,
+                vwc: vwc,
+                dli: dli
+            },
+            targets: {
+                temperature: stageConfig.temp,
+                humidity: stageConfig.humidity,
+                vpd: stageConfig.vpd,
+                vwc: stageConfig.vwc,
+                dryback: stageConfig.dryback,
+                ec: stageConfig.ec,
+                light: stageConfig.light
+            },
+            status: {
+                vpdStatus: vpd >= stageConfig.vpd.min && vpd <= stageConfig.vpd.max ? 'optimal' : 'warning',
+                tempStatus: temp >= stageConfig.temp.night && temp <= stageConfig.temp.day + 2 ? 'optimal' : 'warning',
+                vwcStatus: vwc >= stageConfig.vwc.min && vwc <= stageConfig.vwc.max ? 'optimal' : 'warning'
+            }
+        });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// GET /api/crop-steering/recommendation - Get irrigation recommendations
+app.get('/api/crop-steering/recommendation', (req, res) => {
+    try {
+        const currentStage = appSettings.cropSteering?.stage || 'veg_early';
+        const stageConfig = GROWTH_STAGES[currentStage] || GROWTH_STAGES.veg_early;
+        const lighting = appSettings.lighting || {};
+
+        const now = new Date();
+        const currentTime = now.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', hour12: false });
+
+        // Calculate time since lights on
+        let minutesSinceLightsOn = 0;
+        if (lighting.onTime) {
+            const [onH, onM] = lighting.onTime.split(':').map(Number);
+            const lightsOnDate = new Date(now);
+            lightsOnDate.setHours(onH, onM, 0, 0);
+            if (now < lightsOnDate) lightsOnDate.setDate(lightsOnDate.getDate() - 1);
+            minutesSinceLightsOn = Math.floor((now - lightsOnDate) / (1000 * 60));
+        }
+
+        // Get current VWC
+        const latestSensor = sensorHistory.length > 0 ? sensorHistory[sensorHistory.length - 1] : {};
+        const currentVWC = latestSensor.substrateHumidity || 0;
+
+        // Determine recommendation
+        let recommendation = {
+            shouldIrrigate: false,
+            phase: 'p1',
+            reason: '',
+            suggestedPercentage: 2,
+            nextIrrigationIn: null
+        };
+
+        const p1DelayMinutes = stageConfig.p1Delay;
+
+        if (minutesSinceLightsOn < p1DelayMinutes) {
+            // Before P1 window
+            recommendation.shouldIrrigate = false;
+            recommendation.reason = `Esperar ${p1DelayMinutes - minutesSinceLightsOn} min para P1`;
+            recommendation.nextIrrigationIn = p1DelayMinutes - minutesSinceLightsOn;
+            recommendation.phase = 'waiting';
+        } else if (currentVWC < stageConfig.vwc.min) {
+            // VWC below minimum - urgent irrigation needed
+            recommendation.shouldIrrigate = true;
+            recommendation.reason = `VWC (${currentVWC}%) bajo mínimo (${stageConfig.vwc.min}%)`;
+            recommendation.suggestedPercentage = 3;
+            recommendation.phase = 'p1';
+        } else if (currentVWC < stageConfig.vwc.target) {
+            // VWC below target - irrigation recommended
+            recommendation.shouldIrrigate = true;
+            recommendation.reason = `VWC (${currentVWC}%) bajo target (${stageConfig.vwc.target}%)`;
+            recommendation.suggestedPercentage = 2;
+            recommendation.phase = minutesSinceLightsOn < (stageConfig.light.hours * 60 / 2) ? 'p1' : 'p2';
+        } else {
+            // VWC OK
+            recommendation.shouldIrrigate = false;
+            recommendation.reason = `VWC óptimo (${currentVWC}%)`;
+            recommendation.phase = 'monitoring';
+        }
+
+        res.json({
+            success: true,
+            currentTime,
+            minutesSinceLightsOn,
+            stageP1Delay: p1DelayMinutes,
+            currentVWC,
+            targetVWC: stageConfig.vwc,
+            recommendation
+        });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// POST /api/crop-steering/stage - Set current growth stage
+app.post('/api/crop-steering/stage', express.json(), async (req, res) => {
+    try {
+        const { stage, startDate } = req.body;
+
+        if (!GROWTH_STAGES[stage]) {
+            return res.status(400).json({ error: 'Invalid stage. Valid stages: ' + Object.keys(GROWTH_STAGES).join(', ') });
+        }
+
+        appSettings.cropSteering = {
+            ...appSettings.cropSteering,
+            stage: stage,
+            startDate: startDate || new Date().toISOString()
+        };
+
+        await saveSettings();
+
+        console.log(`[CROP-STEERING] Stage set to: ${stage}`);
+
+        res.json({
+            success: true,
+            stage: stage,
+            config: GROWTH_STAGES[stage]
+        });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// GET /api/crop-steering/stages - List all available stages
+app.get('/api/crop-steering/stages', (req, res) => {
+    res.json({
+        success: true,
+        stages: Object.entries(GROWTH_STAGES).map(([id, config]) => ({
+            id,
+            name: config.name,
+            targets: {
+                vpd: config.vpd,
+                temp: config.temp,
+                humidity: config.humidity,
+                vwc: config.vwc,
+                ec: config.ec,
+                light: config.light
+            }
+        }))
+    });
+});
+
 // --- SERVE FRONTEND STATIC FILES ---
 app.use(express.static(path.join(__dirname, '../dist')));
 
