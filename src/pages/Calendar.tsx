@@ -74,11 +74,47 @@ const Calendar: React.FC = () => {
   const growDay = Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
   const growWeek = Math.ceil(growDay / 7);
 
+  // Sensor data for Trazabilidad
+  const [sensorData, setSensorData] = useState<any>(null);
+  const [irrigationEvents, setIrrigationEvents] = useState<any[]>([]);
+
   useEffect(() => {
+    // Fetch calendar events
     fetch(`${API_BASE_URL}/api/calendar`)
       .then(res => res.json())
       .then(data => setEvents(Array.isArray(data) ? data.reverse() : []))
       .catch(console.error);
+
+    // Fetch sensor data for Trazabilidad
+    const fetchSensorData = async () => {
+      try {
+        const sensors = await apiClient.getLatestSensors();
+        setSensorData(sensors);
+      } catch (e) {
+        console.error('Error fetching sensors:', e);
+      }
+    };
+
+    // Fetch today's irrigation events
+    const fetchIrrigationEvents = async () => {
+      try {
+        const todayStr = new Date().toISOString().split('T')[0];
+        const res = await apiClient.request<any>(`/api/irrigation/events?date=${todayStr}`);
+        if (res?.events) setIrrigationEvents(res.events);
+      } catch (e) {
+        console.error('Error fetching irrigation events:', e);
+      }
+    };
+
+    fetchSensorData();
+    fetchIrrigationEvents();
+
+    // Refresh every 30s
+    const interval = setInterval(() => {
+      fetchSensorData();
+      fetchIrrigationEvents();
+    }, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   const handleAdd = async () => {
@@ -253,7 +289,7 @@ const Calendar: React.FC = () => {
             <Grid item xs={6} md={3}>
               <Paper sx={{ p: 2, textAlign: 'center', background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)', color: 'white' }}>
                 <Typography variant="overline">Fase 1</Typography>
-                <Typography variant="h2" fontWeight="bold">--</Typography>
+                <Typography variant="h2" fontWeight="bold">{irrigationEvents.filter(e => e.phase === 'p1').length}</Typography>
                 <Typography variant="caption">disparos hoy</Typography>
                 <Chip label="Mantenimiento" size="small" sx={{ mt: 1, bgcolor: 'rgba(255,255,255,0.2)' }} />
               </Paper>
@@ -263,7 +299,7 @@ const Calendar: React.FC = () => {
             <Grid item xs={6} md={3}>
               <Paper sx={{ p: 2, textAlign: 'center', background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)', color: 'white' }}>
                 <Typography variant="overline">Fase 2</Typography>
-                <Typography variant="h2" fontWeight="bold">--</Typography>
+                <Typography variant="h2" fontWeight="bold">{irrigationEvents.filter(e => e.phase === 'p2').length}</Typography>
                 <Typography variant="caption">disparos hoy</Typography>
                 <Chip label="Ajuste" size="small" sx={{ mt: 1, bgcolor: 'rgba(255,255,255,0.2)' }} />
               </Paper>
@@ -273,7 +309,7 @@ const Calendar: React.FC = () => {
             <Grid item xs={6} md={3}>
               <Paper sx={{ p: 2, textAlign: 'center', background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)', color: 'white' }}>
                 <Typography variant="overline">Fase 3</Typography>
-                <Typography variant="h2" fontWeight="bold">--</Typography>
+                <Typography variant="h2" fontWeight="bold">{irrigationEvents.filter(e => e.phase === 'p3').length}</Typography>
                 <Typography variant="caption">horas dryback</Typography>
                 <Chip label="Nocturno" size="small" sx={{ mt: 1, bgcolor: 'rgba(255,255,255,0.2)' }} />
               </Paper>
@@ -283,7 +319,7 @@ const Calendar: React.FC = () => {
             <Grid item xs={6} md={3}>
               <Paper sx={{ p: 2, textAlign: 'center', background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)', color: 'white' }}>
                 <Typography variant="overline">Dryback</Typography>
-                <Typography variant="h2" fontWeight="bold">--%</Typography>
+                <Typography variant="h2" fontWeight="bold">{sensorData?.drybackPercent?.toFixed(0) || '--'}%</Typography>
                 <Typography variant="caption">desde lights on</Typography>
                 <Chip label="Objetivo 15-20%" size="small" sx={{ mt: 1, bgcolor: 'rgba(255,255,255,0.2)' }} />
               </Paper>
@@ -297,28 +333,28 @@ const Calendar: React.FC = () => {
               <Grid item xs={6} md={3}>
                 <Box sx={{ textAlign: 'center', p: 2, bgcolor: '#FEE2E2', borderRadius: 2 }}>
                   <Typography variant="caption" color="text.secondary">Temp Promedio</Typography>
-                  <Typography variant="h5" fontWeight="bold" color="#DC2626">-- °C</Typography>
-                  <Typography variant="caption">Min: -- / Max: --</Typography>
+                  <Typography variant="h5" fontWeight="bold" color="#DC2626">{sensorData?.temperature?.toFixed(1) || '--'} °C</Typography>
+                  <Typography variant="caption">Actual</Typography>
                 </Box>
               </Grid>
               <Grid item xs={6} md={3}>
                 <Box sx={{ textAlign: 'center', p: 2, bgcolor: '#DBEAFE', borderRadius: 2 }}>
                   <Typography variant="caption" color="text.secondary">HR Promedio</Typography>
-                  <Typography variant="h5" fontWeight="bold" color="#2563EB">-- %</Typography>
-                  <Typography variant="caption">Min: -- / Max: --</Typography>
+                  <Typography variant="h5" fontWeight="bold" color="#2563EB">{sensorData?.humidity?.toFixed(0) || '--'} %</Typography>
+                  <Typography variant="caption">Actual</Typography>
                 </Box>
               </Grid>
               <Grid item xs={6} md={3}>
                 <Box sx={{ textAlign: 'center', p: 2, bgcolor: '#D1FAE5', borderRadius: 2 }}>
                   <Typography variant="caption" color="text.secondary">VPD Promedio</Typography>
-                  <Typography variant="h5" fontWeight="bold" color="#059669">-- kPa</Typography>
+                  <Typography variant="h5" fontWeight="bold" color="#059669">{sensorData?.vpd?.toFixed(2) || '--'} kPa</Typography>
                   <Typography variant="caption">Ideal: 0.8-1.4</Typography>
                 </Box>
               </Grid>
               <Grid item xs={6} md={3}>
                 <Box sx={{ textAlign: 'center', p: 2, bgcolor: '#FEF3C7', borderRadius: 2 }}>
                   <Typography variant="caption" color="text.secondary">VWC Promedio</Typography>
-                  <Typography variant="h5" fontWeight="bold" color="#D97706">-- %</Typography>
+                  <Typography variant="h5" fontWeight="bold" color="#D97706">{sensorData?.substrateHumidity?.toFixed(0) || '--'} %</Typography>
                   <Typography variant="caption">Sustrato</Typography>
                 </Box>
               </Grid>

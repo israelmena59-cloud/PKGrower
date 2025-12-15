@@ -52,16 +52,60 @@ export const DeviceDataWidget: React.FC<DeviceDataWidgetProps> = ({
     }, [deviceId]);
 
     const fetchDeviceData = async () => {
-        if (!deviceId) return;
+        if (!deviceId) {
+            console.warn('[DeviceDataWidget] No deviceId provided');
+            setError('No deviceId');
+            setLoading(false);
+            return;
+        }
 
         try {
             setLoading(true);
-            // Fetch current device data
-            const devices = await apiClient.request<DeviceData[]>('/api/devices/list');
-            const found = devices.find(d => d.id === deviceId);
+            console.log('[DeviceDataWidget] Fetching for:', deviceId);
+
+            // Try primary endpoint first
+            let found: DeviceData | undefined;
+
+            try {
+                const devices = await apiClient.request<DeviceData[]>('/api/devices/list');
+                console.log('[DeviceDataWidget] /api/devices/list returned:', devices?.length || 0, 'devices');
+                found = devices?.find(d => d.id === deviceId || d.name === deviceName);
+            } catch (e) {
+                console.warn('[DeviceDataWidget] /api/devices/list failed, trying fallback');
+            }
+
+            // Fallback 1: Try /api/devices/all
+            if (!found) {
+                try {
+                    const allDevices = await apiClient.request<any>('/api/devices/all');
+                    const flatList = allDevices?.devices || allDevices?.tuya || [];
+                    found = flatList.find((d: any) => d.id === deviceId || d.name === deviceName);
+                    console.log('[DeviceDataWidget] Fallback found:', !!found);
+                } catch (e) {
+                    console.warn('[DeviceDataWidget] /api/devices/all also failed');
+                }
+            }
+
+            // Fallback 2: Try device states (for switches/controls)
+            if (!found) {
+                try {
+                    const states = await apiClient.getDeviceStates();
+                    if (states && states[deviceId] !== undefined) {
+                        found = {
+                            id: deviceId,
+                            name: deviceName || deviceId,
+                            type: 'switch',
+                            platform: 'unknown',
+                            status: states[deviceId]
+                        };
+                        console.log('[DeviceDataWidget] Found in device states');
+                    }
+                } catch (e) {}
+            }
 
             if (found) {
                 setDevice(found);
+                setError(null);
 
                 // If it's a sensor, also fetch history for chart
                 if (widgetType === 'chart' && (found.capabilities?.includes('temperature') || found.capabilities?.includes('humidity'))) {
@@ -69,10 +113,11 @@ export const DeviceDataWidget: React.FC<DeviceDataWidgetProps> = ({
                     setHistoryData(history);
                 }
             } else {
-                setError('Dispositivo no encontrado');
+                console.error('[DeviceDataWidget] Device not found:', deviceId);
+                setError(`Dispositivo "${deviceName || deviceId}" no encontrado`);
             }
         } catch (e: any) {
-            console.error('Error fetching device data:', e);
+            console.error('[DeviceDataWidget] Error:', e);
             setError(e.message);
         } finally {
             setLoading(false);
