@@ -62,8 +62,8 @@ const XIAOMI_DEVICES = {
 
 // --- CREDENCIALES TUYA (SOLO PARA MODO_SIMULACION = false) ---
 const TUYA_CONFIG = {
-  accessKey: process.env.TUYA_ACCESS_KEY || 'dtpfhgrhn4evkpr4fmkv',
-  secretKey: process.env.TUYA_SECRET_KEY || '8f7a1dcbd60442ecbc314c842be7238b',
+  accessKey: process.env.TUYA_ACCESS_KEY || 'j3ya3gcvashpg8ghtknq',
+  secretKey: process.env.TUYA_SECRET_KEY || 'dd231d529387480c9a11c2e366ad4828',
   apiHost: process.env.TUYA_API_HOST || 'https://openapi.tuyaus.com',
 };
 
