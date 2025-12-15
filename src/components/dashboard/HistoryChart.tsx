@@ -150,7 +150,8 @@ const HistoryChart: React.FC<HistoryChartProps> = ({ type, title, targets, data:
   const fetchSettings = async () => {
       try {
           const settings = await apiClient.getSettings();
-          if (settings?.lighting?.enabled && settings?.lighting?.onTime && settings?.lighting?.offTime) {
+          // Show light overlay whenever onTime/offTime are configured (regardless of enabled flag)
+          if (settings?.lighting?.onTime && settings?.lighting?.offTime) {
               const { onTime, offTime } = settings.lighting;
               // Validate format HH:mm
               if (/^\d{2}:\d{2}$/.test(onTime) && /^\d{2}:\d{2}$/.test(offTime)) {
