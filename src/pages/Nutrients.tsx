@@ -61,6 +61,11 @@ const Nutrients: React.FC = () => {
   const [waterVolume, setWaterVolume] = useState<number>(10); // Liters
   const [activeTab, setActiveTab] = useState(0);
 
+  // Fade/Cleanse/Balance mix config (mL/L)
+  const [fadeAmount, setFadeAmount] = useState<number>(0);
+  const [cleanseAmount, setCleanseAmount] = useState<number>(0);
+  const [balanceAmount, setBalanceAmount] = useState<number>(0);
+
   // Calculate dosing based on target EC
   const dosing = useMemo(() => calculateDosing(targetEC), [targetEC]);
 
@@ -178,11 +183,68 @@ const Nutrients: React.FC = () => {
                 <Alert severity="success" sx={{ mt: 2 }}>
                   <strong>Para {waterVolume}L:</strong> {dosing ? `${(dosing.proGrowBloom * waterVolume).toFixed(0)} mL Grow/Bloom + ${(dosing.proCore * waterVolume).toFixed(0)} mL Core` : '-'}
                 </Alert>
+
+                {/* Fade/Cleanse/Balance Mix */}
+                <Divider sx={{ my: 2 }} />
+                <Typography variant="subtitle2" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <FlaskConical size={16} /> Aditivos Athena (Opcional)
+                </Typography>
+
+                <Grid container spacing={2} sx={{ mt: 1 }}>
+                  <Grid item xs={12} md={4}>
+                    <Box sx={{ p: 2, borderRadius: 2, bgcolor: 'rgba(139, 92, 246, 0.1)' }}>
+                      <Typography variant="caption" gutterBottom display="block">
+                        Fade: {fadeAmount} mL/L
+                      </Typography>
+                      <Slider
+                        value={fadeAmount}
+                        onChange={(_, v) => setFadeAmount(v as number)}
+                        min={0} max={3} step={0.1}
+                        sx={{ color: '#8b5cf6' }}
+                      />
+                      <Typography variant="caption" color="text.secondary">
+                        Total: {(fadeAmount * waterVolume).toFixed(0)} mL
+                      </Typography>
+                    </Box>
+                  </Grid>
+
+                  <Grid item xs={12} md={4}>
+                    <Box sx={{ p: 2, borderRadius: 2, bgcolor: 'rgba(6, 182, 212, 0.1)' }}>
+                      <Typography variant="caption" gutterBottom display="block">
+                        Cleanse: {cleanseAmount} mL/L
+                      </Typography>
+                      <Slider
+                        value={cleanseAmount}
+                        onChange={(_, v) => setCleanseAmount(v as number)}
+                        min={0} max={5} step={0.5}
+                        sx={{ color: '#06b6d4' }}
+                      />
+                      <Typography variant="caption" color="text.secondary">
+                        Total: {(cleanseAmount * waterVolume).toFixed(0)} mL
+                      </Typography>
+                    </Box>
+                  </Grid>
+
+                  <Grid item xs={12} md={4}>
+                    <Box sx={{ p: 2, borderRadius: 2, bgcolor: 'rgba(249, 115, 22, 0.1)' }}>
+                      <Typography variant="caption" gutterBottom display="block">
+                        Balance: {balanceAmount} mL/L
+                      </Typography>
+                      <Slider
+                        value={balanceAmount}
+                        onChange={(_, v) => setBalanceAmount(v as number)}
+                        min={0} max={2} step={0.1}
+                        sx={{ color: '#f97316' }}
+                      />
+                      <Typography variant="caption" color="text.secondary">
+                        Total: {(balanceAmount * waterVolume).toFixed(0)} mL
+                      </Typography>
+                    </Box>
+                  </Grid>
+                </Grid>
               </CardContent>
             </Card>
           </Grid>
-
-          {/* Environment Targets */}
           <Grid item xs={12} md={6}>
             <Card sx={{ background: 'rgba(255,255,255,0.05)', backdropFilter: 'blur(10px)' }}>
               <CardHeader

@@ -60,8 +60,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         try {
             const data = await apiClient.request<ConfiguredDevice[]>('/api/devices/list');
             if (Array.isArray(data)) {
-                // Filter to show only configured/integrated devices
-                setDevices(data.filter(d => d.configured));
+                // Show ALL devices with valid names (not just configured)
+                setDevices(data.filter(d => d.name && d.id));
             }
         } catch (e) {
             console.error('Error fetching devices:', e);

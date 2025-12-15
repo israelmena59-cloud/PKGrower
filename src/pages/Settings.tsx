@@ -341,6 +341,7 @@ const SettingsPage: React.FC = () => {
         <Tabs value={tabValue} onChange={handleTabChange}>
           <Tab label="General" icon={<SettingsIcon size={20} />} iconPosition="start" />
           <Tab label="Tuya Cloud" icon={<Wifi size={20} />} iconPosition="start" />
+          <Tab label="Meross" icon={<Wifi size={20} />} iconPosition="start" />
           <Tab label="Xiaomi" icon={<Database size={20} />} iconPosition="start" />
           <Tab label="Cultivo" icon={<Leaf size={20} />} iconPosition="start" />
           <Tab label="Sistema" icon={<Info size={20} />} iconPosition="start" />
@@ -519,8 +520,39 @@ const SettingsPage: React.FC = () => {
           </Box>
         </TabPanel>
 
-        {/* Tab: Xiaomi */}
+        {/* Tab: Meross */}
         <TabPanel value={tabValue} index={2}>
+          <Box sx={{ p: 3, display: 'flex', flexDirection: 'column', gap: 2, maxWidth: 600 }}>
+            <Alert severity="info">
+              Ingresa tus credenciales de la cuenta Meross para conectar tus dispositivos inteligentes.
+            </Alert>
+
+            <TextField
+              label="Email Meross"
+              fullWidth
+              placeholder="tu@email.com"
+              helperText="Email de tu cuenta Meross"
+            />
+
+            <TextField
+              label="Contraseña Meross"
+              type="password"
+              fullWidth
+              helperText="Tu contraseña de Meross"
+            />
+
+            <Button variant="contained" color="primary" sx={{ mt: 2 }}>
+              Conectar Meross
+            </Button>
+
+            <Alert severity="warning" sx={{ mt: 2 }}>
+              Las credenciales se almacenan de forma segura en el servidor. Solo se usan para autenticación con Meross Cloud.
+            </Alert>
+          </Box>
+        </TabPanel>
+
+        {/* Tab: Xiaomi */}
+        <TabPanel value={tabValue} index={3}>
           <Box sx={{ p: 3, display: 'flex', flexDirection: 'column', gap: 3 }}>
             <Alert severity="info">
               Para obtener tokens: https://github.com/PiotrMachowski/Xiaomi-Cloud-Tokens-Extractor
@@ -705,7 +737,7 @@ const SettingsPage: React.FC = () => {
 
 
         {/* Tab: Cultivo (Lighting) */}
-        <TabPanel value={tabValue} index={3}>
+        <TabPanel value={tabValue} index={4}>
             <Box sx={{ p: 3, maxWidth: 600 }}>
                 <Typography variant="h6" gutterBottom>🌱 Etapa de Crecimiento</Typography>
                 <Alert severity="info" sx={{ mb: 3 }}>
@@ -759,7 +791,7 @@ const SettingsPage: React.FC = () => {
         </TabPanel>
 
         {/* Tab: Sistema */}
-        <TabPanel value={tabValue} index={4}>
+        <TabPanel value={tabValue} index={5}>
           <Box sx={{ p: 3 }}>
             {/* User Profile Section */}
             <Card sx={{ mb: 3, background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
