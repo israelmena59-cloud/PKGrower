@@ -3961,6 +3961,9 @@ app.post('/api/meross/login', express.json(), async (req, res) => {
                     logger: console.log
                 });
 
+                // Save client globally for later use
+                merossClient = meross;
+
                 // Set up event handlers
                 let connected = false;
                 meross.on('connected', () => {
@@ -3972,6 +3975,21 @@ app.post('/api/meross/login', express.json(), async (req, res) => {
 
                 meross.on('error', (err) => {
                     console.error('[MEROSS] Connection error:', err?.message || err);
+                });
+
+                // Device discovery listener - THIS WAS MISSING
+                meross.on('deviceInitialized', (deviceId, deviceDef, device) => {
+                    console.log(`[MEROSS] Device discovered: ${deviceDef.devName} (${deviceId})`);
+                    merossDevices[deviceId] = {
+                        id: deviceId,
+                        name: deviceDef.devName || deviceDef.dev?.devName || 'Meross Device',
+                        type: deviceDef.deviceType || 'switch',
+                        model: deviceDef.model || 'unknown',
+                        online: deviceDef.onlineStatus === 1,
+                        device: device, // Keep reference for control
+                        platform: 'meross'
+                    };
+                    console.log(`[MEROSS] Total devices discovered: ${Object.keys(merossDevices).length}`);
                 });
 
                 // Try to connect with timeout
@@ -3988,7 +4006,8 @@ app.post('/api/meross/login', express.json(), async (req, res) => {
                 res.json({
                     success: true,
                     message: 'Conectado a Meross Cloud exitosamente',
-                    email
+                    email,
+                    deviceCount: Object.keys(merossDevices).length
                 });
             } catch (merossError) {
                 console.error('[MEROSS] Connection error:', merossError?.message || merossError);
