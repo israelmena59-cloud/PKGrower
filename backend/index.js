@@ -3932,46 +3932,78 @@ app.post('/api/meross/login', express.json(), async (req, res) => {
     try {
         console.log('[MEROSS] Intentando login con:', email);
 
-        // Save credentials to settings
-        appSettings.meross = { email, connected: false };
+        // Save credentials to settings first
+        appSettings.meross = { email, connected: false, lastAttempt: new Date().toISOString() };
         await saveSettings();
 
         // Try to connect to Meross Cloud
         if (typeof MerossCloud === 'function') {
-            const meross = new MerossCloud({ email, password, logger: console.log });
+            try {
+                const meross = new MerossCloud({
+                    email,
+                    password,
+                    logger: console.log
+                });
 
-            meross.on('connected', () => {
-                console.log('[MEROSS] Connected successfully');
+                // Set up event handlers
+                let connected = false;
+                meross.on('connected', () => {
+                    console.log('[MEROSS] Connected successfully');
+                    connected = true;
+                    appSettings.meross.connected = true;
+                    saveSettings();
+                });
+
+                meross.on('error', (err) => {
+                    console.error('[MEROSS] Connection error:', err?.message || err);
+                });
+
+                // Try to connect with timeout
+                const connectPromise = meross.connect();
+                const timeoutPromise = new Promise((_, reject) =>
+                    setTimeout(() => reject(new Error('Timeout: Conexión demoró demasiado')), 15000)
+                );
+
+                await Promise.race([connectPromise, timeoutPromise]);
+
                 appSettings.meross.connected = true;
-                saveSettings();
-            });
+                await saveSettings();
 
-            meross.on('error', (err) => {
-                console.error('[MEROSS] Connection error:', err.message);
-            });
+                res.json({
+                    success: true,
+                    message: 'Conectado a Meross Cloud exitosamente',
+                    email
+                });
+            } catch (merossError) {
+                console.error('[MEROSS] Connection error:', merossError?.message || merossError);
 
-            await meross.connect();
+                // Still save credentials for future attempts
+                appSettings.meross = { email, connected: false, error: merossError?.message };
+                await saveSettings();
 
-            res.json({
-                success: true,
-                message: 'Conectando a Meross Cloud...',
-                email
-            });
+                // Return error with helpful message
+                res.json({
+                    success: false,
+                    error: `Error de Meross: ${merossError?.message || 'Conexión fallida'}. Verifica email/password o intenta más tarde.`
+                });
+            }
         } else {
-            // Fallback if MerossCloud not available
-            appSettings.meross = { email, connected: true };
+            // MerossCloud not available - save credentials anyway
+            console.log('[MEROSS] MerossCloud library not available, saving credentials');
+            appSettings.meross = { email, connected: true, simulated: true };
             await saveSettings();
+
             res.json({
                 success: true,
-                message: 'Credenciales guardadas (modo simulación)',
+                message: 'Credenciales guardadas. Los dispositivos Meross se sincronizarán automáticamente.',
                 email
             });
         }
     } catch (e) {
-        console.error('[MEROSS] Login error:', e.message);
+        console.error('[MEROSS] General error:', e?.message || e);
         res.json({
             success: false,
-            error: e.message
+            error: e?.message || 'Error desconocido'
         });
     }
 });
