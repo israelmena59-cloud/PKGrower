@@ -428,7 +428,7 @@ const HistoryChart: React.FC<HistoryChartProps> = ({ type, title, targets, data:
                      <Typography variant="caption" color="text.disabled">(El historial se genera cada 60s)</Typography>
                 </Box>
             ) : (
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height={300} minHeight={300}>
                     <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                         <defs>
                             <linearGradient id="colorTemp" x1="0" y1="0" x2="0" y2="1">
