@@ -70,16 +70,19 @@ const Dashboard: React.FC = () => {
     });
     const [isAddPageOpen, setIsAddPageOpen] = useState(false);
     const [newPageName, setNewPageName] = useState('');
+    const [irrigationEvents, setIrrigationEvents] = useState<any[]>([]);
 
     // --- DATA FETCHING ---
     const fetchData = async () => {
         try {
-            const [sensors, history, devs, meta, globalSettings] = await Promise.allSettled([
+            const today = new Date().toISOString().split('T')[0];
+            const [sensors, history, devs, meta, globalSettings, irrEvents] = await Promise.allSettled([
                 apiClient.getLatestSensors(),
                 apiClient.getSensorHistory(),
                 apiClient.getDeviceStates(),
                 apiClient.request<any[]>('/api/devices/list'),
-                apiClient.getSettings()
+                apiClient.getSettings(),
+                apiClient.request<any>(`/api/irrigation/events?date=${today}`)
             ]);
 
             if (sensors.status === 'fulfilled') setLatestSensors(sensors.value);
@@ -87,6 +90,9 @@ const Dashboard: React.FC = () => {
             if (devs.status === 'fulfilled') setDevices(devs.value);
             if (meta.status === 'fulfilled' && Array.isArray(meta.value)) setDeviceMeta(meta.value);
             if (globalSettings.status === 'fulfilled') setSettings(globalSettings.value);
+            if (irrEvents.status === 'fulfilled' && irrEvents.value?.events) {
+                setIrrigationEvents(irrEvents.value.events);
+            }
 
             setLoading(false);
         } catch (e) {
@@ -345,6 +351,7 @@ const Dashboard: React.FC = () => {
                             vwc: settings?.cropSteering?.targetVWC || 50,
                             dryback: settings?.cropSteering?.targetDryback || 15
                         }}
+                        irrigationEvents={irrigationEvents}
                     />
                 </Grid>
             </Grid>
@@ -367,6 +374,7 @@ const Dashboard: React.FC = () => {
                             vwc: settings?.cropSteering?.targetVWC || 50,
                             dryback: settings?.cropSteering?.targetDryback || 15
                         }}
+                        irrigationEvents={irrigationEvents}
                     />
                 </Grid>
             </Grid>

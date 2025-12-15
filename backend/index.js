@@ -3859,6 +3859,116 @@ setInterval(async () => {
     }
 }, 10000);
 
+// =========================================
+// IRRIGATION EVENTS LOGGING
+// =========================================
+
+// In-memory storage for irrigation events (persists until server restart)
+let irrigationEvents = [];
+
+// POST /api/irrigation/events - Log a new irrigation event
+app.post('/api/irrigation/events', express.json(), (req, res) => {
+    try {
+        const { phase, vwcValue, notes } = req.body;
+
+        if (!phase || !['p1', 'p2', 'p3'].includes(phase.toLowerCase())) {
+            return res.status(400).json({ error: 'Invalid phase. Must be p1, p2, or p3.' });
+        }
+
+        const now = new Date();
+        const event = {
+            id: `irr_${Date.now()}`,
+            timestamp: now.toISOString(),
+            date: now.toISOString().split('T')[0],
+            time: now.toTimeString().substring(0, 5), // "HH:mm"
+            phase: phase.toLowerCase(),
+            vwcValue: vwcValue || null,
+            notes: notes || null
+        };
+
+        irrigationEvents.push(event);
+
+        // Keep only last 500 events to prevent memory issues
+        if (irrigationEvents.length > 500) {
+            irrigationEvents = irrigationEvents.slice(-500);
+        }
+
+        console.log(`[IRRIGATION] Event logged: ${phase.toUpperCase()} at ${event.time}, VWC: ${vwcValue || 'N/A'}`);
+
+        res.json({ success: true, event });
+    } catch (e) {
+        console.error('[IRRIGATION] Error logging event:', e);
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// GET /api/irrigation/events - Get irrigation events (optionally filtered by date)
+app.get('/api/irrigation/events', (req, res) => {
+    try {
+        const { date, limit } = req.query;
+
+        let filtered = irrigationEvents;
+
+        // Filter by date if provided
+        if (date) {
+            filtered = filtered.filter(e => e.date === date);
+        }
+
+        // Limit results
+        const limitNum = parseInt(limit) || 100;
+        filtered = filtered.slice(-limitNum);
+
+        res.json({
+            success: true,
+            count: filtered.length,
+            events: filtered
+        });
+    } catch (e) {
+        console.error('[IRRIGATION] Error fetching events:', e);
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// DELETE /api/irrigation/events - Clear all irrigation events
+app.delete('/api/irrigation/events', (req, res) => {
+    irrigationEvents = [];
+    console.log('[IRRIGATION] All events cleared');
+    res.json({ success: true, message: 'All irrigation events cleared' });
+});
+
+// POST /api/irrigation/auto-log - Automatically log based on pump activation
+// This can be called by automation rules when a pump turns on
+app.post('/api/irrigation/auto-log', express.json(), (req, res) => {
+    try {
+        const { pumpId, phase } = req.body;
+
+        // Get current VWC from latest sensors
+        const currentVWC = sensorHistory.length > 0
+            ? sensorHistory[sensorHistory.length - 1].substrateHumidity
+            : null;
+
+        const now = new Date();
+        const event = {
+            id: `irr_${Date.now()}`,
+            timestamp: now.toISOString(),
+            date: now.toISOString().split('T')[0],
+            time: now.toTimeString().substring(0, 5),
+            phase: phase || 'p1',
+            vwcValue: currentVWC,
+            pumpId: pumpId,
+            auto: true
+        };
+
+        irrigationEvents.push(event);
+
+        console.log(`[IRRIGATION AUTO] ${phase?.toUpperCase() || 'P1'} triggered by ${pumpId}, VWC: ${currentVWC || 'N/A'}%`);
+
+        res.json({ success: true, event });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // --- SERVE FRONTEND STATIC FILES ---
 app.use(express.static(path.join(__dirname, '../dist')));
 
