@@ -434,13 +434,33 @@ const HistoryChart: React.FC<HistoryChartProps> = ({ type, title, targets, data:
 
                         {/* Light Regions Background (Simplified for 'day' view) */}
                         {range === 'day' && lightingSchedule && (
-                             <ReferenceArea
-                                yAxisId="left"
-                                x1={lightingSchedule.on}
-                                x2={lightingSchedule.off}
-                                fill="#fef08a"
-                                fillOpacity={isDark ? 0.1 : 0.3}
-                             />
+                             <>
+                                 {/* Light Period - Yellow background */}
+                                 <ReferenceArea
+                                    yAxisId="left"
+                                    x1={lightingSchedule.on}
+                                    x2={lightingSchedule.off}
+                                    fill="#fef08a"
+                                    fillOpacity={isDark ? 0.15 : 0.35}
+                                    label={{ value: '☀️ LUZ', position: 'insideTop', fill: '#ca8a04', fontSize: 11, fontWeight: 'bold' }}
+                                 />
+                                 {/* Lights ON marker */}
+                                 <ReferenceLine
+                                    yAxisId="left"
+                                    x={lightingSchedule.on}
+                                    stroke="#f59e0b"
+                                    strokeWidth={2}
+                                    label={{ value: `ON ${lightingSchedule.on}`, position: 'top', fill: '#f59e0b', fontSize: 10, fontWeight: 600 }}
+                                 />
+                                 {/* Lights OFF marker */}
+                                 <ReferenceLine
+                                    yAxisId="left"
+                                    x={lightingSchedule.off}
+                                    stroke="#6b7280"
+                                    strokeWidth={2}
+                                    label={{ value: `OFF ${lightingSchedule.off}`, position: 'top', fill: '#6b7280', fontSize: 10, fontWeight: 600 }}
+                                 />
+                             </>
                         )}
 
                         {type === 'environment' && (
