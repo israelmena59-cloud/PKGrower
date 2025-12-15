@@ -11,6 +11,11 @@ import {
   loginWithApple,
   logout as firebaseLogout,
   onAuthChange,
+  sendVerificationEmail,
+  isEmailVerified,
+  setPasswordForOAuthUser,
+  hasPasswordAuth,
+  isOAuthUser,
   User
 } from '../config/firebase';
 
@@ -24,6 +29,13 @@ interface AuthContextType {
   loginApple: () => Promise<void>;
   logout: () => Promise<void>;
   clearError: () => void;
+  // Email verification
+  resendVerificationEmail: () => Promise<void>;
+  emailVerified: boolean;
+  // OAuth password management
+  setOAuthPassword: (password: string) => Promise<void>;
+  canSetPassword: boolean;
+  needsPassword: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -91,6 +103,33 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const clearError = () => setError(null);
 
+  // Email verification
+  const resendVerificationEmail = async () => {
+    try {
+      setError(null);
+      await sendVerificationEmail();
+    } catch (e: any) {
+      setError(translateError(e.code));
+      throw e;
+    }
+  };
+
+  // OAuth password management
+  const setOAuthPassword = async (password: string) => {
+    try {
+      setError(null);
+      await setPasswordForOAuthUser(password);
+    } catch (e: any) {
+      setError(translateError(e.code));
+      throw e;
+    }
+  };
+
+  // Computed properties
+  const emailVerified = isEmailVerified();
+  const canSetPassword = isOAuthUser() && !hasPasswordAuth();
+  const needsPassword = isOAuthUser() && !hasPasswordAuth();
+
   return (
     <AuthContext.Provider value={{
       user,
@@ -101,7 +140,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       loginGoogle,
       loginApple,
       logout,
-      clearError
+      clearError,
+      resendVerificationEmail,
+      emailVerified,
+      setOAuthPassword,
+      canSetPassword,
+      needsPassword
     }}>
       {children}
     </AuthContext.Provider>
