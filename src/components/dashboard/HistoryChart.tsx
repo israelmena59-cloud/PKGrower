@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Box, Typography, ButtonGroup, Button, CircularProgress } from '@mui/material';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, ReferenceArea, Legend } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, ReferenceArea, ReferenceDot, Legend } from 'recharts';
 import { useTheme } from '../../context/ThemeContext';
 import { apiClient } from '../../api/client';
 
@@ -17,6 +17,20 @@ const addHours = (timeStr: string | undefined | null, hours: number) => {
     } catch { return '00:00'; }
 };
 
+// P1/P2/P3 Colors for irrigation events
+const IRRIGATION_EVENT_COLORS: Record<string, string> = {
+    p1: '#22c55e', // Green
+    p2: '#3b82f6', // Blue
+    p3: '#a855f7', // Purple
+};
+
+// Irrigation event interface
+interface IrrigationEvent {
+    time: string; // "HH:mm" format
+    phase: 'p1' | 'p2' | 'p3';
+    vwcValue?: number; // VWC at the time of event
+}
+
 interface HistoryChartProps {
   type: 'environment' | 'substrate';
   title: string;
@@ -26,6 +40,7 @@ interface HistoryChartProps {
   };
   data?: any[]; // Optional external data
   phase?: 'vegetative' | 'generative';
+  irrigationEvents?: IrrigationEvent[]; // Optional irrigation events to display
 }
 
 const calculateDP = (T: number, RH: number) => {
@@ -42,7 +57,7 @@ const calculateVPD = (T: number, RH: number) => {
     return svp * (1 - (RH / 100));
 };
 
-const HistoryChart: React.FC<HistoryChartProps> = ({ type, title, targets, data: externalData, phase: _phase = 'vegetative' }) => {
+const HistoryChart: React.FC<HistoryChartProps> = ({ type, title, targets, data: externalData, phase: _phase = 'vegetative', irrigationEvents = [] }) => {
   const { mode } = useTheme();
   const [range, setRange] = useState<'day' | 'week' | 'month'>('day');
   const [internalData, setInternalData] = useState<any[]>([]);
@@ -503,6 +518,27 @@ const HistoryChart: React.FC<HistoryChartProps> = ({ type, title, targets, data:
                                         <ReferenceLine yAxisId="left" x={addHours(lightingSchedule.off, -2)} stroke="#a855f7" strokeDasharray="3 3" label={{ value: 'P3 Stop', position: 'insideTopLeft', fill: '#a855f7', fontSize: 10 }} />
                                     </>
                                 )}
+
+                                {/* Irrigation Event Markers (P1/P2/P3 dots) */}
+                                {type === 'substrate' && irrigationEvents && irrigationEvents.length > 0 && irrigationEvents.map((event, idx) => (
+                                    <ReferenceDot
+                                        key={`irrigation-${idx}`}
+                                        yAxisId="left"
+                                        x={event.time}
+                                        y={event.vwcValue || targets?.vwc || 50}
+                                        r={8}
+                                        fill={IRRIGATION_EVENT_COLORS[event.phase] || '#22c55e'}
+                                        stroke="#fff"
+                                        strokeWidth={2}
+                                        label={{
+                                            value: event.phase.toUpperCase(),
+                                            position: 'top',
+                                            fill: IRRIGATION_EVENT_COLORS[event.phase] || '#22c55e',
+                                            fontSize: 9,
+                                            fontWeight: 'bold'
+                                        }}
+                                    />
+                                ))}
                             </>
                         )}
                     </AreaChart>
