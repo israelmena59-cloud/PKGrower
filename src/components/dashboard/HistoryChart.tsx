@@ -489,6 +489,7 @@ const HistoryChart: React.FC<HistoryChartProps> = ({ type, title, targets, data:
                                     x2={lightingSchedule.off}
                                     fill="#fef08a"
                                     fillOpacity={isDark ? 0.15 : 0.35}
+                                    ifOverflow="extendDomain"
                                     label={{ value: '☀️ LUZ', position: 'insideTop', fill: '#ca8a04', fontSize: 11, fontWeight: 'bold' }}
                                  />
                                  {/* Lights ON marker */}
@@ -497,6 +498,7 @@ const HistoryChart: React.FC<HistoryChartProps> = ({ type, title, targets, data:
                                     x={lightingSchedule.on}
                                     stroke="#f59e0b"
                                     strokeWidth={2}
+                                    ifOverflow="extendDomain"
                                     label={{ value: `ON ${lightingSchedule.on}`, position: 'top', fill: '#f59e0b', fontSize: 10, fontWeight: 600 }}
                                  />
                                  {/* Lights OFF marker */}
@@ -505,6 +507,7 @@ const HistoryChart: React.FC<HistoryChartProps> = ({ type, title, targets, data:
                                     x={lightingSchedule.off}
                                     stroke="#6b7280"
                                     strokeWidth={2}
+                                    ifOverflow="extendDomain"
                                     label={{ value: `OFF ${lightingSchedule.off}`, position: 'top', fill: '#6b7280', fontSize: 10, fontWeight: 600 }}
                                  />
                              </>
