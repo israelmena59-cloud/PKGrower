@@ -52,6 +52,7 @@ const CropSteering: React.FC = () => {
   const [devices, setDevices] = useState<any>({});
   const [pulsing, setPulsing] = useState(false);
   const [pumpRate, setPumpRate] = useState(60);
+  const [irrigationEvents, setIrrigationEvents] = useState<any[]>([]);
 
   // Fetch sensor data and update conditions
   useEffect(() => {
@@ -91,7 +92,18 @@ const CropSteering: React.FC = () => {
   useEffect(() => {
     loadSettings();
     loadAutomationRules();
+    loadIrrigationEvents();
   }, []);
+
+  const loadIrrigationEvents = async () => {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const res = await apiClient.request<any>(`/api/irrigation/events?date=${today}`);
+      if (res?.events) setIrrigationEvents(res.events);
+    } catch (e) {
+      console.error('Error loading irrigation events:', e);
+    }
+  };
 
   const loadAutomationRules = async () => {
     try {
@@ -254,7 +266,11 @@ const CropSteering: React.FC = () => {
       <TabPanel value={activeTab} index={1}>
         <Grid container spacing={3}>
           <Grid item xs={12} lg={8}>
-            <HistoryChart type="substrate" title="Historial Sustrato (VWC)" />
+            <HistoryChart
+              type="substrate"
+              title="📊 Monitor Principal de Riego"
+              irrigationEvents={irrigationEvents}
+            />
           </Grid>
           <Grid item xs={12} lg={4}>
             {/* Pump Control */}

@@ -283,35 +283,9 @@ const Dashboard: React.FC = () => {
         <Box sx={{ maxWidth: 1800, mx: 'auto', p: 2 }}>
              {/* HEADER */}
              <Paper elevation={0} sx={{ p: 2, mb: 3, borderRadius: 'var(--squircle-radius)', background: 'var(--glass-bg)', backdropFilter: 'var(--backdrop-blur)', border: 'var(--glass-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
-                {/* TABS */}
-                <Box sx={{ flex: 1, display: 'flex', justifyContent: 'flex-start' }}>
-                     <Tabs
-                        value={activePage}
-                        onChange={(_, val) => setActivePage(val)}
-                        textColor="inherit"
-                        indicatorColor="secondary"
-                        variant="scrollable"
-                        scrollButtons="auto"
-                     >
-                        {Object.keys(pages).map(page => (
-                            <Tab
-                                key={page}
-                                value={page}
-                                label={
-                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                        {page}
-                                        {page !== 'General' && (
-                                            <X size={14} onClick={(e) => handleDeletePage(e, page)} style={{ opacity: 0.6, cursor: 'pointer' }} />
-                                        )}
-                                    </Box>
-                                }
-                            />
-                        ))}
-                     </Tabs>
-                     <IconButton size="small" onClick={() => setIsAddPageOpen(true)} sx={{ ml: 1, bgcolor: 'rgba(255,255,255,0.05)' }}>
-                        <Plus size={16} />
-                     </IconButton>
-                </Box>
+                <Typography variant="h5" fontWeight="bold" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    📊 Dashboard
+                </Typography>
 
                 <Box sx={{ display: 'flex', gap: 1 }}>
                      <Button

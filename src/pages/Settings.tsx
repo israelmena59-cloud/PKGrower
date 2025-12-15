@@ -36,7 +36,7 @@ import {
   LogOut,
   User
 } from 'lucide-react';
-import { apiClient } from '../api/client';
+import { apiClient, API_BASE_URL } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 
 
@@ -137,6 +137,40 @@ const SettingsPage: React.FC = () => {
   const [xiaomiAuthSession, setXiaomiAuthSession] = useState<string | null>(null);
   const [xiaomiAuthStatus, setXiaomiAuthStatus] = useState<string>('');
   const [twoFA, setTwoFA] = useState({ open: false, code: '' });
+
+  // Meross Login State
+  const [merossLogin, setMerossLogin] = useState({ email: '', password: '' });
+  const [merossLoading, setMerossLoading] = useState(false);
+  const [merossStatus, setMerossStatus] = useState<string>('');
+
+  const handleMerossLogin = async () => {
+    if (!merossLogin.email || !merossLogin.password) {
+      alert('Ingresa email y contraseña de Meross');
+      return;
+    }
+    setMerossLoading(true);
+    setMerossStatus('Conectando...');
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/meross/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: merossLogin.email, password: merossLogin.password })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setMerossStatus('✅ ' + data.message);
+        alert('Meross conectado correctamente');
+      } else {
+        setMerossStatus('❌ ' + data.error);
+        alert('Error: ' + data.error);
+      }
+    } catch (e: any) {
+      setMerossStatus('❌ Error de conexión');
+      alert('Error de conexión: ' + e.message);
+    } finally {
+      setMerossLoading(false);
+    }
+  };
 
   const handleXiaomiLogin = async () => {
     try {
@@ -531,19 +565,37 @@ const SettingsPage: React.FC = () => {
               label="Email Meross"
               fullWidth
               placeholder="tu@email.com"
+              value={merossLogin.email}
+              onChange={(e) => setMerossLogin({ ...merossLogin, email: e.target.value })}
               helperText="Email de tu cuenta Meross"
+              disabled={merossLoading}
             />
 
             <TextField
               label="Contraseña Meross"
               type="password"
               fullWidth
+              value={merossLogin.password}
+              onChange={(e) => setMerossLogin({ ...merossLogin, password: e.target.value })}
               helperText="Tu contraseña de Meross"
+              disabled={merossLoading}
             />
 
-            <Button variant="contained" color="primary" sx={{ mt: 2 }}>
-              Conectar Meross
+            <Button
+              variant="contained"
+              color="primary"
+              sx={{ mt: 2 }}
+              onClick={handleMerossLogin}
+              disabled={merossLoading}
+            >
+              {merossLoading ? 'Conectando...' : 'Conectar Meross'}
             </Button>
+
+            {merossStatus && (
+              <Alert severity={merossStatus.includes('✅') ? 'success' : merossStatus.includes('❌') ? 'error' : 'info'} sx={{ mt: 2 }}>
+                {merossStatus}
+              </Alert>
+            )}
 
             <Alert severity="warning" sx={{ mt: 2 }}>
               Las credenciales se almacenan de forma segura en el servidor. Solo se usan para autenticación con Meross Cloud.

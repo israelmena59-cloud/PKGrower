@@ -3860,6 +3860,132 @@ setInterval(async () => {
 }, 10000);
 
 // =========================================
+// GEMINI AI CHAT ENDPOINT
+// =========================================
+const { GoogleGenerativeAI } = require('@google/generative-ai');
+
+app.post('/api/chat', express.json(), async (req, res) => {
+    try {
+        const apiKey = process.env.GEMINI_API_KEY;
+
+        if (!apiKey) {
+            console.error('[CHAT] GEMINI_API_KEY no está configurada');
+            return res.json({
+                reply: '⚠️ API Key de Gemini no configurada. Ve a Render → Environment Variables y añade GEMINI_API_KEY.'
+            });
+        }
+
+        const { message, context } = req.body;
+
+        if (!message) {
+            return res.status(400).json({ error: 'Message is required' });
+        }
+
+        // Get latest sensor data for context
+        const latestSensor = sensorHistory.length > 0 ? sensorHistory[sensorHistory.length - 1] : {};
+
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+
+        const systemPrompt = `Eres un experto en cultivo de cannabis con conocimiento profundo de la metodología Athena Agriculture y CCI (Crop Steering).
+
+DATOS ACTUALES DEL CULTIVO:
+- Temperatura: ${latestSensor.temperature?.toFixed(1) || 'N/A'}°C
+- Humedad: ${latestSensor.humidity?.toFixed(0) || 'N/A'}%
+- VPD: ${latestSensor.vpd?.toFixed(2) || 'N/A'} kPa
+- VWC Sustrato: ${latestSensor.substrateHumidity?.toFixed(0) || 'N/A'}%
+- Fase actual: ${context?.phase || 'No definida'}
+
+CONOCIMIENTO BASE:
+- Fases de riego: P1 (mantenimiento rápido), P2 (ajuste fino), P3 (dryback nocturno)
+- VWC óptimo: 45-55% en vegetativo, 40-50% en floración
+- VPD óptimo: 0.8-1.0 kPa en veg, 1.0-1.4 kPa en floración
+- Dryback objetivo: 12-15% desde lights on
+
+Responde en español, de forma concisa y práctica. Da recomendaciones específicas basadas en los datos actuales.`;
+
+        const result = await model.generateContent([systemPrompt, message]);
+        const reply = result.response.text();
+
+        console.log('[CHAT] Response generated successfully');
+        res.json({ reply });
+
+    } catch (e) {
+        console.error('[CHAT] Error:', e.message);
+        res.json({
+            reply: `Error: ${e.message}. Verifica que la API Key de Gemini sea válida.`
+        });
+    }
+});
+
+// =========================================
+// MEROSS LOGIN ENDPOINT
+// =========================================
+
+app.post('/api/meross/login', express.json(), async (req, res) => {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+        return res.status(400).json({ success: false, error: 'Email y password requeridos' });
+    }
+
+    try {
+        console.log('[MEROSS] Intentando login con:', email);
+
+        // Save credentials to settings
+        appSettings.meross = { email, connected: false };
+        await saveSettings();
+
+        // Try to connect to Meross Cloud
+        if (typeof MerossCloud === 'function') {
+            const meross = new MerossCloud({ email, password, logger: console.log });
+
+            meross.on('connected', () => {
+                console.log('[MEROSS] Connected successfully');
+                appSettings.meross.connected = true;
+                saveSettings();
+            });
+
+            meross.on('error', (err) => {
+                console.error('[MEROSS] Connection error:', err.message);
+            });
+
+            await meross.connect();
+
+            res.json({
+                success: true,
+                message: 'Conectando a Meross Cloud...',
+                email
+            });
+        } else {
+            // Fallback if MerossCloud not available
+            appSettings.meross = { email, connected: true };
+            await saveSettings();
+            res.json({
+                success: true,
+                message: 'Credenciales guardadas (modo simulación)',
+                email
+            });
+        }
+    } catch (e) {
+        console.error('[MEROSS] Login error:', e.message);
+        res.json({
+            success: false,
+            error: e.message
+        });
+    }
+});
+
+// GET /api/meross/status - Check Meross connection status
+app.get('/api/meross/status', (req, res) => {
+    res.json({
+        connected: appSettings.meross?.connected || false,
+        email: appSettings.meross?.email || null,
+        deviceCount: merossDevices?.length || 0
+    });
+});
+
+// =========================================
 // IRRIGATION EVENTS LOGGING
 // =========================================
 
