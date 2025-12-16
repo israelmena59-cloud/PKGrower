@@ -173,11 +173,26 @@ const HistoryChart: React.FC<HistoryChartProps> = ({ type, title, targets, data:
                 const dateObj = new Date(d.timestamp);
                 if (isNaN(dateObj.getTime())) return null; // Skip invalid dates
 
+                // Calculate if point is in light period
+                let lightValue = null;
+                if (lightingSchedule) {
+                    const [onH, onM] = lightingSchedule.on.split(':').map(Number);
+                    const [offH, offM] = lightingSchedule.off.split(':').map(Number);
+                    if (!isNaN(onH) && !isNaN(onM) && !isNaN(offH) && !isNaN(offM)) {
+                        const onMinutes = onH * 60 + onM;
+                        const offMinutes = offH * 60 + offM;
+                        const pointMinutes = dateObj.getHours() * 60 + dateObj.getMinutes();
+                        const inLight = isInLightPeriod(pointMinutes, onMinutes, offMinutes);
+                        lightValue = inLight ? 100 : null; // 100 during light, null during dark
+                    }
+                }
+
                 return {
                   ...d,
                   timeStr: dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                   dateStr: dateObj.toLocaleDateString([], { month: 'short', day: 'numeric' }),
                   fullDate: dateObj,
+                  lightValue,
 
                   // Map 0 to null to prevent drops/spikes (converts falsy 0 to null)
                   temperature: t > 0 ? t : null,
@@ -196,7 +211,7 @@ const HistoryChart: React.FC<HistoryChartProps> = ({ type, title, targets, data:
             }
         })
         .filter(Boolean); // Remove nulls from map errors
-  }, [rawData]);
+  }, [rawData, lightingSchedule]);
 
   useEffect(() => {
     // Only fetch if we DON'T have external data OR if we need specific range data (week/month)
@@ -507,27 +522,28 @@ const HistoryChart: React.FC<HistoryChartProps> = ({ type, title, targets, data:
                                 <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3}/>
                                 <stop offset="95%" stopColor="#22c55e" stopOpacity={0}/>
                             </linearGradient>
+                            <linearGradient id="colorLight" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#fef08a" stopOpacity={isDark ? 0.4 : 0.6}/>
+                                <stop offset="95%" stopColor="#fef08a" stopOpacity={isDark ? 0.1 : 0.2}/>
+                            </linearGradient>
                         </defs>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={gridColor} />
 
-                        {/* Light Regions Background - FIRST for z-order (behind data) */}
-                        {range === 'day' && lightingSchedule && (() => {
-                             const lightBlocks = computeLightBlocks(chartData, lightingSchedule);
-                             console.log('[DEBUG-LIGHT] Computed light blocks:', lightBlocks);
-                             return lightBlocks.map((block, idx) => (
-                                 <ReferenceArea
-                                    key={`light-${idx}`}
-                                    yAxisId="left"
-                                    x1={block.start}
-                                    x2={block.end}
-                                    fill="#fef08a"
-                                    fillOpacity={isDark ? 0.3 : 0.5}
-                                    stroke="#f59e0b"
-                                    strokeWidth={2}
-                                    label={idx === 0 ? { value: '☀️ LUZ', position: 'insideTop', fill: '#ca8a04', fontSize: 12, fontWeight: 'bold' } : undefined}
-                                 />
-                             ));
-                        })()}
+                        {/* Light Period Background - Area using lightValue data */}
+                        {range === 'day' && lightingSchedule && (
+                            <Area
+                                yAxisId="left"
+                                type="stepAfter"
+                                dataKey="lightValue"
+                                name="Luz"
+                                stroke="#f59e0b"
+                                strokeWidth={0}
+                                fill="url(#colorLight)"
+                                connectNulls={false}
+                                isAnimationActive={false}
+                                legendType="none"
+                            />
+                        )}
 
                         <XAxis
                             dataKey={range === 'day' ? "timeStr" : "dateStr"}
