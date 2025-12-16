@@ -509,6 +509,26 @@ const HistoryChart: React.FC<HistoryChartProps> = ({ type, title, targets, data:
                             </linearGradient>
                         </defs>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={gridColor} />
+
+                        {/* Light Regions Background - FIRST for z-order (behind data) */}
+                        {range === 'day' && lightingSchedule && (() => {
+                             const lightBlocks = computeLightBlocks(chartData, lightingSchedule);
+                             console.log('[DEBUG-LIGHT] Computed light blocks:', lightBlocks);
+                             return lightBlocks.map((block, idx) => (
+                                 <ReferenceArea
+                                    key={`light-${idx}`}
+                                    yAxisId="left"
+                                    x1={block.start}
+                                    x2={block.end}
+                                    fill="#fef08a"
+                                    fillOpacity={isDark ? 0.3 : 0.5}
+                                    stroke="#f59e0b"
+                                    strokeWidth={2}
+                                    label={idx === 0 ? { value: '☀️ LUZ', position: 'insideTop', fill: '#ca8a04', fontSize: 12, fontWeight: 'bold' } : undefined}
+                                 />
+                             ));
+                        })()}
+
                         <XAxis
                             dataKey={range === 'day' ? "timeStr" : "dateStr"}
                             stroke={textColor}
@@ -538,26 +558,6 @@ const HistoryChart: React.FC<HistoryChartProps> = ({ type, title, targets, data:
                                 return labels[value] || value;
                             }}
                         />
-
-                        {/* Light Regions Background (Simplified for 'day' view) */}
-                        {range === 'day' && lightingSchedule && (() => {
-                             const lightBlocks = computeLightBlocks(chartData, lightingSchedule);
-                             console.log('[DEBUG-LIGHT] Computed light blocks:', lightBlocks);
-                             return lightBlocks.map((block, idx) => (
-                                 <ReferenceArea
-                                    key={`light-${idx}`}
-                                    yAxisId="left"
-                                    x1={block.start}
-                                    x2={block.end}
-                                    fill="#fef08a"
-                                    fillOpacity={isDark ? 0.2 : 0.4}
-                                    stroke="#f59e0b"
-                                    strokeWidth={1}
-                                    strokeOpacity={0.5}
-                                    label={idx === 0 ? { value: '☀️ LUZ', position: 'insideTop', fill: '#ca8a04', fontSize: 11, fontWeight: 'bold' } : undefined}
-                                 />
-                             ));
-                        })()}
 
                         {type === 'environment' && (
                             <>
