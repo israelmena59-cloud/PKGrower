@@ -82,6 +82,23 @@ export const ChartWidget: React.FC<ChartWidgetProps & { lightSchedule?: { on: st
     const [growthStage, setGrowthStage] = useState<GrowthStage>('none');
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
+    // Process and validate data
+    const processedData = React.useMemo(() => {
+        if (!data || !Array.isArray(data)) {
+            console.log('[ChartWidget] No data or invalid data:', data);
+            return [];
+        }
+        // Filter out entries without timestamp and ensure numeric values
+        const valid = data.filter(d => d && d.timestamp).map(d => ({
+            ...d,
+            temperature: typeof d.temperature === 'number' ? d.temperature : null,
+            humidity: typeof d.humidity === 'number' ? d.humidity : null,
+            vpd: typeof d.vpd === 'number' ? d.vpd : null
+        }));
+        console.log('[ChartWidget] Processed data count:', valid.length, 'from', data.length);
+        return valid;
+    }, [data]);
+
     const handleOpenSettings = (event: React.MouseEvent<HTMLElement>) => setAnchorEl(event.currentTarget);
     const handleCloseSettings = () => setAnchorEl(null);
     const handleChartTypeChange = (type: ChartType) => { setChartType(type); handleCloseSettings(); };
@@ -224,7 +241,7 @@ export const ChartWidget: React.FC<ChartWidgetProps & { lightSchedule?: { on: st
 
     const renderChart = () => {
         const commonProps = {
-            data: data,
+            data: processedData,
             margin: { top: 20, right: 10, left: 0, bottom: 5 }
         };
 
@@ -364,7 +381,7 @@ export const ChartWidget: React.FC<ChartWidgetProps & { lightSchedule?: { on: st
         }
     };
 
-    if (!data || data.length === 0) {
+    if (!processedData || processedData.length === 0) {
         return (
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'text.disabled', flexDirection: 'column', gap: 1 }}>
                 <Typography variant="body2">No Data ({timeRange})</Typography>
