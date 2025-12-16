@@ -2700,6 +2700,100 @@ async function initMerossDevices() {
     }
 }
 
+// --- MEROSS API ENDPOINTS ---
+// POST /api/meross/connect - Connect/Reconnect to Meross Cloud
+app.post('/api/meross/connect', express.json(), async (req, res) => {
+    try {
+        const { email, password } = req.body;
+
+        // Store credentials in appSettings
+        if (!appSettings.meross) appSettings.meross = {};
+        if (email) appSettings.meross.email = email;
+        if (password) appSettings.meross.password = password;
+
+        // Disconnect existing client
+        if (merossClient) {
+            try {
+                await merossClient.disconnect();
+            } catch (e) {
+                console.warn('[MEROSS] Disconnect error:', e.message);
+            }
+        }
+
+        // Clear old devices
+        merossDevices = {};
+
+        // Reconnect with new/existing credentials
+        await initMerossDevices();
+
+        res.json({
+            success: true,
+            message: 'Meross connected successfully',
+            deviceCount: Object.keys(merossDevices).length,
+            devices: Object.values(merossDevices).map(d => ({
+                id: d.id,
+                name: d.name,
+                type: d.type,
+                online: d.online
+            }))
+        });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// GET /api/meross/devices - List all Meross devices
+app.get('/api/meross/devices', (req, res) => {
+    try {
+        const devices = Object.values(merossDevices).map(d => ({
+            id: d.id,
+            name: d.name,
+            type: d.type,
+            online: d.online,
+            platform: 'meross',
+            capabilities: ['switch']
+        }));
+
+        res.json({
+            success: true,
+            connected: merossClient !== null,
+            deviceCount: devices.length,
+            devices: devices
+        });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// POST /api/meross/device/:id/control - Control a Meross device
+app.post('/api/meross/device/:id/control', express.json(), async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { action } = req.body; // 'on' or 'off'
+
+        const device = merossDevices[id];
+        if (!device || !device.device) {
+            return res.status(404).json({ error: 'Dispositivo Meross no encontrado' });
+        }
+
+        const turnOn = action === 'on';
+        await device.device.controlToggleX(0, turnOn);
+
+        res.json({
+            success: true,
+            deviceId: id,
+            action: action,
+            name: device.name
+        });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Initialize Meross on startup
+initMerossDevices().catch(e => console.error('[MEROSS] Startup init failed:', e.message));
+
+
 // ===== SOIL SENSORS ENDPOINT (Missing Fix) =====
 app.get('/api/sensors/soil', async (req, res) => {
     try {
