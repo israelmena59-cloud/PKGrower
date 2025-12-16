@@ -165,17 +165,26 @@ const Dashboard: React.FC = () => {
                  };
             }
 
-            // Dynamic Sensor Mapping
-            if (w.type === 'sensor' && !['temp', 'hum', 'vpd', 'sub'].includes(w.id)) {
-                const val = latestSensors?.[w.id as keyof SensorData];
-                const meta = deviceMeta.find(d => d.id === w.id);
+            // Fallback: Chart widgets without specific mapping → use general sensor history
+            if (w.type === 'chart' && !['chart_vpd', 'chart_soil'].includes(w.id)) {
                 props = {
-                    icon: <RefreshCw/>, // Default icon
-                    name: meta?.name || w.title || w.id,
-                    value: typeof val === 'number' ? val.toFixed(1) : (val ?? '--'),
-                    unit: '', // Unknown unit
-                    color: '#64748b',
-                    onRename: handleRename
+                    ...w.props, // Keep any existing props
+                    data: sensorHistory,
+                    dataKey: w.props?.dataKey || 'temperature',
+                    color: w.props?.color || '#ef4444',
+                    unit: w.props?.unit || '°C',
+                    lightSchedule,
+                    multiSeries: true, // Show all sensors
+                    chartTitle: w.title
+                };
+            }
+
+            // Device type widgets - ensure they get proper props including sensorHistory
+            if (w.type === 'device') {
+                props = {
+                    ...w.props,
+                    // Add general sensor history if not fetching device-specific data
+                    generalHistory: sensorHistory
                 };
             }
 
