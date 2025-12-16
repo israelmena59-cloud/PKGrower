@@ -714,7 +714,8 @@ app.use('/api', (req, res, next) => {
         req.path.startsWith('/history') ||
         req.path.startsWith('/meross') ||
         req.path.startsWith('/crop-steering') ||
-        req.path.startsWith('/irrigation')
+        req.path.startsWith('/irrigation') ||
+        req.path.startsWith('/automation')
     )) {
         return next();
     }
