@@ -2682,8 +2682,29 @@ async function initMerossDevices() {
                 name: deviceDef.name,
                 type: deviceDef.type,
                 online: device.online,
-                device: device // Keep reference for control
+                device: device, // Keep reference for control
+                isHub: deviceDef.type?.startsWith('msh')
             };
+
+            // Check for hub subdevices (sensors connected to hub)
+            if (device.subDeviceList && Array.isArray(device.subDeviceList)) {
+                console.log(`[MEROSS] Hub ${deviceDef.name} has ${device.subDeviceList.length} subdevices`);
+                device.subDeviceList.forEach(subDev => {
+                    const subId = subDev.subDeviceId || subDev.id;
+                    console.log(`[MEROSS] Subdevice: ${subDev.subDeviceName || subDev.name} (${subDev.subDeviceType || subDev.type})`);
+                    merossDevices[subId] = {
+                        id: subId,
+                        name: subDev.subDeviceName || subDev.name || `Sensor ${subId}`,
+                        type: subDev.subDeviceType || subDev.type || 'ms100',
+                        online: subDev.status !== 0,
+                        parentHub: deviceId,
+                        device: device, // Use hub device for control
+                        capabilities: ['temperature', 'humidity'],
+                        lastTemp: subDev.currentTemp || null,
+                        lastHumidity: subDev.currentHumidity || null
+                    };
+                });
+            }
         });
 
         merossClient.on('data', (deviceId, namespace, payload) => {
