@@ -431,6 +431,32 @@ const HistoryChart: React.FC<HistoryChartProps> = ({ type, title, targets, data:
                 <Typography variant="h6" fontWeight="bold" sx={{ color: textColor }}>
                     {title}
                 </Typography>
+                {/* Current values summary for environment charts */}
+                {type === 'environment' && chartData.length > 0 && (() => {
+                    const latest = chartData[chartData.length - 1];
+                    return (
+                        <Box sx={{ display: 'flex', gap: 1, mt: 0.5, flexWrap: 'wrap' }}>
+                            {latest?.temperature && (
+                                <Box sx={{ px: 1, py: 0.25, borderRadius: 1, bgcolor: 'rgba(239, 68, 68, 0.15)', display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                    <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#ef4444' }} />
+                                    <Typography variant="caption" sx={{ color: '#ef4444', fontWeight: 600 }}>{latest.temperature.toFixed(1)}°C</Typography>
+                                </Box>
+                            )}
+                            {latest?.humidity && (
+                                <Box sx={{ px: 1, py: 0.25, borderRadius: 1, bgcolor: 'rgba(59, 130, 246, 0.15)', display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                    <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#3b82f6' }} />
+                                    <Typography variant="caption" sx={{ color: '#3b82f6', fontWeight: 600 }}>{latest.humidity.toFixed(0)}%</Typography>
+                                </Box>
+                            )}
+                            {latest?.vpd && (
+                                <Box sx={{ px: 1, py: 0.25, borderRadius: 1, bgcolor: 'rgba(16, 185, 129, 0.15)', display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                    <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#10b981' }} />
+                                    <Typography variant="caption" sx={{ color: '#10b981', fontWeight: 600 }}>{latest.vpd.toFixed(2)} kPa</Typography>
+                                </Box>
+                            )}
+                        </Box>
+                    );
+                })()}
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 1 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                         <Typography variant="caption" color="text.secondary">Modo:</Typography>
