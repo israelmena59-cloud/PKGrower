@@ -287,6 +287,100 @@ let tuyaDevices = {}; // Cache de estado de dispositivos Tuya (Map: key -> statu
 let merossClient = null;
 let merossDevices = {}; // Cache de dispositivos Meross (Map: id -> device)
 const calendarEvents = [];
+
+// --- IRRIGATION EVENT AUTO-DETECTION ---
+let irrigationEvents = []; // Array of { timestamp, time, phase, vwcValue, percentage, duration }
+let pumpState = {
+    isOn: false,
+    lastOnTime: null,
+    lastOffTime: null,
+    lastVwcAtOn: 0
+};
+
+// Classify irrigation phase based on time after lights-on
+const classifyIrrigationPhase = () => {
+    const lighting = appSettings?.lighting || {};
+    const onTimeStr = lighting.onTime || '06:00';
+    const [onH, onM] = onTimeStr.split(':').map(Number);
+
+    const now = new Date();
+    const lightsOnToday = new Date(now);
+    lightsOnToday.setHours(onH, onM, 0, 0);
+
+    // If current time is before lights-on, use yesterday's lights-on
+    if (now < lightsOnToday) {
+        lightsOnToday.setDate(lightsOnToday.getDate() - 1);
+    }
+
+    const minutesSinceLightsOn = Math.floor((now - lightsOnToday) / 60000);
+    const stage = appSettings?.cropSteering?.stage || 'veg_early';
+
+    // P1: First irrigation 2-4 hours after lights on
+    // P2: Main irrigation period (middle of day)
+    // P3: Last irrigation 2-4 hours before lights off
+    if (minutesSinceLightsOn < 240) { // First 4 hours
+        return 'p1';
+    } else if (minutesSinceLightsOn > (12 * 60 - 180)) { // Last 3 hours (assuming 12h day)
+        return 'p3';
+    } else {
+        return 'p2';
+    }
+};
+
+// Check pump state and log irrigation events
+const checkPumpState = async () => {
+    try {
+        const pumpDevice = TUYA_DEVICES_MAP.bombaControlador;
+        if (!pumpDevice || !tuyaClient || MODO_SIMULACION) return;
+
+        const pumpId = pumpDevice.id;
+        const status = await tuyaClient.getDeviceStatus(pumpId);
+        const switchStatus = status?.find(s => s.code === 'switch_1' || s.code === 'switch');
+        const isOn = switchStatus?.value === true;
+
+        const latestSensor = sensorHistory.length > 0 ? sensorHistory[sensorHistory.length - 1] : {};
+        const currentVWC = latestSensor.substrateHumidity || 0;
+
+        // Detect pump ON edge
+        if (isOn && !pumpState.isOn) {
+            console.log('[IRRIGATION] Pump turned ON - VWC:', currentVWC);
+            pumpState.isOn = true;
+            pumpState.lastOnTime = new Date();
+            pumpState.lastVwcAtOn = currentVWC;
+        }
+
+        // Detect pump OFF edge - log event
+        if (!isOn && pumpState.isOn) {
+            const now = new Date();
+            const duration = pumpState.lastOnTime ? Math.floor((now - pumpState.lastOnTime) / 1000) : 0;
+            const phase = classifyIrrigationPhase();
+
+            const event = {
+                timestamp: now.toISOString(),
+                time: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                phase: phase,
+                vwcValue: currentVWC,
+                vwcBefore: pumpState.lastVwcAtOn,
+                percentage: Math.round((currentVWC / 100) * 100),
+                duration: duration
+            };
+
+            irrigationEvents.push(event);
+            console.log('[IRRIGATION] Event logged:', event);
+
+            // Keep only last 100 events
+            if (irrigationEvents.length > 100) irrigationEvents.shift();
+
+            pumpState.isOn = false;
+            pumpState.lastOffTime = now;
+        }
+    } catch (e) {
+        console.error('[IRRIGATION] Error checking pump state:', e.message);
+    }
+};
+
+// Start pump monitoring (every 10 seconds)
+setInterval(checkPumpState, 10000);
 let appSettings = {
   app: {
     appName: 'PKGrower',
@@ -4480,8 +4574,62 @@ app.get('/api/crop-steering/stages', (req, res) => {
                 ec: config.ec,
                 light: config.light
             }
-        }))
     });
+});
+
+// --- IRRIGATION EVENTS API ---
+// GET /api/irrigation/events - Get irrigation events (optionally filtered by date)
+app.get('/api/irrigation/events', (req, res) => {
+    try {
+        const { date } = req.query;
+        let events = irrigationEvents;
+
+        // Filter by date if provided
+        if (date) {
+            events = events.filter(e => e.timestamp && e.timestamp.startsWith(date));
+        }
+
+        res.json({
+            success: true,
+            events: events,
+            pumpState: {
+                isOn: pumpState.isOn,
+                lastOnTime: pumpState.lastOnTime,
+                lastOffTime: pumpState.lastOffTime
+            }
+        });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// POST /api/irrigation/events - Manually log irrigation event
+app.post('/api/irrigation/events', express.json(), (req, res) => {
+    try {
+        const { phase, vwcValue, duration, notes } = req.body;
+        const now = new Date();
+
+        const event = {
+            timestamp: now.toISOString(),
+            time: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            phase: phase || classifyIrrigationPhase(),
+            vwcValue: vwcValue || 0,
+            percentage: Math.round((vwcValue || 0)),
+            duration: duration || 0,
+            manual: true,
+            notes: notes
+        };
+
+        irrigationEvents.push(event);
+        console.log('[IRRIGATION] Manual event logged:', event);
+
+        res.json({
+            success: true,
+            event: event
+        });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
 });
 
 // --- SERVE FRONTEND STATIC FILES ---
