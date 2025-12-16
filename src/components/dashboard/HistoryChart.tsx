@@ -17,6 +17,66 @@ const addHours = (timeStr: string | undefined | null, hours: number) => {
     } catch { return '00:00'; }
 };
 
+// Helper to check if a given time (minutes from midnight) is in light period
+const isInLightPeriod = (minutesFromMidnight: number, onMinutes: number, offMinutes: number): boolean => {
+    if (onMinutes < offMinutes) {
+        // Normal day cycle (e.g., 06:00 ON to 00:00 OFF)
+        return minutesFromMidnight >= onMinutes && minutesFromMidnight < offMinutes;
+    } else {
+        // Overnight cycle (e.g., 22:00 ON to 16:00 OFF next day)
+        return minutesFromMidnight >= onMinutes || minutesFromMidnight < offMinutes;
+    }
+};
+
+// Compute light period blocks from chart data
+const computeLightBlocks = (
+    data: any[],
+    lightSchedule: { on: string; off: string } | null
+): { start: string; end: string }[] => {
+    if (!data || data.length === 0 || !lightSchedule) return [];
+
+    try {
+        const [onH, onM] = lightSchedule.on.split(':').map(Number);
+        const [offH, offM] = lightSchedule.off.split(':').map(Number);
+        if (isNaN(onH) || isNaN(onM) || isNaN(offH) || isNaN(offM)) return [];
+
+        const onMinutes = onH * 60 + onM;
+        const offMinutes = offH * 60 + offM;
+
+        const blocks: { start: string; end: string }[] = [];
+        let currentBlock: { start: string; end: string } | null = null;
+
+        for (const point of data) {
+            if (!point || !point.fullDate || !point.timeStr) continue;
+
+            const date = point.fullDate instanceof Date ? point.fullDate : new Date(point.fullDate);
+            if (isNaN(date.getTime())) continue;
+
+            const minutes = date.getHours() * 60 + date.getMinutes();
+            const inLight = isInLightPeriod(minutes, onMinutes, offMinutes);
+
+            if (inLight) {
+                if (!currentBlock) {
+                    currentBlock = { start: point.timeStr, end: point.timeStr };
+                } else {
+                    currentBlock.end = point.timeStr;
+                }
+            } else {
+                if (currentBlock) {
+                    blocks.push(currentBlock);
+                    currentBlock = null;
+                }
+            }
+        }
+        if (currentBlock) blocks.push(currentBlock);
+
+        return blocks;
+    } catch (e) {
+        console.warn('Error computing light blocks:', e);
+        return [];
+    }
+};
+
 // P1/P2/P3 Colors for irrigation events
 const IRRIGATION_EVENT_COLORS: Record<string, string> = {
     p1: '#22c55e', // Green
@@ -480,38 +540,24 @@ const HistoryChart: React.FC<HistoryChartProps> = ({ type, title, targets, data:
                         />
 
                         {/* Light Regions Background (Simplified for 'day' view) */}
-                        {range === 'day' && lightingSchedule && (
-                             <>
-                                 {/* Light Period - Yellow background */}
+                        {range === 'day' && lightingSchedule && (() => {
+                             const lightBlocks = computeLightBlocks(chartData, lightingSchedule);
+                             console.log('[DEBUG-LIGHT] Computed light blocks:', lightBlocks);
+                             return lightBlocks.map((block, idx) => (
                                  <ReferenceArea
+                                    key={`light-${idx}`}
                                     yAxisId="left"
-                                    x1={lightingSchedule.on}
-                                    x2={lightingSchedule.off}
+                                    x1={block.start}
+                                    x2={block.end}
                                     fill="#fef08a"
-                                    fillOpacity={isDark ? 0.15 : 0.35}
-                                    ifOverflow="extendDomain"
-                                    label={{ value: '☀️ LUZ', position: 'insideTop', fill: '#ca8a04', fontSize: 11, fontWeight: 'bold' }}
-                                 />
-                                 {/* Lights ON marker */}
-                                 <ReferenceLine
-                                    yAxisId="left"
-                                    x={lightingSchedule.on}
+                                    fillOpacity={isDark ? 0.2 : 0.4}
                                     stroke="#f59e0b"
-                                    strokeWidth={2}
-                                    ifOverflow="extendDomain"
-                                    label={{ value: `ON ${lightingSchedule.on}`, position: 'top', fill: '#f59e0b', fontSize: 10, fontWeight: 600 }}
+                                    strokeWidth={1}
+                                    strokeOpacity={0.5}
+                                    label={idx === 0 ? { value: '☀️ LUZ', position: 'insideTop', fill: '#ca8a04', fontSize: 11, fontWeight: 'bold' } : undefined}
                                  />
-                                 {/* Lights OFF marker */}
-                                 <ReferenceLine
-                                    yAxisId="left"
-                                    x={lightingSchedule.off}
-                                    stroke="#6b7280"
-                                    strokeWidth={2}
-                                    ifOverflow="extendDomain"
-                                    label={{ value: `OFF ${lightingSchedule.off}`, position: 'top', fill: '#6b7280', fontSize: 10, fontWeight: 600 }}
-                                 />
-                             </>
-                        )}
+                             ));
+                        })()}
 
                         {type === 'environment' && (
                             <>
