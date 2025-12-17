@@ -2700,6 +2700,10 @@ async function initMerossDevices() {
         // Event Listeners
         merossClient.on('deviceInitialized', (deviceId, deviceDef, device) => {
             console.log(`[MEROSS] New Device: ${deviceDef.name} (${deviceDef.type})`);
+            console.log(`[MEROSS] Device keys:`, Object.keys(device));
+            console.log(`[MEROSS] subDeviceList present:`, !!device.subDeviceList);
+            console.log(`[MEROSS] subDeviceList value:`, JSON.stringify(device.subDeviceList));
+
             merossDevices[deviceId] = {
                 id: deviceId,
                 name: deviceDef.name,
@@ -2710,11 +2714,12 @@ async function initMerossDevices() {
             };
 
             // Check for hub subdevices (sensors connected to hub)
-            if (device.subDeviceList && Array.isArray(device.subDeviceList)) {
+            if (device.subDeviceList && Array.isArray(device.subDeviceList) && device.subDeviceList.length > 0) {
                 console.log(`[MEROSS] Hub ${deviceDef.name} has ${device.subDeviceList.length} subdevices`);
-                device.subDeviceList.forEach(subDev => {
+                device.subDeviceList.forEach((subDev, idx) => {
+                    console.log(`[MEROSS] Subdevice[${idx}] raw:`, JSON.stringify(subDev));
                     const subId = subDev.subDeviceId || subDev.id;
-                    console.log(`[MEROSS] Subdevice: ${subDev.subDeviceName || subDev.name} (${subDev.subDeviceType || subDev.type})`);
+                    console.log(`[MEROSS] Subdevice: ${subDev.subDeviceName || subDev.name} (${subDev.subDeviceType || subDev.type}) ID: ${subId}`);
                     merossDevices[subId] = {
                         id: subId,
                         name: subDev.subDeviceName || subDev.name || `Sensor ${subId}`,
@@ -2727,6 +2732,9 @@ async function initMerossDevices() {
                         lastHumidity: subDev.currentHumidity || null
                     };
                 });
+                console.log(`[MEROSS] Total devices after subdevice registration: ${Object.keys(merossDevices).length}`);
+            } else {
+                console.log(`[MEROSS] Device ${deviceDef.name} has NO subdevices`);
             }
         });
 
