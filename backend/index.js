@@ -330,13 +330,12 @@ const classifyIrrigationPhase = () => {
 // Check pump state and log irrigation events
 const checkPumpState = async () => {
     try {
-        const pumpDevice = TUYA_DEVICES_MAP.bombaControlador;
-        if (!pumpDevice || !tuyaClient || MODO_SIMULACION) return;
+        // Use cached tuyaDevices data instead of API call
+        const pumpDevice = tuyaDevices['bombaControlador'];
+        if (!pumpDevice || MODO_SIMULACION) return;
 
-        const pumpId = pumpDevice.id;
-        const status = await tuyaClient.getDeviceStatus(pumpId);
-        const switchStatus = status?.find(s => s.code === 'switch_1' || s.code === 'switch');
-        const isOn = switchStatus?.value === true;
+        // Check the 'on' property from the cached device status
+        const isOn = pumpDevice.on === true;
 
         const latestSensor = sensorHistory.length > 0 ? sensorHistory[sensorHistory.length - 1] : {};
         const currentVWC = latestSensor.substrateHumidity || 0;
