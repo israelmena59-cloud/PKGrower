@@ -107,8 +107,8 @@ export const DeviceDataWidget: React.FC<DeviceDataWidgetProps> = ({
                 setDevice(found);
                 setError(null);
 
-                // If it's a sensor, also fetch history for chart
-                if (widgetType === 'chart' && (found.capabilities?.includes('temperature') || found.capabilities?.includes('humidity'))) {
+                // Always fetch history for chart widgets
+                if (widgetType === 'chart') {
                     const history = await fetchDeviceHistory(deviceId);
                     setHistoryData(history);
                 }
@@ -181,16 +181,24 @@ export const DeviceDataWidget: React.FC<DeviceDataWidgetProps> = ({
     const hasTempHumidity = device.capabilities?.includes('temperature') || device.capabilities?.includes('humidity');
     const isSwitch = device.capabilities?.includes('switch');
 
-    // Chart widget for sensors
-    if (widgetType === 'chart' && hasTempHumidity) {
+    // Chart widget - Always render if widgetType is 'chart'
+    if (widgetType === 'chart') {
+        // Use temperature if available, fallback to humidity, then VPD
+        const hasTemp = device.capabilities?.includes('temperature') || device.temperature !== undefined;
+        const hasHum = device.capabilities?.includes('humidity') || device.humidity !== undefined;
+        const dataKey = hasTemp ? 'temperature' : hasHum ? 'humidity' : 'temperature';
+        const color = hasTemp ? '#FF3B30' : hasHum ? '#007AFF' : '#8b5cf6';
+        const unit = hasTemp ? '°C' : hasHum ? '%' : '°C';
+
         return (
             <Box sx={{ width: '100%', height: '100%', minWidth: 200, minHeight: 150 }}>
                 <ChartWidget
-                    data={historyData}
-                    dataKey={device.capabilities?.includes('temperature') ? 'temperature' : 'humidity'}
-                    color={device.capabilities?.includes('temperature') ? '#FF3B30' : '#007AFF'}
-                    unit={device.capabilities?.includes('temperature') ? '°C' : '%'}
+                    data={historyData.length > 0 ? historyData : []}
+                    dataKey={dataKey}
+                    color={color}
+                    unit={unit}
                     chartTitle={device.name}
+                    multiSeries={true}
                 />
             </Box>
         );
