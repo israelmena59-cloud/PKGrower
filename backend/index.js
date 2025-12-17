@@ -697,24 +697,31 @@ app.get('/api/devices/list', (req, res) => {
              seenIds.add(tDev.id);
         }
 
-        // 3. Meross Dynamic devices
+        // 3. Meross Dynamic devices (including hub subdevices)
         for (const [mId, mDev] of Object.entries(merossDevices)) {
              if (seenIds.has(mId)) continue;
 
              const custom = customDeviceConfigs[mId];
-             const capabilities = custom?.capabilities || ['switch'];
+             // Use device capabilities first (for subdevices), then custom, then default
+             const capabilities = mDev.capabilities || custom?.capabilities || ['switch'];
+             const isSubdevice = !!mDev.parentHub;
 
              allDevices.push({
                  id: mId,
                  name: custom ? custom.name : mDev.name,
                  type: custom ? custom.type : (mDev.type || 'switch'),
                  platform: 'meross',
-                 source: 'dynamic',
+                 source: isSubdevice ? 'hub_subdevice' : 'dynamic',
                  configured: !!custom,
                  capabilities: capabilities,
+                 parentHub: mDev.parentHub || null,
+                 isHub: mDev.isHub || false,
                  // Live values
                  status: mDev.onoff ?? mDev.status,
-                 online: mDev.online ?? true
+                 online: mDev.online ?? true,
+                 // For sensor subdevices
+                 temperature: mDev.lastTemp ?? null,
+                 humidity: mDev.lastHumidity ?? null
              });
              seenIds.add(mId);
         }
@@ -2657,8 +2664,25 @@ async function initMerossDevices() {
         return;
     }
 
-    const email = process.env.MEROSS_EMAIL || appSettings.meross?.email;
-    const password = process.env.MEROSS_PASSWORD || appSettings.meross?.password;
+    // Try to load credentials from Firestore first (persistent storage)
+    let email = null, password = null;
+
+    try {
+        const storedCreds = await firestore.getPlatformCredentials('meross');
+        if (storedCreds && storedCreds.email && storedCreds.password) {
+            email = storedCreds.email;
+            password = storedCreds.password;
+            console.log('[MEROSS] Loaded credentials from Firestore.');
+        }
+    } catch (e) {
+        console.warn('[MEROSS] Could not load Firestore credentials:', e.message);
+    }
+
+    // Fallback to ENV or appSettings
+    if (!email || !password) {
+        email = process.env.MEROSS_EMAIL || appSettings.meross?.email;
+        password = process.env.MEROSS_PASSWORD || appSettings.meross?.password;
+    }
 
     if (!email || !password) {
         console.warn('[MEROSS] Meross credentials missing. Skipping.');
@@ -2745,6 +2769,11 @@ app.post('/api/meross/connect', express.json(), async (req, res) => {
 
         // Reconnect with new/existing credentials
         await initMerossDevices();
+
+        // Save credentials persistently to Firestore
+        if (email && password) {
+            await firestore.savePlatformCredentials('meross', { email, password });
+        }
 
         res.json({
             success: true,

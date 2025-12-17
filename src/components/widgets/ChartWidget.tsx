@@ -88,25 +88,38 @@ export const ChartWidget: React.FC<ChartWidgetProps & { lightSchedule?: { on: st
             console.log('[ChartWidget] No data or invalid data:', data);
             return [];
         }
-        // Accept entries with timestamp OR time OR any sensor values
+        // Accept entries with any sensor values
         const valid = data.filter(d => {
             if (!d) return false;
-            // Accept if has timestamp, time field, or any numeric sensor value
-            const hasTimeInfo = d.timestamp || d.time || d.timeStr;
             const hasSensorValue = typeof d.temperature === 'number' ||
                                    typeof d.humidity === 'number' ||
                                    typeof d.vpd === 'number' ||
+                                   typeof d.substrateHumidity === 'number' ||
                                    typeof d.value === 'number';
-            return hasTimeInfo || hasSensorValue;
-        }).map((d, idx) => ({
-            ...d,
-            // Ensure we have a time field for X axis
-            time: d.time || d.timeStr || d.timestamp || `#${idx}`,
-            temperature: typeof d.temperature === 'number' ? d.temperature : null,
-            humidity: typeof d.humidity === 'number' ? d.humidity : null,
-            vpd: typeof d.vpd === 'number' ? d.vpd : null
-        }));
-        console.log('[ChartWidget] Processed data count:', valid.length, 'from', data.length);
+            return hasSensorValue;
+        }).map((d, idx) => {
+            // Format time for display on X axis
+            let displayTime = `#${idx}`;
+            if (d.time) displayTime = d.time;
+            else if (d.timeStr) displayTime = d.timeStr;
+            else if (d.timestamp) {
+                try {
+                    const date = new Date(d.timestamp);
+                    displayTime = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                } catch { displayTime = String(d.timestamp); }
+            }
+
+            return {
+                ...d,
+                time: displayTime, // For X axis display
+                timestamp: d.timestamp || new Date().toISOString(), // Preserve for night zones
+                temperature: typeof d.temperature === 'number' ? d.temperature : null,
+                humidity: typeof d.humidity === 'number' ? d.humidity : null,
+                vpd: typeof d.vpd === 'number' ? d.vpd : null,
+                substrateHumidity: typeof d.substrateHumidity === 'number' ? d.substrateHumidity : null
+            };
+        });
+        console.log('[ChartWidget] Processed data count:', valid.length, 'from', data.length, 'sample:', valid[0]);
         return valid;
     }, [data]);
 
@@ -256,8 +269,8 @@ export const ChartWidget: React.FC<ChartWidgetProps & { lightSchedule?: { on: st
             margin: { top: 20, right: 10, left: 0, bottom: 5 }
         };
 
-        const grid = <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.1} />;
-        const xaxis = <XAxis dataKey="timestamp" hide />;
+        const grid = <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.2} stroke={isDark ? '#555' : '#ccc'} />;
+        const xaxis = <XAxis dataKey="time" tick={{ fontSize: 10, fill: isDark ? '#888' : '#666' }} tickLine={false} axisLine={false} interval="preserveStartEnd" />;
         const nightZones = renderNightZones();
 
         // Multi-series mode: show temp, humidity, VPD together

@@ -222,6 +222,109 @@ async function deleteDeviceConfig(deviceId) {
   }
 }
 
+/**
+ * Save platform credentials (Meross, Tuya, Xiaomi)
+ * @param {string} platform - Platform name (meross, tuya, xiaomi)
+ * @param {Object} credentials - Credentials object (email, password, or keys)
+ */
+async function savePlatformCredentials(platform, credentials) {
+  if (!platform || !credentials) {
+    console.warn('[FIRESTORE] savePlatformCredentials called without valid params');
+    return;
+  }
+
+  // Basic obfuscation (not true encryption, but prevents casual viewing)
+  const obfuscate = (str) => str ? Buffer.from(str).toString('base64') : '';
+  const safeCredentials = {};
+  for (const [key, value] of Object.entries(credentials)) {
+    safeCredentials[key] = typeof value === 'string' ? obfuscate(value) : value;
+  }
+
+  const localPath = path.join(BACKUP_DIR, `${platform}_credentials.json`);
+
+  // Try Firestore first
+  if (db) {
+    try {
+      await db.collection('platform_credentials').doc(platform).set({
+        ...safeCredentials,
+        platform,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+      console.log(`[FIRESTORE] ${platform} credentials saved.`);
+      return;
+    } catch (error) {
+      console.error(`[FIRESTORE] Error saving ${platform} credentials:`, error.message);
+      // Continue to local fallback
+    }
+  }
+
+  // Local file fallback
+  try {
+    fs.writeFileSync(localPath, JSON.stringify({
+      ...safeCredentials,
+      platform,
+      updatedAt: new Date().toISOString()
+    }, null, 2));
+    console.log(`[LOCAL] ${platform} credentials saved locally.`);
+  } catch (localError) {
+    console.error(`[LOCAL] Error saving ${platform} credentials:`, localError.message);
+  }
+}
+
+/**
+ * Get platform credentials
+ * @param {string} platform - Platform name
+ * @returns {Promise<Object|null>} Credentials object or null
+ */
+async function getPlatformCredentials(platform) {
+  if (!platform) return null;
+
+  // Deobfuscate function
+  const deobfuscate = (str) => {
+    try {
+      return str ? Buffer.from(str, 'base64').toString('utf8') : '';
+    } catch { return str; }
+  };
+
+  const processCredentials = (safeCredentials) => {
+    if (!safeCredentials) return null;
+    const credentials = {};
+    for (const [key, value] of Object.entries(safeCredentials)) {
+      if (key === 'platform' || key === 'updatedAt') continue;
+      credentials[key] = typeof value === 'string' ? deobfuscate(value) : value;
+    }
+    return credentials;
+  };
+
+  // Try Firestore first
+  if (db) {
+    try {
+      const doc = await db.collection('platform_credentials').doc(platform).get();
+      if (doc.exists) {
+        console.log(`[FIRESTORE] ${platform} credentials loaded.`);
+        return processCredentials(doc.data());
+      }
+    } catch (error) {
+      console.error(`[FIRESTORE] Error getting ${platform} credentials:`, error.message);
+      // Continue to local fallback
+    }
+  }
+
+  // Local file fallback
+  const localPath = path.join(BACKUP_DIR, `${platform}_credentials.json`);
+  try {
+    if (fs.existsSync(localPath)) {
+      const safeCredentials = JSON.parse(fs.readFileSync(localPath, 'utf8'));
+      console.log(`[LOCAL] ${platform} credentials loaded from local file.`);
+      return processCredentials(safeCredentials);
+    }
+  } catch (localError) {
+    console.error(`[LOCAL] Error reading ${platform} credentials:`, localError.message);
+  }
+
+  return null;
+}
+
 module.exports = {
   saveSensorRecord,
   getSensorHistory,
@@ -240,7 +343,10 @@ module.exports = {
   getCropSteeringSettings,
   saveAutomationRules,
   getAutomationRules,
-  logAutomationEvent
+  logAutomationEvent,
+  // Platform Credentials
+  savePlatformCredentials,
+  getPlatformCredentials
 };
 
 /**
