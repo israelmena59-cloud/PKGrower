@@ -197,7 +197,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                                 const dev = devices.find(d => d.id === e.target.value);
                                 if (dev) {
                                     setWidgetName(dev.name);
-                                    setSelectedType(getRecommendedType(dev));
+                                    // Don't auto-change widget type - respect user's selection
                                 }
                             }}
                         >

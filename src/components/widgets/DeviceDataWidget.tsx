@@ -106,10 +106,13 @@ export const DeviceDataWidget: React.FC<DeviceDataWidgetProps> = ({
             if (found) {
                 setDevice(found);
                 setError(null);
+                console.log('[DeviceDataWidget] Device found, widgetType:', widgetType);
 
                 // Always fetch history for chart widgets
                 if (widgetType === 'chart') {
+                    console.log('[DeviceDataWidget] Fetching history for chart widget...');
                     const history = await fetchDeviceHistory(deviceId);
+                    console.log('[DeviceDataWidget] History fetched:', history?.length || 0, 'items');
                     setHistoryData(history);
                 }
             } else {
