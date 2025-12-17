@@ -2698,54 +2698,71 @@ async function initMerossDevices() {
         });
 
         // Event Listeners
-        merossClient.on('deviceInitialized', (deviceId, deviceDef, device) => {
-            console.log(`[MEROSS] New Device: ${deviceDef.name} (${deviceDef.type})`);
-            console.log(`[MEROSS] Device keys:`, Object.keys(device));
-            console.log(`[MEROSS] subDeviceList present:`, !!device.subDeviceList);
-            console.log(`[MEROSS] subDeviceList value:`, JSON.stringify(device.subDeviceList));
-
-            merossDevices[deviceId] = {
-                id: deviceId,
-                name: deviceDef.name,
-                type: deviceDef.type,
-                online: device.online,
-                device: device, // Keep reference for control
-                isHub: deviceDef.type?.startsWith('msh')
-            };
-
-            // Check for hub subdevices (sensors connected to hub)
-            if (device.subDeviceList && Array.isArray(device.subDeviceList) && device.subDeviceList.length > 0) {
-                console.log(`[MEROSS] Hub ${deviceDef.name} has ${device.subDeviceList.length} subdevices`);
-                device.subDeviceList.forEach((subDev, idx) => {
-                    console.log(`[MEROSS] Subdevice[${idx}] raw:`, JSON.stringify(subDev));
-                    const subId = subDev.subDeviceId || subDev.id;
-                    console.log(`[MEROSS] Subdevice: ${subDev.subDeviceName || subDev.name} (${subDev.subDeviceType || subDev.type}) ID: ${subId}`);
-                    merossDevices[subId] = {
-                        id: subId,
-                        name: subDev.subDeviceName || subDev.name || `Sensor ${subId}`,
-                        type: subDev.subDeviceType || subDev.type || 'ms100',
-                        online: subDev.status !== 0,
-                        parentHub: deviceId,
-                        device: device, // Use hub device for control
-                        capabilities: ['temperature', 'humidity'],
-                        lastTemp: subDev.currentTemp || null,
-                        lastHumidity: subDev.currentHumidity || null
-                    };
-                });
-                console.log(`[MEROSS] Total devices after subdevice registration: ${Object.keys(merossDevices).length}`);
-            } else {
-                console.log(`[MEROSS] Device ${deviceDef.name} has NO subdevices`);
-            }
-        });
+        // The 'deviceInitialized' event listener is replaced by the logic within the connect callback.
+        // merossClient.on('deviceInitialized', (deviceId, deviceDef, device) => { ... });
 
         merossClient.on('data', (deviceId, namespace, payload) => {
              // console.log(`[MEROSS] Data from ${deviceId}:`, payload);
              // Update status if needed
         });
 
-        // Connect
-        await merossClient.connect();
-        console.log('[MEROSS] Successfully connected!');
+        // Use callback-based connect to properly iterate devices after connection
+        merossClient.connect((err, deviceCount) => {
+            if (err) {
+                console.error('[MEROSS] Connection error:', err.message);
+                return;
+            }
+
+            console.log(`[MEROSS] Connected! Library reported ${deviceCount} devices.`);
+            console.log(`[MEROSS] merossClient.devices keys:`, Object.keys(merossClient.devices));
+
+            // Iterate all devices and register them, extracting subdevices from hubs
+            for (const [deviceId, deviceObj] of Object.entries(merossClient.devices)) {
+                console.log(`[MEROSS] Processing device: ${deviceId}`);
+                console.log(`[MEROSS] Device object keys:`, Object.keys(deviceObj));
+
+                // Get device definition from the object
+                const deviceName = deviceObj.dev?.devName || deviceObj.devName || 'Unknown';
+                const deviceType = deviceObj.dev?.deviceType || deviceObj.deviceType || 'unknown';
+
+                merossDevices[deviceId] = {
+                    id: deviceId,
+                    name: deviceName,
+                    type: deviceType,
+                    online: deviceObj.online !== false,
+                    device: deviceObj,
+                    isHub: deviceType?.startsWith('msh')
+                };
+                console.log(`[MEROSS] Registered device: ${deviceName} (${deviceType})`);
+
+                // Check for subdevices (hub-connected sensors like MS100)
+                if (deviceObj.subDeviceList && Array.isArray(deviceObj.subDeviceList)) {
+                    console.log(`[MEROSS] Hub has ${deviceObj.subDeviceList.length} subdevices:`, JSON.stringify(deviceObj.subDeviceList));
+
+                    deviceObj.subDeviceList.forEach((subDev, idx) => {
+                        console.log(`[MEROSS] Subdevice[${idx}]:`, JSON.stringify(subDev));
+                        const subId = subDev.subDeviceId || subDev.id;
+                        const subName = subDev.subDeviceName || subDev.name || `Sensor ${idx + 1}`;
+                        const subType = subDev.subDeviceType || subDev.type || 'ms100';
+
+                        merossDevices[subId] = {
+                            id: subId,
+                            name: subName,
+                            type: subType,
+                            online: subDev.status !== 0,
+                            parentHub: deviceId,
+                            device: deviceObj, // Use hub device for control
+                            capabilities: ['temperature', 'humidity'],
+                            lastTemp: subDev.temperature?.room || subDev.currentTemp || null,
+                            lastHumidity: subDev.humidity?.room || subDev.currentHumidity || null
+                        };
+                        console.log(`[MEROSS] Registered subdevice: ${subName} (${subType}) ID: ${subId}`);
+                    });
+                }
+            }
+
+            console.log(`[MEROSS] Total registered devices: ${Object.keys(merossDevices).length}`);
+        });
 
     } catch (e) {
         console.error('[MEROSS] Connection failed:', e.message);
