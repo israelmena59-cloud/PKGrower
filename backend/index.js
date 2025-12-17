@@ -881,51 +881,48 @@ app.post('/api/irrigation/shot', async (req, res) => {
     }
 });
 
-/*
 async function loadSettings() {
     try {
         const remoteSettings = await firestore.getGlobalSettings();
         if (remoteSettings && Object.keys(remoteSettings).length > 0) {
-            appSettings = { ...appSettings, ...remoteSettings };
-            // Populate process.env overrides
-            if (appSettings.tuya.accessKey) process.env.TUYA_ACCESS_KEY = appSettings.tuya.accessKey;
-            if (appSettings.tuya.secretKey) process.env.TUYA_SECRET_KEY = appSettings.tuya.secretKey;
-            // Meross
-            if (appSettings.meross) {
-                if (appSettings.meross.email) process.env.MEROSS_EMAIL = appSettings.meross.email;
-                if (appSettings.meross.password) process.env.MEROSS_PASSWORD = appSettings.meross.password;
-            }
-            console.log('[SETTINGS] Loaded from Firestore.');
-        } else {
-            console.log('[SETTINGS] No remote settings found. Using defaults/env.');
-        }
-    } catch(e) {
-        console.warn('[SETTINGS] Load error:', e.message);
-    }
-}
-*/
-async function loadSettings() {
-    try {
-        const remoteSettings = await firestore.getGlobalSettings();
-        if (remoteSettings && Object.keys(remoteSettings).length > 0) {
-            // Deep merge to preserve defaults
+            console.log('[SETTINGS] Loading configuration from Firestore...');
+
+            // Deep merge each module to preserve defaults
             if (remoteSettings.app) Object.assign(appSettings.app, remoteSettings.app);
             if (remoteSettings.tuya) Object.assign(appSettings.tuya, remoteSettings.tuya);
             if (remoteSettings.xiaomi) Object.assign(appSettings.xiaomi, remoteSettings.xiaomi);
 
-            // Meross Special Handling
-            if (remoteSettings.meross) {
-                 process.env.MEROSS_EMAIL = remoteSettings.meross.email;
-                 process.env.MEROSS_PASSWORD = remoteSettings.meross.password;
-                 console.log('[SETTINGS] Meross credentials restored from database.');
-                 appSettings.meross = remoteSettings.meross; // Ensure it's in appSettings structure if needed
+            // CRITICAL: Load lighting configuration (prevents wrong device on/off)
+            if (remoteSettings.lighting) {
+                Object.assign(appSettings.lighting, remoteSettings.lighting);
+                console.log('[SETTINGS] Lighting config restored:',
+                    `enabled=${appSettings.lighting.enabled}, mode=${appSettings.lighting.mode}, onTime=${appSettings.lighting.onTime}, offTime=${appSettings.lighting.offTime}`);
             }
 
-            // Sync Process Env for Tuya/Xiaomi
+            // CRITICAL: Load irrigation configuration
+            if (remoteSettings.irrigation) {
+                Object.assign(appSettings.irrigation, remoteSettings.irrigation);
+                console.log('[SETTINGS] Irrigation config restored:',
+                    `enabled=${appSettings.irrigation.enabled}, mode=${appSettings.irrigation.mode}`);
+            }
+
+            // CRITICAL: Load crop steering configuration
+            if (remoteSettings.cropSteering) {
+                Object.assign(appSettings.cropSteering, remoteSettings.cropSteering);
+                console.log('[SETTINGS] CropSteering config restored:',
+                    `stage=${appSettings.cropSteering.stage}`);
+            }
+
+            // Load AI configuration
+            if (remoteSettings.ai) {
+                Object.assign(appSettings.ai, remoteSettings.ai);
+            }
+
+            // Sync Process Env for Tuya
             if (appSettings.tuya.accessKey) process.env.TUYA_ACCESS_KEY = appSettings.tuya.accessKey;
             if (appSettings.tuya.secretKey) process.env.TUYA_SECRET_KEY = appSettings.tuya.secretKey;
 
-            console.log('[SETTINGS] Loaded from Firestore.');
+            console.log('[SETTINGS] ✓ All configuration loaded from Firestore.');
         } else {
             console.log('[SETTINGS] No remote settings found. Using defaults/env.');
         }
@@ -936,18 +933,21 @@ async function loadSettings() {
 
 async function saveSettings() {
     try {
-         // Create a clean object to save (remove secrets from logs if we were logging)
+         // Create a clean object to save ALL configuration modules
          const toSave = {
              app: appSettings.app,
              tuya: appSettings.tuya,
              xiaomi: appSettings.xiaomi,
-             meross: {
-                 email: process.env.MEROSS_EMAIL,
-                 password: process.env.MEROSS_PASSWORD
-             }
+             // Critical modules that control device behavior
+             lighting: appSettings.lighting,
+             irrigation: appSettings.irrigation,
+             cropSteering: appSettings.cropSteering,
+             // AI settings
+             ai: appSettings.ai
+             // Note: Meross credentials now saved separately via savePlatformCredentials
          };
          await firestore.saveGlobalSettings(toSave);
-         console.log('[SETTINGS] Saved to Firestore.');
+         console.log('[SETTINGS] Saved all configuration to Firestore.');
     } catch (err) {
         console.error('[SETTINGS] Error saving settings:', err.message);
     }
@@ -4567,35 +4567,22 @@ app.use((err, req, res, next) => {
     });
 });
 
-// Start Server
-app.listen(PORT, () => {
-  console.log(`âœ“ Dispositivos Tuya registrados: ${Object.keys(tuyaDevices).length}`);
-  console.log(`\nðŸ“¡ Endpoints disponibles:`);
-  console.log(`  â€¢ GET  /api/sensors/latest`);
-  console.log(`  â€¢ GET  /api/sensors/history`);
-  console.log(`  â€¢ GET  /api/devices`);
-  console.log(`  â€¢ GET  /api/devices/all`);
-  console.log(`  â€¢ GET  /api/devices/tuya`);
-  console.log(`  â€¢ GET  /api/sensors/soil`);
-  console.log(`  â€¢ GET  /api/camera/info`);
-  console.log(`  â€¢ GET  /api/camera/snapshot`);
-  console.log(`  â€¢ GET  /api/camera/stream`);
-  console.log(`  â€¢ POST /api/camera/night-vision`);
-  console.log(`  â€¢ GET  /api/device/camera/status`);
-  console.log(`  â€¢ POST /api/device/camera/record/start`);
-  console.log(`  â€¢ POST /api/device/camera/record/stop`);
-  console.log(`  â€¢ POST /api/device/camera/capture`);
-  console.log(`  â€¢ GET  /api/device/humidifier/status`);
-  console.log(`  â€¢ POST /api/automation/humidifier-extractor`);
-  console.log(`  â€¢ POST /api/device/:id/control`);
-  console.log(`  â€¢ POST /api/device/:id/toggle`);
-  console.log(`  â€¢ POST /api/chat`);
-  console.log(`  â€¢ GET  /api/devices/diagnostics`);
-  console.log(`  â€¢ GET  /api/calendar/events`);
-  console.log(`  â€¢ POST /api/calendar/events`);
-  console.log(`  â€¢ DELETE /api/calendar/events/:id`);
-  console.log(`  â€¢ GET  /api/settings`);
-  console.log(`  â€¢ POST /api/settings`);
-  console.log(`  â€¢ POST /api/settings/reset`);
-  console.log(`\nðŸ”— Frontend: http://localhost:5173\n`);
-});
+// --- SERVER INITIALIZATION ---
+// Load all saved configurations from Firestore before starting server
+(async () => {
+    try {
+        console.log('[STARTUP] Loading saved configuration from Firestore...');
+        await loadSettings();
+        await loadCustomDevices();
+        console.log('[STARTUP] Configuration loaded. Starting server...');
+    } catch (e) {
+        console.warn('[STARTUP] Config load error (using defaults):', e.message);
+    }
+
+    // Start Server
+    app.listen(PORT, () => {
+        console.log(`✓ Dispositivos Tuya registrados: ${Object.keys(tuyaDevices).length}`);
+        console.log(`\n📡 PKGrower Server Ready on port ${PORT}`);
+        console.log(`📗 All configuration modules loaded from Firestore`);
+    });
+})();
