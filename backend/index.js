@@ -4462,6 +4462,7 @@ app.get('/api/crop-steering/stages', (req, res) => {
                 ec: config.ec,
                 light: config.light
             }
+        }))
     });
 });
 
