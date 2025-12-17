@@ -242,7 +242,19 @@ async function savePlatformCredentials(platform, credentials) {
 
   const localPath = path.join(BACKUP_DIR, `${platform}_credentials.json`);
 
-  // Try Firestore first
+  // ALWAYS save locally first as backup (handles Firestore quota issues)
+  try {
+    fs.writeFileSync(localPath, JSON.stringify({
+      ...safeCredentials,
+      platform,
+      updatedAt: new Date().toISOString()
+    }, null, 2));
+    console.log(`[LOCAL] ${platform} credentials saved locally as backup.`);
+  } catch (localError) {
+    console.error(`[LOCAL] Error saving ${platform} credentials:`, localError.message);
+  }
+
+  // Also try Firestore (may fail with quota)
   if (db) {
     try {
       await db.collection('platform_credentials').doc(platform).set({
@@ -250,24 +262,10 @@ async function savePlatformCredentials(platform, credentials) {
         platform,
         updatedAt: admin.firestore.FieldValue.serverTimestamp()
       });
-      console.log(`[FIRESTORE] ${platform} credentials saved.`);
-      return;
+      console.log(`[FIRESTORE] ${platform} credentials also saved to Firestore.`);
     } catch (error) {
-      console.error(`[FIRESTORE] Error saving ${platform} credentials:`, error.message);
-      // Continue to local fallback
+      console.warn(`[FIRESTORE] Could not save ${platform} credentials (local backup exists):`, error.message);
     }
-  }
-
-  // Local file fallback
-  try {
-    fs.writeFileSync(localPath, JSON.stringify({
-      ...safeCredentials,
-      platform,
-      updatedAt: new Date().toISOString()
-    }, null, 2));
-    console.log(`[LOCAL] ${platform} credentials saved locally.`);
-  } catch (localError) {
-    console.error(`[LOCAL] Error saving ${platform} credentials:`, localError.message);
   }
 }
 
