@@ -82,15 +82,26 @@ export const ChartWidget: React.FC<ChartWidgetProps & { lightSchedule?: { on: st
     const [growthStage, setGrowthStage] = useState<GrowthStage>('none');
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
-    // Process and validate data
+    // Process and validate data - more flexible filtering
     const processedData = React.useMemo(() => {
         if (!data || !Array.isArray(data)) {
             console.log('[ChartWidget] No data or invalid data:', data);
             return [];
         }
-        // Filter out entries without timestamp and ensure numeric values
-        const valid = data.filter(d => d && d.timestamp).map(d => ({
+        // Accept entries with timestamp OR time OR any sensor values
+        const valid = data.filter(d => {
+            if (!d) return false;
+            // Accept if has timestamp, time field, or any numeric sensor value
+            const hasTimeInfo = d.timestamp || d.time || d.timeStr;
+            const hasSensorValue = typeof d.temperature === 'number' ||
+                                   typeof d.humidity === 'number' ||
+                                   typeof d.vpd === 'number' ||
+                                   typeof d.value === 'number';
+            return hasTimeInfo || hasSensorValue;
+        }).map((d, idx) => ({
             ...d,
+            // Ensure we have a time field for X axis
+            time: d.time || d.timeStr || d.timestamp || `#${idx}`,
             temperature: typeof d.temperature === 'number' ? d.temperature : null,
             humidity: typeof d.humidity === 'number' ? d.humidity : null,
             vpd: typeof d.vpd === 'number' ? d.vpd : null
