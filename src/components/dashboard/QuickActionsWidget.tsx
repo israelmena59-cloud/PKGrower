@@ -85,10 +85,17 @@ const QuickActionsWidget: React.FC = () => {
         />
       </Box>
 
-      {/* Quick Shot Buttons */}
+      {/* Quick Shot Buttons - P1-P6 with Gradients */}
       <Grid container spacing={1} sx={{ mb: 2 }}>
-        {[1, 2, 3, 5].map((pct) => (
-          <Grid item xs={3} key={pct}>
+        {[
+          { label: 'P1', pct: 1, color: '#22c55e' },
+          { label: 'P2', pct: 2, color: '#3b82f6' },
+          { label: 'P3', pct: 3, color: '#8b5cf6' },
+          { label: 'P4', pct: 4, color: '#f59e0b' },
+          { label: 'P5', pct: 5, color: '#ef4444' },
+          { label: 'P6', pct: 6, color: '#ec4899' }
+        ].map(({ label, pct, color }) => (
+          <Grid item xs={4} key={label}>
             <Button
               fullWidth
               variant="contained"
@@ -96,13 +103,19 @@ const QuickActionsWidget: React.FC = () => {
               disabled={pulsing}
               onClick={() => handleQuickShot(pct)}
               sx={{
-                py: 1.5,
-                fontSize: '0.75rem',
-                bgcolor: 'rgba(0, 122, 255, 0.8)',
-                '&:hover': { bgcolor: 'rgba(0, 122, 255, 1)' }
+                py: 1,
+                background: `linear-gradient(135deg, ${color}dd 0%, ${color}99 100%)`,
+                '&:hover': { background: `linear-gradient(135deg, ${color} 0%, ${color}cc 100%)` },
+                flexDirection: 'column',
+                gap: 0
               }}
             >
-              {pulsing ? <CircularProgress size={16} color="inherit" /> : `${pct}%`}
+              {pulsing ? <CircularProgress size={14} color="inherit" /> : (
+                <>
+                  <Typography variant="body2" fontWeight="bold">{label}</Typography>
+                  <Typography variant="caption" sx={{ opacity: 0.8, fontSize: '0.6rem' }}>{getVolume(pct)}ml</Typography>
+                </>
+              )}
             </Button>
           </Grid>
         ))}
