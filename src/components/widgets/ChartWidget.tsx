@@ -407,9 +407,40 @@ export const ChartWidget: React.FC<ChartWidgetProps & { lightSchedule?: { on: st
 
     if (!processedData || processedData.length === 0) {
         return (
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'text.disabled', flexDirection: 'column', gap: 1 }}>
-                <Typography variant="body2">No Data ({timeRange})</Typography>
-                <IconButton size="small" onClick={handleOpenSettings}><Settings size={16} /></IconButton>
+            <Box sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                height: '100%',
+                flexDirection: 'column',
+                gap: 2,
+                p: 3
+            }}>
+                {/* Shimmer placeholder */}
+                <Box className="loading-shimmer" sx={{
+                    width: '100%',
+                    height: 120,
+                    borderRadius: '16px',
+                    opacity: 0.5
+                }} />
+                <Box sx={{ textAlign: 'center' }}>
+                    <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500 }}>
+                        Sin datos disponibles
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: 'text.disabled' }}>
+                        ({timeRange})
+                    </Typography>
+                </Box>
+                <IconButton
+                    size="small"
+                    onClick={handleOpenSettings}
+                    sx={{
+                        opacity: 0.6,
+                        '&:hover': { opacity: 1, bgcolor: 'rgba(255,255,255,0.1)' }
+                    }}
+                >
+                    <Settings size={16} />
+                </IconButton>
             </Box>
         );
     }
