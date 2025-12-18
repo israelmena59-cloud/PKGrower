@@ -165,16 +165,35 @@ export const DeviceConfigModal: React.FC<DeviceConfigModalProps> = ({
       fullWidth
       PaperProps={{
         sx: {
-          background: 'rgba(20, 20, 20, 0.95)',
-          backdropFilter: 'blur(20px)',
-          borderRadius: 3,
-          border: '1px solid rgba(255,255,255,0.1)'
+          background: 'rgba(20, 20, 20, 0.92)',
+          backdropFilter: 'blur(24px)',
+          borderRadius: '20px',
+          border: '1px solid rgba(255,255,255,0.08)',
+          boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)'
         }
       }}
     >
-      <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-        <Settings size={24} />
-        Configurar Dispositivo
+      <DialogTitle sx={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 2,
+        borderBottom: '1px solid rgba(255,255,255,0.08)',
+        pb: 2
+      }}>
+        <Box sx={{
+          p: 1.5,
+          borderRadius: '12px',
+          background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.3), rgba(139, 92, 246, 0.1))',
+          color: '#a78bfa'
+        }}>
+          <Settings size={22} />
+        </Box>
+        <Box>
+          <Typography variant="h6" fontWeight="bold">Configurar Dispositivo</Typography>
+          <Typography variant="caption" color="text.secondary">
+            Ajusta nombre, tipo y capacidades
+          </Typography>
+        </Box>
       </DialogTitle>
 
       <DialogContent>
