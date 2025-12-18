@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Box, Typography, Card, CardContent, CardHeader, Grid, Switch, FormControlLabel, Button, TextField, Divider, Chip, Slider, Alert, LinearProgress } from '@mui/material';
+import { Box, Typography, Card, CardContent, CardHeader, Grid, Switch, FormControlLabel, Button, TextField, Divider, Chip, Slider, Alert, LinearProgress, Dialog, DialogTitle, DialogContent, DialogActions, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Checkbox } from '@mui/material';
 import { Lightbulb, Clock, Save, Sun, Moon, Zap, Info, Leaf, Target, Calculator } from 'lucide-react';
 import DeviceSwitch from '../components/dashboard/DeviceSwitch';
 import { apiClient } from '../api/client';
@@ -42,6 +42,10 @@ const Lighting: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const [ppfdInput, setPpfdInput] = useState(600);
+
+  // New state for device selection
+  const [deviceDialogOpen, setDeviceDialogOpen] = useState(false);
+  const [availableDevices, setAvailableDevices] = useState<any[]>([]);
 
   // Crop Steering Integration
   const { currentStage, settings: cropSettings } = useCropSteering();
@@ -124,6 +128,33 @@ const Lighting: React.FC = () => {
       const action = currentState ? 'off' : 'on';
       await apiClient.controlDevice(key, action);
       setDevices((prev: any) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  // Handler to open add device dialog
+  const handleOpenAddDevice = async () => {
+    try {
+      const allDevices = await apiClient.getDevices();
+      // Filter for light-type devices or switches
+      const lightDevices = (allDevices || []).filter((d: any) =>
+        d.type === 'light' || d.type === 'switch' || d.capabilities?.includes('switch')
+      );
+      setAvailableDevices(lightDevices);
+      setDeviceDialogOpen(true);
+    } catch (err) {
+      console.error('Error loading devices:', err);
+    }
+  };
+
+  // Handler to add device to lighting configuration
+  const handleAddDevice = (deviceId: string) => {
+    if (!settings) return;
+    const currentDevices = settings.devices || [];
+    if (!currentDevices.includes(deviceId)) {
+      setSettings({ ...settings, devices: [...currentDevices, deviceId] });
+      setSuccessMsg('Dispositivo agregado');
+      setTimeout(() => setSuccessMsg(''), 2000);
+    }
+    setDeviceDialogOpen(false);
   };
 
   if (loading || !settings) return <Box sx={{ p: 4 }}><Typography>Cargando configuración...</Typography></Box>;
@@ -236,7 +267,7 @@ const Lighting: React.FC = () => {
                   avatar={<Lightbulb color="#f59e0b" />}
                   titleTypographyProps={{ fontWeight: 'bold' }}
                   action={
-                    <Button size="small" variant="outlined" startIcon={<Zap size={14} />}>
+                    <Button size="small" variant="outlined" startIcon={<Zap size={14} />} onClick={handleOpenAddDevice}>
                       + Agregar
                     </Button>
                   }
@@ -420,6 +451,40 @@ const Lighting: React.FC = () => {
             </Box>
         </Grid>
       </Grid>
+
+      {/* Add Device Dialog */}
+      <Dialog open={deviceDialogOpen} onClose={() => setDeviceDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Agregar Dispositivo de Luz</DialogTitle>
+        <DialogContent>
+          {availableDevices.length === 0 ? (
+            <Typography color="text.secondary" sx={{ py: 2 }}>
+              No hay dispositivos disponibles. Conecta una plataforma en Configuración.
+            </Typography>
+          ) : (
+            <List>
+              {availableDevices.map((device) => (
+                <ListItem key={device.id} disablePadding>
+                  <ListItemButton onClick={() => handleAddDevice(device.id)}>
+                    <ListItemIcon>
+                      <Lightbulb color={settings?.devices?.includes(device.id) ? "#f59e0b" : "#666"} />
+                    </ListItemIcon>
+                    <ListItemText
+                      primary={device.name || device.id}
+                      secondary={`${device.platform || 'unknown'} - ${device.type}`}
+                    />
+                    {settings?.devices?.includes(device.id) && (
+                      <Chip label="Agregado" size="small" color="success" />
+                    )}
+                  </ListItemButton>
+                </ListItem>
+              ))}
+            </List>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeviceDialogOpen(false)}>Cerrar</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

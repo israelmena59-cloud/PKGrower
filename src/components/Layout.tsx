@@ -125,29 +125,20 @@ const Layout: React.FC<LayoutProps> = ({ children, onNavigate, activePage }) => 
         </Box>
 
         <Box sx={{ flex: 1, overflowY: 'auto', py: 2 }}>
-            <Typography variant="caption" sx={{ px: 4, mb: 1, display: 'block', fontWeight: 'bold', color: mode === 'dark' ? 'rgba(255,255,255,0.4)' : 'text.disabled', letterSpacing: 1 }}>CORE</Typography>
+            {/* MAIN SECTIONS - Consolidated */}
+            <Typography variant="caption" sx={{ px: 4, mb: 1, display: 'block', fontWeight: 'bold', color: mode === 'dark' ? 'rgba(255,255,255,0.4)' : 'text.disabled', letterSpacing: 1 }}>PRINCIPAL</Typography>
             <List component="nav">
-                <NavItem page="dashboard" icon={<LayoutDashboard size={20} />} label="Centro de Mando" />
-                <NavItem page="lighting" icon={<Zap size={20} />} label="Iluminación" />
-                <NavItem page="irrigation" icon={<Droplets size={20} />} label="Riego y Estrategia" />
-                <NavItem page="environment" icon={<Wind size={20} />} label="Atmósfera" />
-                <NavItem page="cropsteering" icon={<Leaf size={20} />} label="Crop Steering" />
-                <NavItem page="nutrients" icon={<Beaker size={20} />} label="Nutrientes" />
+                <NavItem page="dashboard" icon={<LayoutDashboard size={20} />} label="Dashboard" />
+                <NavItem page="cropsteering" icon={<Leaf size={20} />} label="Cultivo" />
+                <NavItem page="environment" icon={<Wind size={20} />} label="Ambiente" />
+                <NavItem page="devices" icon={<Cpu size={20} />} label="Dispositivos" />
             </List>
 
             <Divider sx={{ my: 2, borderColor: mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)', mx: 3 }} />
 
-            <Typography variant="caption" sx={{ px: 4, mb: 1, display: 'block', fontWeight: 'bold', color: mode === 'dark' ? 'rgba(255,255,255,0.4)' : 'text.disabled', letterSpacing: 1 }}>NEURAL</Typography>
+            <Typography variant="caption" sx={{ px: 4, mb: 1, display: 'block', fontWeight: 'bold', color: mode === 'dark' ? 'rgba(255,255,255,0.4)' : 'text.disabled', letterSpacing: 1 }}>SISTEMA</Typography>
             <List component="nav">
                 <NavItem page="ai_assistant" icon={<Bot size={20} />} label="Copiloto IA" />
-                <NavItem page="calendar" icon={<Calendar size={20} />} label="Cronología" />
-            </List>
-
-            <Divider sx={{ my: 2, borderColor: mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)', mx: 3 }} />
-
-            <Typography variant="caption" sx={{ px: 4, mb: 1, display: 'block', fontWeight: 'bold', color: mode === 'dark' ? 'rgba(255,255,255,0.4)' : 'text.disabled', letterSpacing: 1 }}>SYSTEM</Typography>
-            <List component="nav">
-                <NavItem page="devices" icon={<Cpu size={20} />} label="Dispositivos" />
                 <NavItem page="camera" icon={<Camera size={20} />} label="Visión" />
                 <NavItem page="settings" icon={<Settings size={20} />} label="Configuración" />
             </List>
