@@ -306,48 +306,38 @@ export const ALERT_THRESHOLDS: AlertThreshold[] = [
 // ==================== IRRIGATION PHASES ====================
 
 export interface IrrigationPhase {
-  id: 'P1' | 'P2' | 'P3' | 'P4' | 'P5';
+  id: 'P1' | 'P2' | 'P3';
   name: string;
   nameEs: string;
   description: string;
+  descriptionEs: string;
   color: string;
 }
 
 export const IRRIGATION_PHASES: IrrigationPhase[] = [
   {
     id: 'P1',
-    name: 'First Shot',
-    nameEs: 'Primer Riego',
-    description: 'First irrigation after lights on, rehydrate substrate',
-    color: '#22c55e'
+    name: 'Saturation',
+    nameEs: 'Saturación',
+    description: 'Irrigation events to saturate substrate to field capacity',
+    descriptionEs: 'Eventos de riego para saturar el sustrato hasta capacidad de campo',
+    color: '#22c55e' // Green
   },
   {
     id: 'P2',
-    name: 'Vegetative Phase',
-    nameEs: 'Fase Vegetativa',
-    description: 'Frequent irrigations, maintain high VWC',
-    color: '#3b82f6'
+    name: 'Maintenance',
+    nameEs: 'Mantenimiento',
+    description: 'Maintenance events to maintain VWC% at target level',
+    descriptionEs: 'Eventos de mantenimiento para mantener el VWC% en el nivel objetivo',
+    color: '#3b82f6' // Blue
   },
   {
     id: 'P3',
-    name: 'Generative Phase',
-    nameEs: 'Fase Generativa',
-    description: 'Reduced frequency, allow dryback',
-    color: '#f97316'
-  },
-  {
-    id: 'P4',
-    name: 'Last Shot',
-    nameEs: 'Último Riego',
-    description: 'Final irrigation before lights off',
-    color: '#a855f7'
-  },
-  {
-    id: 'P5',
-    name: 'Night Period',
-    nameEs: 'Período Nocturno',
-    description: 'No irrigation, maximum dryback',
-    color: '#6b7280'
+    name: 'Dryback',
+    nameEs: 'Secado',
+    description: 'Drying period from last P2 until first P1 of next day',
+    descriptionEs: 'Periodo de secado desde el último P2 hasta el primer P1 del día siguiente',
+    color: '#f97316' // Orange
   }
 ];
 

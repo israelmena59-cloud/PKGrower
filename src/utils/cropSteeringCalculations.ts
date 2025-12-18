@@ -194,7 +194,14 @@ export const calculateRequiredPPFD = (targetDLI: number, hoursOn: number): numbe
 
 // ==================== PHASE OF DAY CALCULATIONS ====================
 
-export type IrrigationPhaseId = 'P1' | 'P2' | 'P3' | 'P4' | 'P5';
+export type IrrigationPhaseId = 'P1' | 'P2' | 'P3';
+
+/**
+ * Irrigation phases:
+ * P1 - Saturation: Initial irrigation events to saturate substrate
+ * P2 - Maintenance: Events to maintain VWC% at target level
+ * P3 - Dryback: Drying period from last P2 until first P1 of next day
+ */
 
 /**
  * Determine current irrigation phase based on time and light schedule
@@ -223,14 +230,15 @@ export const getCurrentIrrigationPhase = (
     ? currentTotalMinutes >= lightsOnMinutes && currentTotalMinutes < lightsOffMinutes
     : currentTotalMinutes >= lightsOnMinutes || currentTotalMinutes < lightsOffMinutes;
 
+  // P3 - Dryback: Night period or last hours before lights off
   if (!isLightsOn) {
-    return 'P5'; // Night period
+    return 'P3';
   }
 
   // Calculate minutes since lights on
   let minutesSinceLightsOn = currentTotalMinutes - lightsOnMinutes;
   if (minutesSinceLightsOn < 0) {
-    minutesSinceLightsOn += 24 * 60; // Handle overnight
+    minutesSinceLightsOn += 24 * 60;
   }
 
   // Calculate minutes until lights off
@@ -239,27 +247,18 @@ export const getCurrentIrrigationPhase = (
     minutesUntilLightsOff += 24 * 60;
   }
 
-  // Determine phase
+  // P1 - Saturation: First ~2 hours after lights on
   if (minutesSinceLightsOn < stage.irrigation.p1Delay) {
-    return 'P1'; // Pre-first irrigation
+    return 'P1';
   }
 
+  // P3 - Dryback: Last hours before lights off (p4Before now means dryback start)
   if (minutesUntilLightsOff <= stage.irrigation.p4Before) {
-    return 'P4'; // Last irrigation window
+    return 'P3';
   }
 
-  // P2 vs P3 depends on time of day (first half = P2, second half = P3)
-  const totalLightMinutes = lightsOnMinutes < lightsOffMinutes
-    ? lightsOffMinutes - lightsOnMinutes
-    : (24 * 60) - lightsOnMinutes + lightsOffMinutes;
-
-  const midpoint = totalLightMinutes / 2;
-
-  if (minutesSinceLightsOn < midpoint) {
-    return 'P2'; // Vegetative phase (morning)
-  }
-
-  return 'P3'; // Generative phase (afternoon)
+  // P2 - Maintenance: During the middle of day
+  return 'P2';
 };
 
 /**
@@ -276,15 +275,11 @@ export const getIrrigationFrequency = (
 
   switch (phase) {
     case 'P1':
-      return 0; // Single shot
+      return 30; // Frequent saturation shots
     case 'P2':
-      return stage.irrigation.p2Frequency;
+      return stage.irrigation.p2Frequency; // Maintenance frequency
     case 'P3':
-      return stage.irrigation.p3Frequency;
-    case 'P4':
-      return 0; // Single shot
-    case 'P5':
-      return Infinity; // No irrigation
+      return Infinity; // No irrigation during dryback
     default:
       return 60;
   }
