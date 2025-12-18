@@ -266,6 +266,93 @@ const CultivationCalendar: React.FC = () => {
         </Grid>
       </Grid>
 
+      {/* Quick Actions */}
+      <Box className="glass-panel" sx={{ p: 2, borderRadius: '16px', mb: 3 }}>
+        <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 2 }}>
+          ⚡ Acciones Rápidas
+        </Typography>
+        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+          {/* Quick Photoperiod Changes */}
+          <Button
+            size="small"
+            variant="outlined"
+            startIcon={<Sun size={14} />}
+            onClick={() => {
+              const newEvent: CultivationEvent = {
+                id: Date.now().toString(),
+                date: new Date().toISOString().split('T')[0],
+                type: 'photoperiod',
+                title: 'Cambio a Floración',
+                fromValue: currentPhotoperiod,
+                toValue: '12/12'
+              };
+              saveEvents([newEvent, ...events]);
+            }}
+            sx={{ borderColor: '#f59e0b', color: '#f59e0b' }}
+          >
+            Cambiar a 12/12
+          </Button>
+          <Button
+            size="small"
+            variant="outlined"
+            startIcon={<Sun size={14} />}
+            onClick={() => {
+              const newEvent: CultivationEvent = {
+                id: Date.now().toString(),
+                date: new Date().toISOString().split('T')[0],
+                type: 'photoperiod',
+                title: 'Ajuste Fotoperiodo',
+                fromValue: currentPhotoperiod,
+                toValue: '11/13'
+              };
+              saveEvents([newEvent, ...events]);
+            }}
+            sx={{ borderColor: '#a855f7', color: '#a855f7' }}
+          >
+            Cambiar a 11/13
+          </Button>
+          {/* Quick Stage Changes */}
+          <Button
+            size="small"
+            variant="outlined"
+            startIcon={<Leaf size={14} />}
+            onClick={() => {
+              const newEvent: CultivationEvent = {
+                id: Date.now().toString(),
+                date: new Date().toISOString().split('T')[0],
+                type: 'stage',
+                title: 'Inicio Floración',
+                fromValue: currentStage,
+                toValue: 'Floración Temprana'
+              };
+              saveEvents([newEvent, ...events]);
+            }}
+            sx={{ borderColor: '#22c55e', color: '#22c55e' }}
+          >
+            Iniciar Floración
+          </Button>
+          <Button
+            size="small"
+            variant="outlined"
+            startIcon={<Flower2 size={14} />}
+            onClick={() => {
+              const newEvent: CultivationEvent = {
+                id: Date.now().toString(),
+                date: new Date().toISOString().split('T')[0],
+                type: 'stage',
+                title: 'Etapa Bulk',
+                fromValue: currentStage,
+                toValue: 'Floración Media'
+              };
+              saveEvents([newEvent, ...events]);
+            }}
+            sx={{ borderColor: '#ec4899', color: '#ec4899' }}
+          >
+            Floración Media
+          </Button>
+        </Box>
+      </Box>
+
       {/* Events Timeline */}
       {events.length === 0 ? (
         <Box className="glass-panel" sx={{ p: 4, borderRadius: '16px', textAlign: 'center' }}>
@@ -273,9 +360,12 @@ const CultivationCalendar: React.FC = () => {
           <Typography variant="body1" color="text.secondary">
             No hay eventos registrados
           </Typography>
-          <Typography variant="caption" color="text.disabled">
-            Registra cambios de fotoperiodo, etapas de crecimiento y más
+          <Typography variant="caption" color="text.disabled" sx={{ display: 'block', mb: 2 }}>
+            Usa las acciones rápidas arriba o crea un nuevo evento
           </Typography>
+          <Alert severity="info" sx={{ textAlign: 'left', mt: 2 }}>
+            💡 <strong>Tip:</strong> Registra tu fotoperiodo inicial (18/6 para vegetativo) y la etapa actual para empezar el seguimiento.
+          </Alert>
         </Box>
       ) : (
         <Box className="glass-panel" sx={{ p: 2, borderRadius: '16px' }}>

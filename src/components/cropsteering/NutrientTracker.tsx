@@ -82,6 +82,7 @@ const NutrientTracker: React.FC = () => {
   const [ecRunoff, setEcRunoff] = useState<number | undefined>();
   const [phRunoff, setPhRunoff] = useState<number | undefined>();
   const [volumeL, setVolumeL] = useState<number>(2);
+  const [tankVolume, setTankVolume] = useState<number>(50); // Reservoir volume in liters
   const [notes, setNotes] = useState('');
 
   // Load entries from localStorage
@@ -216,12 +217,12 @@ const NutrientTracker: React.FC = () => {
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
               <Calculator size={18} color="#fb923c" />
               <Typography variant="subtitle2" fontWeight="bold" sx={{ color: '#fb923c' }}>
-                Calculadora Athena Pro Line
+                Calculadora Athena Pro Line - Estanque
               </Typography>
             </Box>
 
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, flexWrap: 'wrap' }}>
-              <Box sx={{ flex: 1, minWidth: 200 }}>
+            <Grid container spacing={2} sx={{ mb: 2 }}>
+              <Grid item xs={6}>
                 <Typography variant="caption" color="text.secondary">EC Objetivo</Typography>
                 <Slider
                   value={ecInput}
@@ -230,29 +231,41 @@ const NutrientTracker: React.FC = () => {
                   step={0.5}
                   onChange={(_, val) => setEcInput(val as number)}
                   valueLabelDisplay="on"
-                  valueLabelFormat={(v) => `${v} mS/cm`}
-                  sx={{
-                    color: '#fb923c',
-                    '& .MuiSlider-valueLabel': {
-                      bgcolor: '#fb923c'
-                    }
-                  }}
+                  valueLabelFormat={(v) => `${v} mS`}
+                  sx={{ color: '#fb923c', '& .MuiSlider-valueLabel': { bgcolor: '#fb923c' } }}
                 />
-              </Box>
+              </Grid>
+              <Grid item xs={6}>
+                <TextField
+                  label="Volumen Estanque (L)"
+                  type="number"
+                  value={tankVolume}
+                  onChange={(e) => setTankVolume(Number(e.target.value))}
+                  size="small"
+                  fullWidth
+                  inputProps={{ min: 1, max: 1000 }}
+                />
+              </Grid>
+            </Grid>
 
-              {/* Calculated Dosages */}
+            {/* Calculated Dosages with Tank Totals */}
+            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'stretch' }}>
               {(() => {
                 const dosing = calculateDosing(ecInput);
                 if (!dosing) return null;
+                const totalProGrow = (dosing.proGrowBloom * tankVolume).toFixed(0);
+                const totalProCore = (dosing.proCore * tankVolume).toFixed(0);
                 return (
                   <>
-                    <Box sx={{ textAlign: 'center', p: 1, bgcolor: 'rgba(34, 197, 94, 0.15)', borderRadius: '8px', minWidth: 100 }}>
-                      <Typography variant="h6" fontWeight="bold" sx={{ color: '#22c55e' }}>{dosing.proGrowBloom}</Typography>
-                      <Typography variant="caption" color="text.secondary">ml/L Pro Grow</Typography>
+                    <Box sx={{ flex: 1, minWidth: 120, p: 2, bgcolor: 'rgba(34, 197, 94, 0.15)', borderRadius: '12px', textAlign: 'center', border: '1px solid rgba(34, 197, 94, 0.3)' }}>
+                      <Typography variant="caption" color="text.secondary">Pro Grow/Bloom</Typography>
+                      <Typography variant="h5" fontWeight="bold" sx={{ color: '#22c55e' }}>{totalProGrow} ml</Typography>
+                      <Typography variant="caption" sx={{ color: '#22c55e', opacity: 0.8 }}>({dosing.proGrowBloom} ml/L)</Typography>
                     </Box>
-                    <Box sx={{ textAlign: 'center', p: 1, bgcolor: 'rgba(59, 130, 246, 0.15)', borderRadius: '8px', minWidth: 100 }}>
-                      <Typography variant="h6" fontWeight="bold" sx={{ color: '#3b82f6' }}>{dosing.proCore}</Typography>
-                      <Typography variant="caption" color="text.secondary">ml/L Pro Core</Typography>
+                    <Box sx={{ flex: 1, minWidth: 120, p: 2, bgcolor: 'rgba(59, 130, 246, 0.15)', borderRadius: '12px', textAlign: 'center', border: '1px solid rgba(59, 130, 246, 0.3)' }}>
+                      <Typography variant="caption" color="text.secondary">Pro Core</Typography>
+                      <Typography variant="h5" fontWeight="bold" sx={{ color: '#3b82f6' }}>{totalProCore} ml</Typography>
+                      <Typography variant="caption" sx={{ color: '#3b82f6', opacity: 0.8 }}>({dosing.proCore} ml/L)</Typography>
                     </Box>
                     <Button
                       size="small"
