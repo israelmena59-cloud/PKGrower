@@ -240,8 +240,22 @@ const DevicesPage: React.FC = () => {
 
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        <CircularProgress />
+      <Box sx={{ p: 3 }}>
+        <Typography variant="h4" sx={{ mb: 3 }}>Control de Dispositivos</Typography>
+        <Grid container spacing={2} sx={{ mb: 3 }}>
+          {[1, 2, 3, 4].map((i) => (
+            <Grid item xs={6} sm={6} md={3} key={i}>
+              <Box className="loading-shimmer glass-panel" sx={{ p: 2, height: 80, borderRadius: '16px' }} />
+            </Grid>
+          ))}
+        </Grid>
+        <Grid container spacing={2}>
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <Grid item xs={12} sm={6} md={4} key={i}>
+              <Box className="loading-shimmer glass-panel" sx={{ height: 180, borderRadius: '16px' }} />
+            </Grid>
+          ))}
+        </Grid>
       </Box>
     );
   }
@@ -263,47 +277,70 @@ const DevicesPage: React.FC = () => {
         </Button>
       </Box>
 
-      {/* Resumen de dispositivos */}
+      {/* Resumen de dispositivos - Improved Glass Cards */}
       <Grid container spacing={2} sx={{ mb: 3 }}>
-        <Grid item xs={12} sm={6} md={3}>
-          <Paper sx={{ p: 2, textAlign: 'center' }}>
-            <Typography variant="h6" color="primary">
+        <Grid item xs={6} sm={6} md={3}>
+          <Box className="glass-panel" sx={{ p: 2, textAlign: 'center', borderRadius: '16px' }}>
+            <Typography variant="h4" fontWeight="bold" color="primary">
               {devices.length}
             </Typography>
-            <Typography variant="body2" color="textSecondary">
-              Dispositivos Totales
+            <Typography variant="body2" color="text.secondary">
+              Total Dispositivos
             </Typography>
-          </Paper>
+          </Box>
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <Paper sx={{ p: 2, textAlign: 'center' }}>
-            <Typography variant="h6" color="success">
-              {devices.filter(d => d.status).length}
-            </Typography>
-            <Typography variant="body2" color="textSecondary">
+        <Grid item xs={6} sm={6} md={3}>
+          <Box className="glass-panel" sx={{
+            p: 2,
+            textAlign: 'center',
+            borderRadius: '16px',
+            borderLeft: '3px solid #22c55e'
+          }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
+              <Box className="status-online" sx={{
+                width: 8,
+                height: 8,
+                borderRadius: '50%',
+                bgcolor: '#22c55e'
+              }} />
+              <Typography variant="h4" fontWeight="bold" sx={{ color: '#22c55e' }}>
+                {devices.filter(d => d.status).length}
+              </Typography>
+            </Box>
+            <Typography variant="body2" color="text.secondary">
               Activos
             </Typography>
-          </Paper>
+          </Box>
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <Paper sx={{ p: 2, textAlign: 'center' }}>
-            <Typography variant="h6" color="error">
-              {devices.filter(d => !d.status).length}
-            </Typography>
-            <Typography variant="body2" color="textSecondary">
+        <Grid item xs={6} sm={6} md={3}>
+          <Box className="glass-panel" sx={{
+            p: 2,
+            textAlign: 'center',
+            borderRadius: '16px',
+            borderLeft: '3px solid #ef4444'
+          }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
+              <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#ef4444' }} />
+              <Typography variant="h4" fontWeight="bold" sx={{ color: '#ef4444' }}>
+                {devices.filter(d => !d.status).length}
+              </Typography>
+            </Box>
+            <Typography variant="body2" color="text.secondary">
               Inactivos
             </Typography>
-          </Paper>
+          </Box>
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <Paper sx={{ p: 2, textAlign: 'center' }}>
-            <Typography variant="h6" color="info">
-              {tuyaDevices.length} / {xiaomiDevices.length} / {merossDevices.length}
+        <Grid item xs={6} sm={6} md={3}>
+          <Box className="glass-panel" sx={{ p: 2, textAlign: 'center', borderRadius: '16px' }}>
+            <Box sx={{ display: 'flex', justifyContent: 'center', gap: 0.5 }}>
+              <Chip label={`T:${tuyaDevices.length}`} size="small" sx={{ bgcolor: 'rgba(33, 150, 243, 0.2)', color: '#2196f3' }} />
+              <Chip label={`X:${xiaomiDevices.length}`} size="small" sx={{ bgcolor: 'rgba(76, 175, 80, 0.2)', color: '#4caf50' }} />
+              <Chip label={`M:${merossDevices.length}`} size="small" sx={{ bgcolor: 'rgba(156, 39, 176, 0.2)', color: '#9c27b0' }} />
+            </Box>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+              Por Plataforma
             </Typography>
-            <Typography variant="body2" color="textSecondary">
-              Tuya / Xiaomi / Meross
-            </Typography>
-          </Paper>
+          </Box>
         </Grid>
       </Grid>
 
