@@ -2666,28 +2666,36 @@ async function initMerossDevices() {
 
     // Try to load credentials from Firestore first (persistent storage)
     let email = null, password = null;
+    let credSource = 'none';
 
     try {
         const storedCreds = await firestore.getPlatformCredentials('meross');
         if (storedCreds && storedCreds.email && storedCreds.password) {
             email = storedCreds.email;
             password = storedCreds.password;
-            console.log('[MEROSS] Loaded credentials from Firestore.');
+            credSource = 'firestore/local';
+            console.log('[MEROSS] Loaded credentials from Firestore/local backup.');
         }
     } catch (e) {
-        console.warn('[MEROSS] Could not load Firestore credentials:', e.message);
+        console.warn('[MEROSS] Could not load stored credentials:', e.message);
     }
 
-    // Fallback to ENV or appSettings
+    // Fallback to ENV or appSettings (set by /api/meross/connect)
     if (!email || !password) {
         email = process.env.MEROSS_EMAIL || appSettings.meross?.email;
         password = process.env.MEROSS_PASSWORD || appSettings.meross?.password;
+        if (email && password) {
+            credSource = appSettings.meross?.email ? 'appSettings' : 'env';
+            console.log(`[MEROSS] Using credentials from ${credSource}`);
+        }
     }
 
     if (!email || !password) {
-        console.warn('[MEROSS] Meross credentials missing. Skipping.');
+        console.warn('[MEROSS] Meross credentials missing. Skipping. (checked: firestore, local, env, appSettings)');
         return;
     }
+
+    console.log(`[MEROSS] Using email: ${email} (source: ${credSource})`);
 
     try {
         console.log(`[MEROSS] Connecting as ${email}...`);
