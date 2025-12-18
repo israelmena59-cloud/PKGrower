@@ -1,6 +1,7 @@
 /**
  * NutrientTracker Component
  * Track nutrients applied during irrigation for complete traceability
+ * Includes Athena Pro Line dosing calculator
  */
 
 import React, { useState, useEffect } from 'react';
@@ -20,10 +21,14 @@ import {
   IconButton,
   Chip,
   Alert,
-  Divider
+  Divider,
+  Tabs,
+  Tab,
+  Slider
 } from '@mui/material';
-import { Beaker, Plus, Trash2, Download, Calendar, Droplets } from 'lucide-react';
+import { Beaker, Plus, Trash2, Download, Calendar, Droplets, Zap, Calculator } from 'lucide-react';
 import { apiClient } from '../../api/client';
+import { calculateDosing, PRO_LINE_DOSING } from '../../data/athena-nutrients';
 
 interface NutrientEntry {
   id: string;
@@ -41,14 +46,26 @@ interface NutrientEntry {
   notes?: string;
 }
 
-const COMMON_NUTRIENTS = [
-  { name: 'Base A', brand: 'General' },
-  { name: 'Base B', brand: 'General' },
-  { name: 'CalMag', brand: 'General' },
-  { name: 'Raíces', brand: 'General' },
-  { name: 'Bloom', brand: 'General' },
-  { name: 'PK 13/14', brand: 'General' },
-  { name: 'Enzimas', brand: 'General' },
+// Athena Pro Line nutrients
+const ATHENA_NUTRIENTS = [
+  { name: 'Pro Grow', brand: 'Athena', category: 'base', color: '#22c55e' },
+  { name: 'Pro Bloom', brand: 'Athena', category: 'base', color: '#a855f7' },
+  { name: 'Pro Core', brand: 'Athena', category: 'base', color: '#3b82f6' },
+  { name: 'CaMg', brand: 'Athena', category: 'suplemento', color: '#f59e0b' },
+  { name: 'Stack', brand: 'Athena', category: 'suplemento', color: '#ec4899' },
+  { name: 'Cleanse', brand: 'Athena', category: 'suplemento', color: '#06b6d4' },
+  { name: 'Balance', brand: 'Athena', category: 'ph', color: '#6b7280' },
+];
+
+// Generic nutrients for other brands
+const GENERIC_NUTRIENTS = [
+  { name: 'Base A', brand: 'General', category: 'base', color: '#22c55e' },
+  { name: 'Base B', brand: 'General', category: 'base', color: '#3b82f6' },
+  { name: 'CalMag', brand: 'General', category: 'suplemento', color: '#f59e0b' },
+  { name: 'Raíces', brand: 'General', category: 'suplemento', color: '#84cc16' },
+  { name: 'Bloom Boost', brand: 'General', category: 'suplemento', color: '#ec4899' },
+  { name: 'PK 13/14', brand: 'General', category: 'suplemento', color: '#a855f7' },
+  { name: 'Enzimas', brand: 'General', category: 'suplemento', color: '#06b6d4' },
 ];
 
 const NutrientTracker: React.FC = () => {
@@ -188,6 +205,79 @@ const NutrientTracker: React.FC = () => {
             📝 Registrar Aplicación de Nutrientes
           </Typography>
 
+          {/* Athena Pro Line Calculator */}
+          <Box sx={{
+            p: 2,
+            mb: 3,
+            borderRadius: '12px',
+            background: 'linear-gradient(135deg, rgba(234, 88, 12, 0.15), rgba(249, 115, 22, 0.1))',
+            border: '1px solid rgba(234, 88, 12, 0.3)'
+          }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+              <Calculator size={18} color="#fb923c" />
+              <Typography variant="subtitle2" fontWeight="bold" sx={{ color: '#fb923c' }}>
+                Calculadora Athena Pro Line
+              </Typography>
+            </Box>
+
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, flexWrap: 'wrap' }}>
+              <Box sx={{ flex: 1, minWidth: 200 }}>
+                <Typography variant="caption" color="text.secondary">EC Objetivo</Typography>
+                <Slider
+                  value={ecInput}
+                  min={0.5}
+                  max={6.0}
+                  step={0.5}
+                  onChange={(_, val) => setEcInput(val as number)}
+                  valueLabelDisplay="on"
+                  valueLabelFormat={(v) => `${v} mS/cm`}
+                  sx={{
+                    color: '#fb923c',
+                    '& .MuiSlider-valueLabel': {
+                      bgcolor: '#fb923c'
+                    }
+                  }}
+                />
+              </Box>
+
+              {/* Calculated Dosages */}
+              {(() => {
+                const dosing = calculateDosing(ecInput);
+                if (!dosing) return null;
+                return (
+                  <>
+                    <Box sx={{ textAlign: 'center', p: 1, bgcolor: 'rgba(34, 197, 94, 0.15)', borderRadius: '8px', minWidth: 100 }}>
+                      <Typography variant="h6" fontWeight="bold" sx={{ color: '#22c55e' }}>{dosing.proGrowBloom}</Typography>
+                      <Typography variant="caption" color="text.secondary">ml/L Pro Grow</Typography>
+                    </Box>
+                    <Box sx={{ textAlign: 'center', p: 1, bgcolor: 'rgba(59, 130, 246, 0.15)', borderRadius: '8px', minWidth: 100 }}>
+                      <Typography variant="h6" fontWeight="bold" sx={{ color: '#3b82f6' }}>{dosing.proCore}</Typography>
+                      <Typography variant="caption" color="text.secondary">ml/L Pro Core</Typography>
+                    </Box>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      startIcon={<Zap size={14} />}
+                      onClick={() => {
+                        setNutrients([
+                          { name: 'Pro Grow', mlPerLiter: dosing.proGrowBloom },
+                          { name: 'Pro Core', mlPerLiter: dosing.proCore }
+                        ]);
+                      }}
+                      sx={{
+                        borderColor: '#fb923c',
+                        color: '#fb923c',
+                        '&:hover': { borderColor: '#ea580c', bgcolor: 'rgba(234, 88, 12, 0.1)' }
+                      }}
+                    >
+                      Aplicar
+                    </Button>
+                  </>
+                );
+              })()}
+            </Box>
+          </Box>
+
           <Grid container spacing={2}>
             {/* Nutrients List */}
             <Grid item xs={12}>
@@ -206,9 +296,16 @@ const NutrientTracker: React.FC = () => {
                     SelectProps={{ native: true }}
                   >
                     <option value="">Seleccionar...</option>
-                    {COMMON_NUTRIENTS.map(n => (
-                      <option key={n.name} value={n.name}>{n.name}</option>
-                    ))}
+                    <optgroup label="🔶 Athena Pro Line">
+                      {ATHENA_NUTRIENTS.map(n => (
+                        <option key={n.name} value={n.name}>{n.name}</option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="📦 General">
+                      {GENERIC_NUTRIENTS.map(n => (
+                        <option key={n.name} value={n.name}>{n.name}</option>
+                      ))}
+                    </optgroup>
                     <option value="Otro">Otro...</option>
                   </TextField>
                   <TextField
