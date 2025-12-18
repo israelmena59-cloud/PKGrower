@@ -327,35 +327,58 @@ const SettingsPage: React.FC = () => {
 
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        <CircularProgress />
+      <Box sx={{ p: 3 }}>
+        <Typography variant="h4" sx={{ mb: 3 }}>Configuración</Typography>
+        <Box className="loading-shimmer glass-panel" sx={{ height: 48, borderRadius: '12px', mb: 2 }} />
+        <Box className="loading-shimmer glass-panel" sx={{ height: 400, borderRadius: '16px' }} />
       </Box>
     );
   }
 
   return (
     <Box sx={{ p: 3 }}>
-      {/* Header */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+      {/* Header with Glass Styling */}
+      <Box className="glass-panel" sx={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        mb: 3,
+        p: 2,
+        borderRadius: '16px'
+      }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <SettingsIcon size={32} />
-          <Typography variant="h4">Configuración</Typography>
+          <Box sx={{
+            p: 1.5,
+            borderRadius: '12px',
+            bgcolor: 'rgba(139, 92, 246, 0.2)',
+            color: '#8b5cf6'
+          }}>
+            <SettingsIcon size={28} />
+          </Box>
+          <Box>
+            <Typography variant="h5" fontWeight="bold">Configuración</Typography>
+            <Typography variant="caption" color="text.secondary">
+              Gestiona plataformas, credenciales y preferencias
+            </Typography>
+          </Box>
         </Box>
-        <Box sx={{ display: 'flex', gap: 2 }}>
+        <Box sx={{ display: 'flex', gap: 1 }}>
           <Button
             variant="outlined"
-            startIcon={<RotateCcw size={20} />}
+            size="small"
+            startIcon={<RotateCcw size={16} />}
             onClick={() => {
               setDialogAction('reset');
               setOpenDialog(true);
             }}
-            color="error"
+            sx={{ borderColor: '#ef4444', color: '#ef4444' }}
           >
             Restaurar
           </Button>
           <Button
             variant="contained"
-            startIcon={<Save size={20} />}
+            size="small"
+            startIcon={<Save size={16} />}
             onClick={handleSaveSettings}
           >
             Guardar
@@ -365,20 +388,32 @@ const SettingsPage: React.FC = () => {
 
       {/* Mensaje de guardado */}
       {saved && (
-        <Alert severity="success" sx={{ mb: 2 }}>
+        <Alert severity="success" sx={{ mb: 2, borderRadius: '12px' }}>
           ✅ Configuración guardada exitosamente
         </Alert>
       )}
 
-      {/* Tabs */}
-      <Paper>
-        <Tabs value={tabValue} onChange={handleTabChange}>
-          <Tab label="General" icon={<SettingsIcon size={20} />} iconPosition="start" />
-          <Tab label="Tuya Cloud" icon={<Wifi size={20} />} iconPosition="start" />
-          <Tab label="Meross" icon={<Wifi size={20} />} iconPosition="start" />
-          <Tab label="Xiaomi" icon={<Database size={20} />} iconPosition="start" />
-          <Tab label="Cultivo" icon={<Leaf size={20} />} iconPosition="start" />
-          <Tab label="Sistema" icon={<Info size={20} />} iconPosition="start" />
+      {/* Tabs with Improved Styling */}
+      <Paper className="glass-panel" sx={{ borderRadius: '16px', overflow: 'hidden' }}>
+        <Tabs
+          value={tabValue}
+          onChange={handleTabChange}
+          variant="scrollable"
+          scrollButtons="auto"
+          sx={{
+            '& .MuiTabs-indicator': {
+              height: 3,
+              borderRadius: '3px 3px 0 0',
+              background: 'linear-gradient(90deg, #8b5cf6, #6366f1)'
+            }
+          }}
+        >
+          <Tab label="General" icon={<SettingsIcon size={18} />} iconPosition="start" />
+          <Tab label="Tuya" icon={<Wifi size={18} />} iconPosition="start" />
+          <Tab label="Meross" icon={<Wifi size={18} />} iconPosition="start" />
+          <Tab label="Xiaomi" icon={<Database size={18} />} iconPosition="start" />
+          <Tab label="Cultivo" icon={<Leaf size={18} />} iconPosition="start" />
+          <Tab label="Sistema" icon={<Info size={18} />} iconPosition="start" />
         </Tabs>
 
         {/* Tab: General */}
