@@ -154,28 +154,52 @@ const Environment: React.FC = () => {
       catch (e) { setDevices((prev: any) => ({ ...prev, [id]: currentStatus })); }
   };
 
-  if (loading || !settings) return <Box sx={{ p: 4 }}><CircularProgress /></Box>;
+  if (loading || !settings) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Typography variant="h4" sx={{ mb: 3 }}>Clima y VPD</Typography>
+        <Box className="loading-shimmer glass-panel" sx={{ height: 60, borderRadius: '16px', mb: 2 }} />
+        <Box className="loading-shimmer glass-panel" sx={{ height: 400, borderRadius: '16px' }} />
+      </Box>
+    );
+  }
 
   const vpdInfo = getVpdStatusFromStage();
   const stageLabel = currentStage.replace('_', ' ').toUpperCase();
 
   return (
     <Box sx={{ p: 2 }}>
-      {/* Header with Stage Info */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 2 }}>
+      {/* Header with Glass Styling */}
+      <Box className="glass-panel" sx={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        mb: 3,
+        p: 2,
+        borderRadius: '16px',
+        flexWrap: 'wrap',
+        gap: 2
+      }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Typography variant="h4" fontWeight="bold">Clima y VPD</Typography>
-          <Chip
-            icon={<Leaf size={14} />}
-            label={`Etapa: ${stageLabel}`}
-            size="small"
-            sx={{ bgcolor: 'rgba(52, 199, 89, 0.2)', color: '#34C759' }}
-          />
+          <Box sx={{
+            p: 1.5,
+            borderRadius: '12px',
+            bgcolor: 'rgba(34, 197, 94, 0.2)',
+            color: '#22c55e'
+          }}>
+            <Wind size={28} />
+          </Box>
+          <Box>
+            <Typography variant="h5" fontWeight="bold">Clima y VPD</Typography>
+            <Typography variant="caption" color="text.secondary">
+              Etapa: {stageLabel}
+            </Typography>
+          </Box>
         </Box>
         <Alert
           severity={vpdInfo.color as any}
           icon={vpdInfo.icon}
-          sx={{ py: 0, alignItems: 'center' }}
+          sx={{ py: 0.5, alignItems: 'center', borderRadius: '12px' }}
         >
           VPD: <strong>{currentVpd.toFixed(2)} kPa</strong> | Target: {targets.vpd.min.toFixed(1)}-{targets.vpd.max.toFixed(1)} ({vpdInfo.label})
         </Alert>
