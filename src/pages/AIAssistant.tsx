@@ -99,9 +99,52 @@ const AIAssistant: React.FC = () => {
 
   return (
     <Box sx={{ p: 2, height: '85vh', display: 'flex', flexDirection: 'column' }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
-        <Typography variant="h4" fontWeight="bold">Asistente Gemini AI</Typography>
-        <Button variant="outlined" startIcon={<Key />} onClick={() => setOpenSettings(true)}>Configurar API Key</Button>
+      {/* Header with Glass Styling */}
+      <Box className="glass-panel" sx={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        mb: 3,
+        p: 2,
+        borderRadius: '16px'
+      }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Box sx={{
+            p: 1.5,
+            borderRadius: '12px',
+            background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.3), rgba(168, 85, 247, 0.2))',
+            color: '#a78bfa',
+            animation: 'pulse 2s infinite'
+          }}>
+            <Bot size={28} />
+          </Box>
+          <Box>
+            <Typography variant="h5" fontWeight="bold" sx={{
+              background: 'linear-gradient(90deg, #a78bfa, #c084fc)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent'
+            }}>
+              Asistente Gemini AI
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              Copiloto inteligente de cultivo
+            </Typography>
+          </Box>
+        </Box>
+        <Button
+          variant="outlined"
+          size="small"
+          startIcon={<Key size={16} />}
+          onClick={() => setOpenSettings(true)}
+          sx={{
+            borderRadius: '12px',
+            borderColor: 'rgba(139, 92, 246, 0.5)',
+            color: '#a78bfa',
+            '&:hover': { borderColor: '#a78bfa', bgcolor: 'rgba(139, 92, 246, 0.1)' }
+          }}
+        >
+          API Key
+        </Button>
       </Box>
 
       <Grid container spacing={3} sx={{ flex: 1 }}>
