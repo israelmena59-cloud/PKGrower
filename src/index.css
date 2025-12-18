@@ -314,3 +314,118 @@ body {
   flex-wrap: wrap;
   gap: 8px;
 }
+
+/* =========================
+   MODERN VISUAL ENHANCEMENTS
+   ========================= */
+
+/* Smooth hover effects for all interactive elements */
+.MuiButton-root,
+.MuiIconButton-root,
+.MuiListItemButton-root {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.MuiButton-contained:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* Card hover effects */
+.MuiCard-root,
+.glass-panel {
+  transition: transform 0.3s ease, box-shadow 0.3s ease !important;
+}
+
+.MuiCard-root:hover,
+.glass-panel:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Status indicator animations */
+@keyframes pulse-green {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(34, 197, 94, 0); }
+}
+
+@keyframes pulse-red {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+}
+
+@keyframes pulse-amber {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(245, 158, 11, 0); }
+}
+
+.status-online { animation: pulse-green 2s infinite; }
+.status-offline { animation: pulse-red 2s infinite; }
+.status-warning { animation: pulse-amber 2s infinite; }
+
+/* Glow effect for active switches */
+.MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track {
+  box-shadow: 0 0 12px var(--primary) !important;
+}
+
+/* Modern input focus states */
+.MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline {
+  border-width: 2px !important;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1) !important;
+}
+
+/* Tab indicator animation */
+.MuiTabs-indicator {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  border-radius: 3px !important;
+}
+
+/* Skeleton loading shimmer */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.loading-shimmer {
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.1) 50%, transparent 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* Sensor value cards - colored borders */
+.sensor-card-ok { border-left: 3px solid #22c55e !important; }
+.sensor-card-warning { border-left: 3px solid #f59e0b !important; }
+.sensor-card-danger { border-left: 3px solid #ef4444 !important; }
+
+/* Quick action buttons hover glow */
+.quick-action:hover {
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.3) !important;
+}
+
+/* Improved mobile touch targets */
+@media (max-width: 600px) {
+  .MuiButton-root {
+    min-height: 44px !important; /* iOS recommended touch target */
+  }
+
+  .MuiListItemButton-root {
+    min-height: 48px !important;
+  }
+
+  .MuiIconButton-root {
+    min-width: 44px !important;
+    min-height: 44px !important;
+  }
+}
+
+/* Smooth page transitions */
+.page-transition-enter {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.page-transition-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
