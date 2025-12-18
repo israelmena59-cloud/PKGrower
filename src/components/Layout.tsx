@@ -51,7 +51,21 @@ const Layout: React.FC<LayoutProps> = ({ children, onNavigate, activePage }) => 
     const isDark = mode === 'dark';
 
     return (
-        <ListItem disablePadding sx={{ mb: 1 }}>
+        <ListItem disablePadding sx={{ mb: 0.5, position: 'relative' }}>
+          {/* Active Indicator Bar */}
+          {isSelected && (
+            <Box sx={{
+              position: 'absolute',
+              left: 0,
+              top: '50%',
+              transform: 'translateY(-50%)',
+              width: 4,
+              height: '60%',
+              borderRadius: '0 4px 4px 0',
+              background: 'linear-gradient(180deg, #22c55e, #16a34a)',
+              boxShadow: '0 0 12px rgba(34, 197, 94, 0.5)'
+            }} />
+          )}
           <ListItemButton
             selected={isSelected}
             onClick={() => {
@@ -59,33 +73,33 @@ const Layout: React.FC<LayoutProps> = ({ children, onNavigate, activePage }) => 
                 if (isMobile) setMobileOpen(false);
             }}
             sx={{
-              borderRadius: 'var(--squircle-radius)',
-              mx: 1,
-              py: 1.5,
-              transition: 'all 0.4s cubic-bezier(0.25, 1, 0.5, 1)',
-              bgcolor: isSelected ? 'rgba(255, 255, 255, 0.15)' : 'transparent',
-              backdropFilter: isSelected ? 'var(--backdrop-blur)' : 'none',
-              border: isSelected ? 'var(--glass-border)' : '1px solid transparent',
-              boxShadow: isSelected ? '0 4px 20px rgba(0,0,0,0.05)' : 'none',
+              borderRadius: '12px',
+              mx: 1.5,
+              py: 1.2,
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              bgcolor: isSelected
+                ? (isDark ? 'rgba(34, 197, 94, 0.15)' : 'rgba(34, 197, 94, 0.1)')
+                : 'transparent',
+              border: isSelected ? '1px solid rgba(34, 197, 94, 0.2)' : '1px solid transparent',
               '&:hover': {
-                  bgcolor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)',
+                  bgcolor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.04)',
                   transform: 'translateX(4px)'
               },
             }}
           >
             <ListItemIcon sx={{
-                minWidth: 40,
-                color: isSelected ? (isDark ? '#a5f3fc' : '#15803d') : (isDark ? 'rgba(255,255,255,0.6)' : 'text.secondary'),
-                filter: isSelected && isDark ? 'drop-shadow(0 0 5px rgba(165, 243, 252, 0.5))' : 'none'
+                minWidth: 36,
+                color: isSelected ? '#22c55e' : (isDark ? 'rgba(255,255,255,0.5)' : 'text.secondary'),
+                filter: isSelected ? 'drop-shadow(0 0 6px rgba(34, 197, 94, 0.4))' : 'none'
             }}>
               {icon}
             </ListItemIcon>
             <ListItemText
                 primary={label}
                 primaryTypographyProps={{
-                    fontWeight: isSelected ? 700 : 500,
-                    color: isSelected ? (isDark ? 'white' : 'text.primary') : (isDark ? 'rgba(255,255,255,0.7)' : 'text.secondary'),
-                    fontSize: '0.95rem'
+                    fontWeight: isSelected ? 600 : 500,
+                    color: isSelected ? (isDark ? '#22c55e' : '#15803d') : (isDark ? 'rgba(255,255,255,0.7)' : 'text.secondary'),
+                    fontSize: '0.9rem'
                 }}
             />
           </ListItemButton>
