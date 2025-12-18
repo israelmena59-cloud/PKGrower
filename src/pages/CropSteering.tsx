@@ -5,7 +5,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { Box, Typography, Grid, Alert, Button, TextField, Switch, FormControlLabel, Tabs, Tab, CardHeader, CardContent, Divider, CircularProgress } from '@mui/material';
-import { Leaf, Settings, RefreshCw, Save, Zap, Bell, Droplet, Activity } from 'lucide-react';
+import { Leaf, Settings, RefreshCw, Save, Zap, Bell, Droplet, Activity, Beaker } from 'lucide-react';
 import {
   VPDGauge,
   StageSelector,
@@ -15,6 +15,7 @@ import {
   AlertList,
   StageDashboard
 } from '../components/cropsteering';
+import NutrientTracker from '../components/cropsteering/NutrientTracker';
 import { useCropSteering } from '../context/CropSteeringContext';
 import { API_BASE_URL, apiClient } from '../api/client';
 import { DEFAULT_AUTOMATION_RULES, AutomationRule } from '../utils/automationEngine';
@@ -216,6 +217,7 @@ const CropSteering: React.FC = () => {
           <Tab label="Automatización" icon={<Zap size={16} />} iconPosition="start" />
           <Tab label="Alertas" icon={<Bell size={16} />} iconPosition="start" />
           <Tab label="Configuración" icon={<Settings size={16} />} iconPosition="start" />
+          <Tab label="Nutrientes" icon={<Beaker size={16} />} iconPosition="start" />
         </Tabs>
       </Box>
 
@@ -474,6 +476,11 @@ const CropSteering: React.FC = () => {
             </Box>
           </Grid>
         </Grid>
+      </TabPanel>
+
+      {/* Tab 5: Nutrientes */}
+      <TabPanel value={activeTab} index={5}>
+        <NutrientTracker />
       </TabPanel>
     </Box>
   );
