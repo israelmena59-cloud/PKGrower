@@ -139,44 +139,60 @@ const Login: React.FC = () => {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%)',
-      padding: 2
+      background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #064e3b 100%)',
+      backgroundSize: '400% 400%',
+      animation: 'gradient 20s ease infinite',
+      padding: 2,
+      '@keyframes gradient': {
+        '0%': { backgroundPosition: '0% 50%' },
+        '50%': { backgroundPosition: '100% 50%' },
+        '100%': { backgroundPosition: '0% 50%' }
+      },
+      '@keyframes float': {
+        '0%, 100%': { transform: 'translateY(0px)' },
+        '50%': { transform: 'translateY(-10px)' }
+      }
     }}>
       <Paper sx={{
         width: '100%',
         maxWidth: 420,
         p: 4,
-        borderRadius: 4,
-        background: 'rgba(30, 41, 59, 0.95)',
-        backdropFilter: 'blur(20px)',
+        borderRadius: '24px',
+        background: 'rgba(30, 41, 59, 0.85)',
+        backdropFilter: 'blur(24px)',
         border: '1px solid rgba(255,255,255,0.1)',
-        boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)'
+        boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5), 0 0 40px rgba(34, 197, 94, 0.1)'
       }}>
-        {/* Logo */}
+        {/* Logo with Floating Animation */}
         <Box sx={{ textAlign: 'center', mb: 3 }}>
           <Box sx={{
-            width: 64,
-            height: 64,
+            width: 72,
+            height: 72,
             borderRadius: '50%',
             background: 'linear-gradient(135deg, #22c55e, #16a34a)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             margin: '0 auto 16px',
-            boxShadow: '0 10px 40px rgba(34, 197, 94, 0.3)'
+            boxShadow: '0 10px 40px rgba(34, 197, 94, 0.4), 0 0 60px rgba(34, 197, 94, 0.2)',
+            animation: 'float 4s ease-in-out infinite',
+            transition: 'transform 0.3s ease',
+            '&:hover': { transform: 'scale(1.1)' }
           }}>
-            <Leaf size={32} color="white" />
+            <Leaf size={36} color="white" />
           </Box>
           <Typography variant="h4" sx={{
-            fontWeight: 700,
+            fontWeight: 800,
             color: 'white',
-            background: 'linear-gradient(90deg, #22c55e, #4ade80)',
+            background: 'linear-gradient(90deg, #22c55e, #4ade80, #22c55e)',
+            backgroundSize: '200% auto',
             WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent'
+            WebkitTextFillColor: 'transparent',
+            animation: 'gradient 3s linear infinite'
           }}>
             PKGrower
           </Typography>
-          <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.6)', mt: 0.5 }}>
+          <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.6)', mt: 0.5, letterSpacing: 1 }}>
             Control Inteligente de Cultivo
           </Typography>
         </Box>
