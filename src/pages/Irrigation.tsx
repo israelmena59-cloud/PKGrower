@@ -151,11 +151,19 @@ const Irrigation: React.FC = () => {
       }
   };
 
-  if (loading) return <Box sx={{ p: 4, display: 'flex', justifyContent: 'center' }}><CircularProgress /></Box>;
+  if (loading) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Typography variant="h4" sx={{ mb: 3 }}>Riego y Sustrato</Typography>
+        <Box className="loading-shimmer glass-panel" sx={{ height: 60, borderRadius: '16px', mb: 2 }} />
+        <Box className="loading-shimmer glass-panel" sx={{ height: 300, borderRadius: '16px' }} />
+      </Box>
+    );
+  }
 
   if (!settings) return (
       <Box sx={{ p: 4 }}>
-          <Alert severity="error" sx={{ mb: 2 }}>
+          <Alert severity="error" sx={{ mb: 2, borderRadius: '12px' }}>
               No se pudo cargar la configuración de Riego.
               <br/>
               Verifica que el Backend esté corriendo y que la conexión HTTPS sea segura.
@@ -169,26 +177,64 @@ const Irrigation: React.FC = () => {
   const time1Pct = volume1Pct / settings.pumpRate;
 
   return (
-    <Box>
-      <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Typography variant="h4" fontWeight="bold">Riego y Sustrato</Typography>
-          <Box>
-              <Button
-                variant={phase === 'vegetative' ? 'contained' : 'outlined'}
-                color="success"
-                onClick={() => setPhase('vegetative')}
-                sx={{ mr: 1 }}
-              >
-                  Vegetativo
-              </Button>
-              <Button
-                variant={phase === 'generative' ? 'contained' : 'outlined'}
-                color="secondary"
-                onClick={() => setPhase('generative')}
-              >
-                  Generativo
-              </Button>
+    <Box sx={{ p: 2 }}>
+      {/* Header with Glass Styling */}
+      <Box className="glass-panel" sx={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        mb: 3,
+        p: 2,
+        borderRadius: '16px',
+        flexWrap: 'wrap',
+        gap: 2
+      }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Box sx={{
+            p: 1.5,
+            borderRadius: '12px',
+            bgcolor: 'rgba(0, 122, 255, 0.2)',
+            color: '#007AFF'
+          }}>
+            <Droplet size={28} />
           </Box>
+          <Box>
+            <Typography variant="h5" fontWeight="bold">Riego y Sustrato</Typography>
+            <Typography variant="caption" color="text.secondary">
+              Control de irrigación y VWC
+            </Typography>
+          </Box>
+        </Box>
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <Button
+            variant={phase === 'vegetative' ? 'contained' : 'outlined'}
+            size="small"
+            onClick={() => setPhase('vegetative')}
+            sx={{
+              borderRadius: '12px',
+              bgcolor: phase === 'vegetative' ? 'linear-gradient(135deg, #22c55e, #16a34a)' : 'transparent',
+              background: phase === 'vegetative' ? 'linear-gradient(135deg, #22c55e, #16a34a)' : undefined,
+              borderColor: '#22c55e',
+              color: phase === 'vegetative' ? 'white' : '#22c55e'
+            }}
+          >
+            Vegetativo
+          </Button>
+          <Button
+            variant={phase === 'generative' ? 'contained' : 'outlined'}
+            size="small"
+            onClick={() => setPhase('generative')}
+            sx={{
+              borderRadius: '12px',
+              bgcolor: phase === 'generative' ? 'linear-gradient(135deg, #8b5cf6, #6366f1)' : 'transparent',
+              background: phase === 'generative' ? 'linear-gradient(135deg, #8b5cf6, #6366f1)' : undefined,
+              borderColor: '#8b5cf6',
+              color: phase === 'generative' ? 'white' : '#8b5cf6'
+            }}
+          >
+            Generativo
+          </Button>
+        </Box>
       </Box>
 
       <Grid container spacing={3}>
