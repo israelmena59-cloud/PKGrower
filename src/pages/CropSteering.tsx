@@ -277,20 +277,55 @@ const CropSteering: React.FC = () => {
             />
           </Grid>
           <Grid item xs={12} lg={4}>
-            {/* Pump Control */}
+            {/* Pump Control - P1-P6 Shots */}
             <Box className="glass-panel" sx={{ mb: 2, borderRadius: '16px', bgcolor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', overflow: 'hidden' }}>
-              <CardHeader title="Control de Bomba" subheader="Disparos manuales" avatar={<Droplet />} titleTypographyProps={{ fontWeight: 'bold' }} />
+              <CardHeader title="Shots de Riego" subheader="P1-P6 según Crop Steering" avatar={<Droplet />} titleTypographyProps={{ fontWeight: 'bold' }} />
               <Divider sx={{ borderColor: 'rgba(255,255,255,0.1)' }} />
               <CardContent>
+                {/* P1-P6 Grid */}
                 <Grid container spacing={1} sx={{ mb: 2 }}>
-                  {[1, 2, 3, 5].map((pct) => (
-                    <Grid item xs={6} key={pct}>
-                      <Button fullWidth variant="contained" size="large" disabled={pulsing} onClick={() => handleShot(pct)} sx={{ py: 2 }}>
-                        {pct}% Shot
+                  {[
+                    { label: 'P1', pct: 1, color: '#22c55e', desc: 'Micro' },
+                    { label: 'P2', pct: 2, color: '#3b82f6', desc: 'Suave' },
+                    { label: 'P3', pct: 3, color: '#8b5cf6', desc: 'Normal' },
+                    { label: 'P4', pct: 4, color: '#f59e0b', desc: 'Medio' },
+                    { label: 'P5', pct: 5, color: '#ef4444', desc: 'Alto' },
+                    { label: 'P6', pct: 6, color: '#ec4899', desc: 'Máximo' }
+                  ].map(({ label, pct, color, desc }) => (
+                    <Grid item xs={4} key={label}>
+                      <Button
+                        fullWidth
+                        variant="contained"
+                        disabled={pulsing}
+                        onClick={() => handleShot(pct)}
+                        sx={{
+                          py: 1.5,
+                          background: `linear-gradient(135deg, ${color}dd 0%, ${color}99 100%)`,
+                          '&:hover': { background: `linear-gradient(135deg, ${color} 0%, ${color}cc 100%)` },
+                          flexDirection: 'column',
+                          gap: 0
+                        }}
+                      >
+                        <Typography variant="h6" fontWeight="bold">{label}</Typography>
+                        <Typography variant="caption" sx={{ opacity: 0.8 }}>{(settings.potSizeLiters * 10 * pct).toFixed(0)}ml</Typography>
                       </Button>
                     </Grid>
                   ))}
                 </Grid>
+
+                {/* Quick P3 Button */}
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  size="large"
+                  disabled={pulsing}
+                  onClick={() => handleShot(3)}
+                  startIcon={pulsing ? <CircularProgress size={16} /> : <Droplet />}
+                  sx={{ mb: 2, py: 1.5, borderColor: '#8b5cf6', color: '#8b5cf6' }}
+                >
+                  {pulsing ? 'Regando...' : 'Quick P3 Shot'}
+                </Button>
+
                 <DeviceSwitch icon={<Activity />} name="Bomba Manual" isOn={devices.bombaControlador} onToggle={async () => { await apiClient.toggleDevice('bombaControlador'); loadDevices(); }} />
               </CardContent>
             </Box>
