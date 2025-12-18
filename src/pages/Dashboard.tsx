@@ -293,7 +293,7 @@ const Dashboard: React.FC = () => {
              {/* HEADER */}
              <Paper elevation={0} sx={{ p: 2, mb: 3, borderRadius: 'var(--squircle-radius)', background: 'var(--glass-bg)', backdropFilter: 'var(--backdrop-blur)', border: 'var(--glass-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
                 <Typography variant="h5" fontWeight="bold" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    📊 Dashboard
+                    🌱 Panel de Control
                 </Typography>
 
                 <Box sx={{ display: 'flex', gap: 1 }}>

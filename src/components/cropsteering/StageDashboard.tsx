@@ -190,7 +190,7 @@ const StageDashboard: React.FC = () => {
       {/* Header */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Box>
-          <Typography variant="h6" fontWeight={600}>Dashboard de Etapa</Typography>
+          <Typography variant="h6" fontWeight={600}>Centro de Control</Typography>
           <Typography variant="body2" color="text.secondary">
             Día {data.stage.daysInStage} en {data.stage.name}
           </Typography>
@@ -217,9 +217,9 @@ const StageDashboard: React.FC = () => {
           p: 2,
           mb: 3,
           borderRadius: 2,
-          bgcolor: recommendation.shouldIrrigate ? 'success.light' : 'grey.100',
+          bgcolor: recommendation.shouldIrrigate ? 'rgba(34, 197, 94, 0.15)' : 'rgba(255,255,255,0.05)',
           border: '1px solid',
-          borderColor: recommendation.shouldIrrigate ? 'success.main' : 'grey.300'
+          borderColor: recommendation.shouldIrrigate ? 'rgba(34, 197, 94, 0.4)' : 'rgba(255,255,255,0.1)'
         }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             {recommendation.shouldIrrigate ? (
@@ -299,7 +299,7 @@ const StageDashboard: React.FC = () => {
       </Grid>
 
       {/* EC Targets */}
-      <Box sx={{ mt: 3, p: 2, bgcolor: 'grey.50', borderRadius: 2 }}>
+      <Box sx={{ mt: 3, p: 2, bgcolor: 'rgba(255,255,255,0.05)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)' }}>
         <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1 }}>Objetivos EC</Typography>
         <Grid container spacing={2}>
           <Grid item xs={6}>
