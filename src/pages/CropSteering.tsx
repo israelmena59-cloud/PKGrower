@@ -5,7 +5,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { Box, Typography, Grid, Alert, Button, TextField, Switch, FormControlLabel, Tabs, Tab, CardHeader, CardContent, Divider, CircularProgress } from '@mui/material';
-import { Leaf, Settings, RefreshCw, Save, Zap, Bell, Droplet, Activity, Beaker } from 'lucide-react';
+import { Leaf, Settings, RefreshCw, Save, Zap, Bell, Droplet, Activity, Beaker, Calendar } from 'lucide-react';
 import {
   VPDGauge,
   StageSelector,
@@ -16,6 +16,7 @@ import {
   StageDashboard
 } from '../components/cropsteering';
 import NutrientTracker from '../components/cropsteering/NutrientTracker';
+import CultivationCalendar from '../components/cropsteering/CultivationCalendar';
 import { useCropSteering } from '../context/CropSteeringContext';
 import { API_BASE_URL, apiClient } from '../api/client';
 import { DEFAULT_AUTOMATION_RULES, AutomationRule } from '../utils/automationEngine';
@@ -218,6 +219,7 @@ const CropSteering: React.FC = () => {
           <Tab label="Alertas" icon={<Bell size={16} />} iconPosition="start" />
           <Tab label="Configuración" icon={<Settings size={16} />} iconPosition="start" />
           <Tab label="Nutrientes" icon={<Beaker size={16} />} iconPosition="start" />
+          <Tab label="Calendario" icon={<Calendar size={16} />} iconPosition="start" />
         </Tabs>
       </Box>
 
@@ -481,6 +483,11 @@ const CropSteering: React.FC = () => {
       {/* Tab 5: Nutrientes */}
       <TabPanel value={activeTab} index={5}>
         <NutrientTracker />
+      </TabPanel>
+
+      {/* Tab 6: Calendario */}
+      <TabPanel value={activeTab} index={6}>
+        <CultivationCalendar />
       </TabPanel>
     </Box>
   );
