@@ -71,10 +71,17 @@ const EnvironmentStatusCard: React.FC<EnvironmentStatusCardProps> = ({
           flexDirection: 'column',
           gap: 1,
           position: 'relative',
-          overflow: 'hidden'
+          overflow: 'hidden',
+          transition: 'all 0.3s ease',
+          cursor: 'default',
+          '&:hover': {
+            bgcolor: `${statusInfo.color}15`,
+            transform: 'translateY(-2px)',
+            boxShadow: `0 8px 24px ${statusInfo.color}25`
+          }
         }}
       >
-        {/* Status dot */}
+        {/* Status dot with glow */}
         <Box
           sx={{
             position: 'absolute',
@@ -84,10 +91,11 @@ const EnvironmentStatusCard: React.FC<EnvironmentStatusCardProps> = ({
             height: 8,
             borderRadius: '50%',
             bgcolor: statusInfo.color,
+            boxShadow: `0 0 8px ${statusInfo.color}`,
             animation: status !== 'optimal' ? 'pulse 2s infinite' : 'none',
             '@keyframes pulse': {
-              '0%, 100%': { opacity: 1 },
-              '50%': { opacity: 0.5 }
+              '0%, 100%': { opacity: 1, boxShadow: `0 0 8px ${statusInfo.color}` },
+              '50%': { opacity: 0.5, boxShadow: `0 0 16px ${statusInfo.color}` }
             }
           }}
         />
@@ -100,12 +108,15 @@ const EnvironmentStatusCard: React.FC<EnvironmentStatusCardProps> = ({
           </Typography>
         </Box>
 
-        {/* Value */}
+        {/* Value with text shadow */}
         <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5 }}>
           <Typography
             variant={compact ? 'h6' : 'h5'}
             fontWeight="bold"
-            sx={{ color: statusInfo.color }}
+            sx={{
+              color: statusInfo.color,
+              textShadow: `0 0 20px ${statusInfo.color}40`
+            }}
           >
             {value}
           </Typography>
