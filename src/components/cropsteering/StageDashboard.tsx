@@ -104,7 +104,7 @@ const StageDashboard: React.FC = () => {
   const [selectedStage, setSelectedStage] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const API_URL = import.meta.env.VITE_API_URL || 'https://pkgrower.onrender.com';
+  const API_URL = (import.meta as any).env?.VITE_API_URL || 'https://pkgrower.onrender.com';
 
   const fetchData = async () => {
     try {

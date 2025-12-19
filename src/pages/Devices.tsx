@@ -63,11 +63,25 @@ const DevicesPage: React.FC = () => {
     try {
       setLoading(true);
       const response = await apiClient.getAllDevices();
-      setDevices(response);
+
+      // Smart Merge: Respect local optimistic updates
+      setDevices(currentDevices => {
+        if (!response || !Array.isArray(response)) return currentDevices;
+
+        return response.map((newDev: Device) => {
+             const existing = currentDevices.find(d => d.id === newDev.id);
+             // If controlled locally in last 5 seconds, keep local state to prevent flickering
+             if (existing && (existing as any).lastControlTime && Date.now() - (existing as any).lastControlTime < 5000) {
+                 return existing;
+             }
+             return newDev;
+        });
+      });
+
     } catch (error) {
       console.error('Error fetching devices:', error);
       // Datos simulados si la API falla
-      setDevices([
+      const mockDevices: Device[] = [
         {
           id: 'tuya-sensor-1',
           name: 'Sensor Sustrato 1',
@@ -152,23 +166,39 @@ const DevicesPage: React.FC = () => {
           description: 'Sistema de riego automático',
           lastUpdate: new Date().toLocaleTimeString(),
         },
-      ]);
+      ];
+
+      setDevices(mockDevices);
     } finally {
       setLoading(false);
     }
   };
 
   const handleToggleDevice = async (device: Device) => {
+    // Optimistic Update
+    const originalStatus = device.status;
+    const newStatus = !originalStatus;
+
+    // Update local state immediately
+    setDevices(prev => prev.map(d =>
+        d.id === device.id ? {
+            ...d,
+            status: newStatus,
+            // Add a temporary flag/timestamp to ignore polling updates for 5 seconds
+            lastControlTime: Date.now()
+        } as any : d
+    ));
+
     try {
-      const action = !device.status ? 'on' : 'off';
+      const action = newStatus ? 'on' : 'off';
       await apiClient.controlDevice(device.id, action);
-      setDevices(
-        devices.map(d =>
-          d.id === device.id ? { ...d, status: !d.status } : d
-        )
-      );
+      // Success - no need to do anything, state is already updated
     } catch (error) {
       console.error('Error toggling device:', error);
+      // Rollback on error
+      setDevices(prev => prev.map(d =>
+        d.id === device.id ? { ...d, status: originalStatus } : d
+      ));
       alert('Error al controlar dispositivo');
     }
   };

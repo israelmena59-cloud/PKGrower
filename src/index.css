@@ -42,8 +42,8 @@
 /* Dark Mode Theme */
 .dark {
   /* FLUID GLASS THEME (Refined Dark Mode) */
-  --background: 240 10% 3.9%; /* Approx #0a0a0a */
-  --foreground: 0 0% 98%;
+  --background: 222 47% 11%; /* Deep Space Blue #0f172a */
+  --foreground: 210 40% 98%;
 
   --card: 240 10% 6%; /* #111 */
   --card-foreground: 0 0% 98%;
@@ -73,11 +73,31 @@
   --radius: 1.5rem; /* Squircle radius 24px */
 
   /* ADVANCED GLASS SYSTEM (iOS Style) */
-  --glass-bg: rgba(20, 20, 20, 0.65);
+  /* ADVANCED GLASS SYSTEM (iOS Style) */
+  --glass-bg: rgba(15, 23, 42, 0.6);
   --glass-border: 1px solid rgba(255, 255, 255, 0.08);
   --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
-  --backdrop-blur: blur(16px) saturate(180%);
+  --backdrop-blur: blur(20px) saturate(180%);
   --squircle-radius: 24px;
+}
+
+.ai-gradient-text {
+  background: linear-gradient(135deg, #22c55e 0%, #a855f7 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-fill-color: transparent;
+}
+
+.neon-glow {
+  box-shadow: 0 0 10px rgba(34, 197, 94, 0.5), 0 0 20px rgba(168, 85, 247, 0.3);
+}
+
+.glass-card-hover:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(34, 197, 94, 0.3);
+  transform: translateY(-2px);
+  transition: all 0.3s ease;
 }
 
 body {

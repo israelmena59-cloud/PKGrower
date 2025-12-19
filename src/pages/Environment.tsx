@@ -1,17 +1,45 @@
 /**
  * Environment Page - Integrated with Crop Steering
- * Dynamic VPD targets and recommendations based on growth stage
+ * AI-Coated Design & Dynamic VPD targets
  */
 
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, Grid, CardHeader, CardContent, CircularProgress, Alert, Divider, TextField, Switch, Button, Chip, LinearProgress } from '@mui/material';
-import { Thermometer, Droplet, Wind, Fan, Save, Leaf, Target, TrendingUp, TrendingDown } from 'lucide-react';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, ReferenceLine, ReferenceArea } from 'recharts';
+import { Box, Typography, Grid, Paper, Switch, Button, Chip, Tabs, Tab, Slider, Stack, CircularProgress } from '@mui/material';
+import { Thermometer, Droplet, Wind, Fan, Save, Leaf, Target, TrendingUp, TrendingDown, Activity, Zap, RefreshCw } from 'lucide-react';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { API_BASE_URL, apiClient } from '../api/client';
-import DeviceSwitch from '../components/dashboard/DeviceSwitch';
-import HistoryChart from '../components/dashboard/HistoryChart';
 import { useCropSteering } from '../context/CropSteeringContext';
 import { VPDGauge } from '../components/cropsteering';
+
+// --- SUB-COMPONENTS (Reusable Glass UI) ---
+
+const GlassCard = ({ children, sx = {} }: { children: React.ReactNode, sx?: any }) => (
+    <Paper elevation={0} sx={{
+        p: 3,
+        borderRadius: '24px',
+        background: 'var(--glass-bg)',
+        backdropFilter: 'var(--backdrop-blur)',
+        border: 'var(--glass-border)',
+        ...sx
+    }}>
+        {children}
+    </Paper>
+);
+
+const MetricCard = ({ label, value, unit, icon: Icon, color, subValue }: any) => (
+    <Paper elevation={0} sx={{ p: 2, borderRadius: '20px', bgcolor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', height: '100%' }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+            <Box sx={{ p: 1, borderRadius: '12px', bgcolor: `${color}20`, color: color }}>
+                <Icon size={20} />
+            </Box>
+            {subValue && <Chip label={subValue} size="small" sx={{ bgcolor: 'rgba(255,255,255,0.05)', color: 'text.secondary', fontSize: '0.7rem' }} />}
+        </Box>
+        <Typography variant="h4" fontWeight="bold" sx={{ color: '#fff', mb: 0.5 }}>
+            {value}<Typography component="span" variant="caption" sx={{ color: 'text.secondary', ml: 0.5 }}>{unit}</Typography>
+        </Typography>
+        <Typography variant="body2" color="text.secondary">{label}</Typography>
+    </Paper>
+);
 
 interface EnvironmentSettings {
     enabled: boolean;
@@ -28,18 +56,10 @@ const Environment: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [vpdData, setVpdData] = useState<any[]>([]);
   const [currentVpd, setCurrentVpd] = useState(0);
+  const [tabIndex, setTabIndex] = useState(0);
 
   // Crop Steering Integration
-  const {
-    settings: cropSettings,
-    currentStage,
-    getTargetVPD,
-    getTargetTemp,
-    getTargetHumidity,
-    environmentStatus,
-    recommendations,
-    updateConditions
-  } = useCropSteering();
+  const { currentStage, getTargetVPD, getTargetTemp, getTargetHumidity, updateConditions } = useCropSteering();
 
   const targets = {
     vpd: getTargetVPD(),
@@ -86,38 +106,35 @@ const Environment: React.FC = () => {
               vwc: sensorsData.substrateHumidity || 50
             });
 
-            // Generate chart data
+            // Generate chart data (Mock for now, would be history API)
             const mock = [];
             for (let i = 0; i < 24; i++) {
-                mock.push({ time: `${i}:00`, vpd: currentVpdVal, temp: currentTemp, hum: currentHum });
+                const t = 22 + Math.sin(i / 3) * 2;
+                const h = 60 + Math.cos(i / 4) * 10;
+                mock.push({
+                    time: `${i}:00`,
+                    vpd: (0.61078 * Math.exp((17.27 * t) / (t + 237.3)) * (1 - h / 100)).toFixed(2),
+                    temp: t.toFixed(1),
+                    hum: h.toFixed(0)
+                });
             }
             if (active) {
                 setVpdData(mock);
                 setCurrentVpd(currentVpdVal);
-                setDevices((prev: any) => ({
-                    ...prev,
-                    sensorAmbiente: {
-                        temperature: sensorsData.temperature,
-                        humidity: sensorsData.humidity,
-                        isEstimate: sensorsData.isEstimate
-                    }
-                }));
             }
         } catch (e) { console.error(e); }
         finally { if (active) setLoading(false); }
     };
     fetchData();
 
+    // Polling
     const interval = setInterval(async () => {
         try {
             const devs = await apiClient.getDeviceStates();
             const sensorsRes = await fetch(`${API_BASE_URL}/api/sensors/latest`);
             const sensorsData = await sensorsRes.json();
             if (active) {
-                setDevices((prev: any) => ({
-                    ...devs,
-                    sensorAmbiente: { temperature: sensorsData.temperature, humidity: sensorsData.humidity, isEstimate: sensorsData.isEstimate }
-                }));
+                setDevices(devs);
                 setCurrentVpd(sensorsData.vpd || 0);
                 updateConditions({ temperature: sensorsData.temperature, humidity: sensorsData.humidity, vwc: sensorsData.substrateHumidity || 50 });
             }
@@ -138,16 +155,6 @@ const Environment: React.FC = () => {
       } finally { setSaving(false); }
   };
 
-  // Status based on crop steering
-  const getVpdStatusFromStage = () => {
-    const vpd = currentVpd;
-    if (vpd < targets.vpd.min - 0.2) return { label: 'Crítico Bajo', color: 'error', icon: <TrendingDown size={16} /> };
-    if (vpd < targets.vpd.min) return { label: 'Bajo para etapa', color: 'warning', icon: <TrendingDown size={16} /> };
-    if (vpd <= targets.vpd.max) return { label: 'Óptimo', color: 'success', icon: <Target size={16} /> };
-    if (vpd < targets.vpd.max + 0.2) return { label: 'Alto para etapa', color: 'warning', icon: <TrendingUp size={16} /> };
-    return { label: 'Crítico Alto', color: 'error', icon: <TrendingUp size={16} /> };
-  };
-
   const handleToggle = async (id: string, currentStatus: boolean) => {
       setDevices((prev: any) => ({ ...prev, [id]: !currentStatus }));
       try { await apiClient.controlDevice(id, !currentStatus ? 'on' : 'off'); }
@@ -156,264 +163,220 @@ const Environment: React.FC = () => {
 
   if (loading || !settings) {
     return (
-      <Box sx={{ p: 3 }}>
-        <Typography variant="h4" sx={{ mb: 3 }}>Clima y VPD</Typography>
-        <Box className="loading-shimmer glass-panel" sx={{ height: 60, borderRadius: '16px', mb: 2 }} />
-        <Box className="loading-shimmer glass-panel" sx={{ height: 400, borderRadius: '16px' }} />
+      <Box sx={{ p: 4, display: 'flex', justifyContent: 'center' }}>
+        <CircularProgress />
       </Box>
     );
   }
 
-  const vpdInfo = getVpdStatusFromStage();
   const stageLabel = currentStage.replace('_', ' ').toUpperCase();
 
   return (
-    <Box sx={{ p: 2 }}>
-      {/* Header with Glass Styling */}
-      <Box className="glass-panel" sx={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        mb: 3,
-        p: 2,
-        borderRadius: '16px',
-        flexWrap: 'wrap',
-        gap: 2
-      }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Box sx={{
-            p: 1.5,
-            borderRadius: '12px',
-            bgcolor: 'rgba(34, 197, 94, 0.2)',
-            color: '#22c55e'
-          }}>
-            <Wind size={28} />
-          </Box>
-          <Box>
-            <Typography variant="h5" fontWeight="bold">Clima y VPD</Typography>
-            <Typography variant="caption" color="text.secondary">
-              Etapa: {stageLabel}
-            </Typography>
-          </Box>
-        </Box>
-        <Alert
-          severity={vpdInfo.color as any}
-          icon={vpdInfo.icon}
-          sx={{ py: 0.5, alignItems: 'center', borderRadius: '12px' }}
-        >
-          VPD: <strong>{currentVpd.toFixed(2)} kPa</strong> | Target: {targets.vpd.min.toFixed(1)}-{targets.vpd.max.toFixed(1)} ({vpdInfo.label})
-        </Alert>
+    <Box sx={{ maxWidth: 1600, mx: 'auto', p: { xs: 2, md: 4 } }}>
+      {/* Header */}
+      <Box sx={{ mb: 4, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Box>
+                <Typography variant="h4" fontWeight="800" className="ai-gradient-text" sx={{ mb: 1 }}>
+                    Ambiente & VPD
+                </Typography>
+                <Typography variant="body1" color="text.secondary">
+                    Control Climático Inteligente • {stageLabel}
+                </Typography>
+            </Box>
+            <Box sx={{ display: 'flex', gap: 2 }}>
+                <Button
+                    startIcon={<RefreshCw size={18} />}
+                    variant="outlined"
+                    sx={{ borderRadius: '12px', color: 'text.secondary', borderColor: 'rgba(255,255,255,0.1)' }}
+                >
+                    Sync
+                </Button>
+                <Button
+                    startIcon={<Save size={18} />}
+                    variant="contained"
+                    onClick={handleSave}
+                    disabled={saving}
+                    sx={{ borderRadius: '12px', bgcolor: '#3b82f6', '&:hover': { bgcolor: '#2563eb' } }}
+                >
+                    {saving ? 'Guardando...' : 'Guardar Configuración'}
+                </Button>
+            </Box>
       </Box>
-
-      {/* Recommendations Banner */}
-      {environmentStatus.overall !== 'optimal' && recommendations.length > 0 && (
-        <Alert severity={environmentStatus.overall === 'danger' ? 'error' : 'warning'} sx={{ mb: 2 }}>
-          💡 {recommendations[0]}
-        </Alert>
-      )}
 
       <Grid container spacing={3}>
-        {/* LEFT: VPD Monitor with Stage Zones */}
-        <Grid item xs={12} lg={8}>
-            <Box className="glass-panel" sx={{
-                height: '100%',
-                borderRadius: 'var(--squircle-radius)',
-                bgcolor: 'var(--glass-bg)',
-                backdropFilter: 'var(--backdrop-blur)',
-                border: 'var(--glass-border)',
-                boxShadow: 'var(--glass-shadow)',
-                overflow: 'hidden'
-            }}>
-                <CardHeader
-                  title="Monitor D.P.V. (Presión de Vapor)"
-                  subheader={`Zona óptima para ${stageLabel}: ${targets.vpd.min.toFixed(1)} - ${targets.vpd.max.toFixed(1)} kPa`}
-                  titleTypographyProps={{ fontWeight: 'bold' }}
-                />
-                <Divider sx={{ borderColor: 'rgba(255,255,255,0.1)' }} />
-                <Box sx={{ height: 300, p: 2 }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={vpdData}>
-                            <defs>
-                                <linearGradient id="colorVpdEnv" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#34C759" stopOpacity={0.4}/>
-                                    <stop offset="95%" stopColor="#34C759" stopOpacity={0}/>
-                                </linearGradient>
-                                <linearGradient id="colorTempEnv" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#FF9500" stopOpacity={0.3}/>
-                                    <stop offset="95%" stopColor="#FF9500" stopOpacity={0}/>
-                                </linearGradient>
-                                <linearGradient id="colorHumEnv" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#007AFF" stopOpacity={0.3}/>
-                                    <stop offset="95%" stopColor="#007AFF" stopOpacity={0}/>
-                                </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" opacity={0.1} stroke="white" />
-                            <XAxis dataKey="time" stroke="rgba(255,255,255,0.5)" tick={{ fontSize: 10 }} />
-                            <YAxis
-                              yAxisId="vpd"
-                              domain={[0, 2.5]}
-                              stroke="#34C759"
-                              tick={{ fontSize: 10 }}
-                              label={{ value: 'VPD (kPa)', angle: -90, position: 'insideLeft', fill: '#34C759', fontSize: 10 }}
-                            />
-                            <YAxis
-                              yAxisId="temp"
-                              orientation="right"
-                              domain={[15, 35]}
-                              stroke="#FF9500"
-                              tick={{ fontSize: 10 }}
-                              label={{ value: '°C / %', angle: 90, position: 'insideRight', fill: '#FF9500', fontSize: 10 }}
-                            />
-                            <RechartsTooltip
-                              contentStyle={{ backgroundColor: 'rgba(28, 28, 30, 0.95)', borderRadius: '16px', border: 'none' }}
-                              formatter={(value: any, name: string) => {
-                                if (name === 'VPD') return [`${Number(value).toFixed(2)} kPa`, name];
-                                if (name === 'Temp') return [`${Number(value).toFixed(1)}°C`, 'Temperatura'];
-                                if (name === 'Hum') return [`${Number(value).toFixed(0)}%`, 'Humedad'];
-                                return [value, name];
-                              }}
-                            />
-
-                            {/* Optimal VPD Zone from Crop Steering */}
-                            <ReferenceArea yAxisId="vpd" y1={targets.vpd.min} y2={targets.vpd.max} fill="#34C759" fillOpacity={0.1} />
-                            <ReferenceLine yAxisId="vpd" y={targets.vpd.min} stroke="#34C759" strokeDasharray="3 3" />
-                            <ReferenceLine yAxisId="vpd" y={targets.vpd.target} stroke="#34C759" strokeWidth={2} />
-                            <ReferenceLine yAxisId="vpd" y={targets.vpd.max} stroke="#34C759" strokeDasharray="3 3" />
-
-                            {/* Danger zones */}
-                            <ReferenceArea yAxisId="vpd" y1={0} y2={0.4} fill="#FF3B30" fillOpacity={0.05} />
-                            <ReferenceArea yAxisId="vpd" y1={1.8} y2={2.5} fill="#FF3B30" fillOpacity={0.05} />
-
-                            {/* Data Lines */}
-                            <Area yAxisId="vpd" type="monotone" dataKey="vpd" stroke="#34C759" strokeWidth={3} fillOpacity={1} fill="url(#colorVpdEnv)" name="VPD" />
-                            <Area yAxisId="temp" type="monotone" dataKey="temp" stroke="#FF9500" strokeWidth={2} fillOpacity={0.3} fill="url(#colorTempEnv)" name="Temp" />
-                            <Area yAxisId="temp" type="monotone" dataKey="hum" stroke="#007AFF" strokeWidth={2} fillOpacity={0.3} fill="url(#colorHumEnv)" name="Hum" />
-                        </AreaChart>
-                    </ResponsiveContainer>
-                </Box>
-            </Box>
+        {/* TOP ROW: METRIC CARDS */}
+        <Grid item xs={12} md={3}>
+            <MetricCard
+                label="Temperatura"
+                value={devices.sensorAmbiente?.temperature || 24.5}
+                unit="°C"
+                icon={Thermometer}
+                color="#f59e0b"
+                subValue={`Target: ${targets.temp.dayMax}°C`}
+            />
+        </Grid>
+        <Grid item xs={12} md={3}>
+             <MetricCard
+                label="Humedad Relativa"
+                value={devices.sensorAmbiente?.humidity || 60}
+                unit="%"
+                icon={Droplet}
+                color="#3b82f6"
+                subValue={`Target: ${targets.humidity.dayMax}%`}
+            />
+        </Grid>
+        <Grid item xs={12} md={3}>
+            <MetricCard
+                label="Déficit Presión (VPD)"
+                value={currentVpd.toFixed(2)}
+                unit="kPa"
+                icon={Activity}
+                color={currentVpd >= targets.vpd.min && currentVpd <= targets.vpd.max ? '#22c55e' : '#ef4444'}
+                subValue="Óptimo para fase"
+            />
+        </Grid>
+        <Grid item xs={12} md={3}>
+             <MetricCard
+                label="Estado Extractor"
+                value={devices.extractorControlador ? 'ON' : 'OFF'}
+                unit=""
+                icon={Wind}
+                color="#8b5cf6"
+                subValue={settings.mode === 'auto' ? 'Automático' : 'Manual'}
+            />
         </Grid>
 
-        {/* RIGHT: Controls with Stage Targets */}
+        {/* MIDDLE ROW: CHART & GAUGE */}
+        <Grid item xs={12} lg={8}>
+            <GlassCard>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
+                    <Typography variant="h6" fontWeight="bold">Histórico Climático (24h)</Typography>
+                    <Stack direction="row" spacing={2}>
+                        <Chip label="Temp" size="small" sx={{ bgcolor: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', border: 1, borderColor: '#f59e0b' }} />
+                        <Chip label="Humedad" size="small" sx={{ bgcolor: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: 1, borderColor: '#3b82f6' }} />
+                    </Stack>
+                </Box>
+                <ResponsiveContainer width="100%" height={320}>
+                    <AreaChart data={vpdData}>
+                        <defs>
+                            <linearGradient id="colorTemp" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.3}/>
+                                <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/>
+                            </linearGradient>
+                            <linearGradient id="colorHum" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                            </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={true} vertical={false} />
+                        <XAxis dataKey="time" stroke="#666" fontSize={12} tickLine={false} axisLine={false} />
+                        <YAxis yAxisId="left" domain={[15, 35]} stroke="#666" fontSize={12} tickLine={false} axisLine={false} unit="°C" width={30} />
+                        <YAxis yAxisId="right" orientation="right" domain={[30, 90]} stroke="#666" fontSize={12} tickLine={false} axisLine={false} unit="%" width={30} />
+                        <RechartsTooltip
+                            contentStyle={{ backgroundColor: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' }}
+                            itemStyle={{ fontSize: '12px' }}
+                        />
+                        <Area yAxisId="left" type="monotone" dataKey="temp" stroke="#f59e0b" fillOpacity={1} fill="url(#colorTemp)" strokeWidth={2} />
+                        <Area yAxisId="right" type="monotone" dataKey="hum" stroke="#3b82f6" fillOpacity={1} fill="url(#colorHum)" strokeWidth={2} />
+                    </AreaChart>
+                </ResponsiveContainer>
+            </GlassCard>
+        </Grid>
+
         <Grid item xs={12} lg={4}>
-            {/* Current Conditions vs Targets */}
-            <Box className="glass-panel" sx={{
-                mb: 2,
-                borderRadius: 'var(--squircle-radius)',
-                bgcolor: 'var(--glass-bg)',
-                backdropFilter: 'var(--backdrop-blur)',
-                border: 'var(--glass-border)',
-                boxShadow: 'var(--glass-shadow)',
-                overflow: 'hidden'
-            }}>
-                <CardHeader
-                  title="Condiciones vs Targets"
-                  subheader={`Etapa: ${stageLabel}`}
-                  avatar={<Target size={20} />}
-                  titleTypographyProps={{ fontWeight: 'bold' }}
-                />
-                <Divider sx={{ borderColor: 'rgba(255,255,255,0.1)' }} />
-                <CardContent>
-                    {/* Temperature */}
-                    <Box sx={{ mb: 2 }}>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
-                        <Typography variant="body2"><Thermometer size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} />Temperatura</Typography>
-                        <Typography variant="body2" fontWeight="bold">
-                          {devices.sensorAmbiente?.temperature?.toFixed(1) || '--'}°C
-                        </Typography>
-                      </Box>
-                      <Typography variant="caption" color="text.secondary">
-                        Target: {targets.temp.dayMin}-{targets.temp.dayMax}°C (día)
-                      </Typography>
-                      <LinearProgress
-                        variant="determinate"
-                        value={Math.min(100, Math.max(0, ((devices.sensorAmbiente?.temperature || 0) / targets.temp.dayMax) * 100))}
-                        sx={{
-                          mt: 0.5,
-                          height: 6,
-                          borderRadius: 3,
-                          bgcolor: 'rgba(255,255,255,0.1)',
-                          '& .MuiLinearProgress-bar': {
-                            bgcolor: environmentStatus.temperature === 'optimal' ? '#34C759' : environmentStatus.temperature === 'warning' ? '#FF9500' : '#FF3B30'
-                          }
-                        }}
-                      />
-                    </Box>
+            <GlassCard sx={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                 <Typography variant="h6" fontWeight="bold" sx={{ mb: 2, width: '100%' }}>VPD en Tiempo Real</Typography>
+                 <Box sx={{ transform: 'scale(1.1)', my: 2 }}>
+                    <VPDGauge size="medium" showRecommendations={false} value={currentVpd} />
+                 </Box>
+                 <Box sx={{ mt: 2, textAlign: 'center' }}>
+                     <Typography variant="body2" color="text.secondary">Rango Objetivo</Typography>
+                     <Typography variant="h6" fontWeight="bold" sx={{ color: '#22c55e' }}>
+                         {targets.vpd.min} - {targets.vpd.max} kPa
+                     </Typography>
+                 </Box>
+            </GlassCard>
+        </Grid>
 
-                    {/* Humidity */}
-                    <Box sx={{ mb: 2 }}>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
-                        <Typography variant="body2"><Droplet size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} />Humedad</Typography>
-                        <Typography variant="body2" fontWeight="bold">
-                          {devices.sensorAmbiente?.humidity?.toFixed(0) || '--'}%
-                        </Typography>
-                      </Box>
-                      <Typography variant="caption" color="text.secondary">
-                        Target: {targets.humidity.dayMin}-{targets.humidity.dayMax}% (día)
-                      </Typography>
-                      <LinearProgress
-                        variant="determinate"
-                        value={devices.sensorAmbiente?.humidity || 0}
-                        sx={{
-                          mt: 0.5,
-                          height: 6,
-                          borderRadius: 3,
-                          bgcolor: 'rgba(255,255,255,0.1)',
-                          '& .MuiLinearProgress-bar': {
-                            bgcolor: environmentStatus.humidity === 'optimal' ? '#34C759' : environmentStatus.humidity === 'warning' ? '#FF9500' : '#FF3B30'
-                          }
-                        }}
-                      />
-                    </Box>
+        {/* BOTTOM ROW: CONTROLS */}
+        <Grid item xs={12}>
+            <GlassCard>
+                <Tabs value={tabIndex} onChange={(_, v) => setTabIndex(v)} textColor="inherit" indicatorColor="secondary" sx={{ borderBottom: 1, borderColor: 'rgba(255,255,255,0.1)', mb: 3 }}>
+                    <Tab label="Control Manual" icon={<Zap size={18} />} iconPosition="start" />
+                    <Tab label="Automatización" icon={<Target size={18} />} iconPosition="start" />
+                </Tabs>
 
-                    {/* DIF (Day/Night Differential) */}
-                    <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'rgba(255,255,255,0.05)' }}>
-                      <Typography variant="caption" fontWeight="bold">Diferencial Día/Noche (DIF)</Typography>
-                      <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary' }}>
-                        Recomendado: +{(targets.temp.dayMax - targets.temp.nightMax).toFixed(0)}°C durante el día
-                      </Typography>
-                    </Box>
-                </CardContent>
-            </Box>
+                {tabIndex === 0 && (
+                    <Grid container spacing={3}>
+                        <Grid item xs={12} md={3}>
+                             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 2, borderRadius: '16px', bgcolor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                    <Fan size={24} className={devices.extractorControlador ? "text-purple-500" : "text-gray-500"} />
+                                    <Box>
+                                        <Typography fontWeight="bold">Extractor</Typography>
+                                        <Typography variant="caption" color="text.secondary">Salida Aire</Typography>
+                                    </Box>
+                                </Box>
+                                <Switch checked={!!devices.extractorControlador} onChange={() => handleToggle('extractorControlador', devices.extractorControlador)} color="secondary" />
+                             </Box>
+                        </Grid>
+                        <Grid item xs={12} md={3}>
+                             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 2, borderRadius: '16px', bgcolor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                    <Droplet size={24} className={devices.humidifier ? "text-blue-500" : "text-gray-500"} />
+                                    <Box>
+                                        <Typography fontWeight="bold">Humidificador</Typography>
+                                        <Typography variant="caption" color="text.secondary">Xiaomi</Typography>
+                                    </Box>
+                                </Box>
+                                <Switch checked={!!devices.humidifier} onChange={() => handleToggle('humidifier', devices.humidifier)} color="info" />
+                             </Box>
+                        </Grid>
+                        <Grid item xs={12} md={3}>
+                             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 2, borderRadius: '16px', bgcolor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                    <Wind size={24} className={devices.deshumidifier ? "text-orange-500" : "text-gray-500"} />
+                                    <Box>
+                                        <Typography fontWeight="bold">Deshumidificador</Typography>
+                                        <Typography variant="caption" color="text.secondary">Control Secado</Typography>
+                                    </Box>
+                                </Box>
+                                <Switch checked={!!devices.deshumidifier} onChange={() => handleToggle('deshumidifier', devices.deshumidifier)} color="warning" />
+                             </Box>
+                        </Grid>
+                        <Grid item xs={12} md={3}>
+                             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 2, borderRadius: '16px', bgcolor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                    <Fan size={24} className={devices.fans_circ ? "text-green-500" : "text-gray-500"} />
+                                    <Box>
+                                        <Typography fontWeight="bold">Ventiladores</Typography>
+                                        <Typography variant="caption" color="text.secondary">Circulación</Typography>
+                                    </Box>
+                                </Box>
+                                <Switch checked={!!devices.fans_circ} onChange={() => handleToggle('fans_circ', devices.fans_circ)} color="success" />
+                             </Box>
+                        </Grid>
+                    </Grid>
+                )}
 
-            {/* VPD Gauge Mini */}
-            <Box sx={{ mb: 2 }}>
-              <VPDGauge size="small" showRecommendations={false} />
-            </Box>
-
-            {/* Device Controls */}
-            <Box className="glass-panel" sx={{
-                borderRadius: 'var(--squircle-radius)',
-                bgcolor: 'var(--glass-bg)',
-                backdropFilter: 'var(--backdrop-blur)',
-                border: 'var(--glass-border)',
-                boxShadow: 'var(--glass-shadow)',
-                overflow: 'hidden'
-            }}>
-                <CardHeader title="Controles" avatar={<Wind />} titleTypographyProps={{ fontWeight: 'bold' }} />
-                <Divider sx={{ borderColor: 'rgba(255,255,255,0.1)' }} />
-                <CardContent>
-                   <Box sx={{ mb: 2 }}>
-                     <DeviceSwitch name="Extractor" icon={<Fan />} isOn={devices.extractorControlador} onToggle={() => handleToggle('extractorControlador', devices.extractorControlador)} />
-                   </Box>
-                   <Box sx={{ mb: 2 }}>
-                     <DeviceSwitch name="Humidificador" icon={<Droplet />} isOn={devices.humidifier} onToggle={() => handleToggle('humidifier', devices.humidifier)} />
-                   </Box>
-                   <Box sx={{ mb: 2 }}>
-                     <DeviceSwitch name="Deshumidificador" icon={<Wind />} isOn={devices.deshumidificador} onToggle={() => handleToggle('deshumidificador', devices.deshumidificador)} />
-                   </Box>
-                   <Button variant="contained" fullWidth onClick={handleSave} disabled={saving} startIcon={<Save />}>
-                       Guardar Configuración
-                   </Button>
-                </CardContent>
-            </Box>
+                {tabIndex === 1 && (
+                     <Grid container spacing={3}>
+                        <Grid item xs={12} md={6}>
+                            <Typography gutterBottom>Trigger Humidificador (% HR)</Typography>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                <Slider
+                                    value={settings.humidifierTarget}
+                                    onChange={(_, v) => setSettings({ ...settings, humidifierTarget: v as number })}
+                                    min={30} max={90} sx={{ color: '#3b82f6' }}
+                                />
+                                <Typography fontWeight="bold">{settings.humidifierTarget}%</Typography>
+                            </Box>
+                        </Grid>
+                     </Grid>
+                )}
+            </GlassCard>
         </Grid>
       </Grid>
-
-      {/* Historical Chart */}
-      <Box sx={{ mt: 3 }}>
-          <HistoryChart type="environment" title="Historial Climático" />
-      </Box>
     </Box>
   );
 };

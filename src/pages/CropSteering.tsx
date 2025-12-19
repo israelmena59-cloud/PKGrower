@@ -5,18 +5,17 @@
 
 import React, { useEffect, useState } from 'react';
 import { Box, Typography, Grid, Alert, Button, TextField, Switch, FormControlLabel, Tabs, Tab, CardHeader, CardContent, Divider, CircularProgress } from '@mui/material';
-import { Leaf, Settings, RefreshCw, Save, Zap, Bell, Droplet, Activity, Beaker, Calendar } from 'lucide-react';
+import { Leaf, Settings, RefreshCw, Save, Zap, Bell, Droplet, Activity, Beaker, Calendar, Sprout } from 'lucide-react';
 import {
   VPDGauge,
   StageSelector,
   EnvironmentStatusCard,
-  IrrigationTimeline,
-  AutomationPanel,
   AlertList,
   StageDashboard
 } from '../components/cropsteering';
 import NutrientTracker from '../components/cropsteering/NutrientTracker';
 import CultivationCalendar from '../components/cropsteering/CultivationCalendar';
+import PlantInventory from '../components/cropsteering/PlantInventory';
 import { useCropSteering } from '../context/CropSteeringContext';
 import { API_BASE_URL, apiClient } from '../api/client';
 import { DEFAULT_AUTOMATION_RULES, AutomationRule } from '../utils/automationEngine';
@@ -214,12 +213,7 @@ const CropSteering: React.FC = () => {
           textColor="inherit"
         >
           <Tab label="Monitoreo" icon={<Leaf size={16} />} iconPosition="start" />
-          <Tab label="Riego" icon={<Droplet size={16} />} iconPosition="start" />
-          <Tab label="Automatización" icon={<Zap size={16} />} iconPosition="start" />
           <Tab label="Alertas" icon={<Bell size={16} />} iconPosition="start" />
-          <Tab label="Configuración" icon={<Settings size={16} />} iconPosition="start" />
-          <Tab label="Nutrientes" icon={<Beaker size={16} />} iconPosition="start" />
-          <Tab label="Calendario" icon={<Calendar size={16} />} iconPosition="start" />
         </Tabs>
       </Box>
 
@@ -235,9 +229,6 @@ const CropSteering: React.FC = () => {
             </Box>
             <Box sx={{ mb: 3 }}>
               <StageSelector compact={false} />
-            </Box>
-            <Box sx={{ mb: 3 }}>
-              <IrrigationTimeline showDetails={true} />
             </Box>
           </Grid>
 
@@ -270,225 +261,14 @@ const CropSteering: React.FC = () => {
         </Grid>
       </TabPanel>
 
-      {/* Tab 1: Irrigation */}
+      {/* Tab 1: Alerts */}
       <TabPanel value={activeTab} index={1}>
-        <Grid container spacing={3}>
-          <Grid item xs={12} lg={8}>
-            <HistoryChart
-              type="substrate"
-              title="📊 Monitor Principal de Riego"
-              irrigationEvents={irrigationEvents}
-            />
-          </Grid>
-          <Grid item xs={12} lg={4}>
-            {/* Pump Control - P1-P6 Shots */}
-            <Box className="glass-panel" sx={{ mb: 2, borderRadius: '16px', bgcolor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', overflow: 'hidden' }}>
-              <CardHeader title="Shots de Riego" subheader="P1-P6 según Crop Steering" avatar={<Droplet />} titleTypographyProps={{ fontWeight: 'bold' }} />
-              <Divider sx={{ borderColor: 'rgba(255,255,255,0.1)' }} />
-              <CardContent>
-                {/* P1-P6 Grid */}
-                <Grid container spacing={1} sx={{ mb: 2 }}>
-                  {[
-                    { label: 'P1', pct: 1, color: '#22c55e', desc: 'Micro' },
-                    { label: 'P2', pct: 2, color: '#3b82f6', desc: 'Suave' },
-                    { label: 'P3', pct: 3, color: '#8b5cf6', desc: 'Normal' },
-                    { label: 'P4', pct: 4, color: '#f59e0b', desc: 'Medio' },
-                    { label: 'P5', pct: 5, color: '#ef4444', desc: 'Alto' },
-                    { label: 'P6', pct: 6, color: '#ec4899', desc: 'Máximo' }
-                  ].map(({ label, pct, color, desc }) => (
-                    <Grid item xs={4} key={label}>
-                      <Button
-                        fullWidth
-                        variant="contained"
-                        disabled={pulsing}
-                        onClick={() => handleShot(pct)}
-                        sx={{
-                          py: 1.5,
-                          background: `linear-gradient(135deg, ${color}dd 0%, ${color}99 100%)`,
-                          '&:hover': { background: `linear-gradient(135deg, ${color} 0%, ${color}cc 100%)` },
-                          flexDirection: 'column',
-                          gap: 0
-                        }}
-                      >
-                        <Typography variant="h6" fontWeight="bold">{label}</Typography>
-                        <Typography variant="caption" sx={{ opacity: 0.8 }}>{(settings.potSizeLiters * 10 * pct).toFixed(0)}ml</Typography>
-                      </Button>
-                    </Grid>
-                  ))}
-                </Grid>
-
-                {/* Quick P3 Button */}
-                <Button
-                  fullWidth
-                  variant="outlined"
-                  size="large"
-                  disabled={pulsing}
-                  onClick={() => handleShot(3)}
-                  startIcon={pulsing ? <CircularProgress size={16} /> : <Droplet />}
-                  sx={{ mb: 2, py: 1.5, borderColor: '#8b5cf6', color: '#8b5cf6' }}
-                >
-                  {pulsing ? 'Regando...' : 'Quick P3 Shot'}
-                </Button>
-
-                <DeviceSwitch icon={<Activity />} name="Bomba Manual" isOn={devices.bombaControlador} onToggle={async () => { await apiClient.toggleDevice('bombaControlador'); loadDevices(); }} />
-              </CardContent>
-            </Box>
-
-            {/* Calibration */}
-            <Box className="glass-panel" sx={{ borderRadius: '16px', bgcolor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', overflow: 'hidden' }}>
-              <CardHeader title="Calibración" subheader="Parámetros de riego" titleTypographyProps={{ fontWeight: 'bold' }} />
-              <Divider sx={{ borderColor: 'rgba(255,255,255,0.1)' }} />
-              <CardContent>
-                <Grid container spacing={2}>
-                  <Grid item xs={6}>
-                    <TextField label="Maceta (L)" type="number" fullWidth size="small" value={settings.potSizeLiters} onChange={(e) => updateSettings({ potSizeLiters: parseFloat(e.target.value) || 3.8 })} />
-                  </Grid>
-                  <Grid item xs={6}>
-                    <TextField label="Flujo (ml/min)" type="number" fullWidth size="small" value={pumpRate} onChange={(e) => setPumpRate(parseFloat(e.target.value) || 60)} />
-                  </Grid>
-                </Grid>
-                <Alert severity="info" sx={{ mt: 2, fontSize: '0.75rem' }}>
-                  1% = {(settings.potSizeLiters * 10).toFixed(0)}ml = {((settings.potSizeLiters * 10) / pumpRate * 60).toFixed(1)}s
-                </Alert>
-              </CardContent>
-            </Box>
-          </Grid>
-        </Grid>
-      </TabPanel>
-
-      {/* Tab 2: Automation */}
-      <TabPanel value={activeTab} index={2}>
-        <AutomationPanel
-          enabled={automationEnabled}
-          onEnabledChange={setAutomationEnabled}
-          rules={automationRules}
-          onRuleToggle={handleRuleToggle}
-        />
-      </TabPanel>
-
-      {/* Tab 3: Alerts */}
-      <TabPanel value={activeTab} index={3}>
         <Box sx={{ p: 2, borderRadius: '16px', bgcolor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}>
           <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 2 }}>🔔 Alertas del Sistema</Typography>
           <AlertList maxAlerts={10} />
         </Box>
       </TabPanel>
 
-      {/* Tab 4: Settings */}
-      <TabPanel value={activeTab} index={4}>
-        <Grid container spacing={3}>
-          <Grid item xs={12} md={6}>
-            <Box
-              sx={{
-                p: 2,
-                borderRadius: '16px',
-                bgcolor: 'rgba(255,255,255,0.03)',
-                border: '1px solid rgba(255,255,255,0.08)'
-              }}
-            >
-              <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 2 }}>
-                Configuración General
-              </Typography>
-
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={settings.enabled}
-                    onChange={(e) => updateSettings({ enabled: e.target.checked })}
-                  />
-                }
-                label="Crop Steering Activo"
-                sx={{ mb: 2, display: 'block' }}
-              />
-
-              <TextField
-                label="Fecha Inicio Cultivo"
-                type="date"
-                fullWidth
-                size="small"
-                value={settings.growStartDate || ''}
-                onChange={(e) => updateSettings({ growStartDate: e.target.value })}
-                InputLabelProps={{ shrink: true }}
-                sx={{ mb: 2 }}
-              />
-
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={settings.autoStageProgression}
-                    onChange={(e) => updateSettings({ autoStageProgression: e.target.checked })}
-                  />
-                }
-                label="Progresión Automática de Etapa"
-                sx={{ mb: 2, display: 'block' }}
-              />
-
-              <TextField
-                label="Tamaño Maceta"
-                type="number"
-                fullWidth
-                size="small"
-                value={settings.potSizeLiters}
-                onChange={(e) => updateSettings({ potSizeLiters: parseFloat(e.target.value) || 3.8 })}
-                inputProps={{ min: 0.5, max: 50, step: 0.5 }}
-                helperText="Litros"
-              />
-            </Box>
-          </Grid>
-
-          <Grid item xs={12} md={6}>
-            <Box
-              sx={{
-                p: 2,
-                borderRadius: '16px',
-                bgcolor: 'rgba(255,255,255,0.03)',
-                border: '1px solid rgba(255,255,255,0.08)'
-              }}
-            >
-              <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 2 }}>
-                Horario de Iluminación
-              </Typography>
-
-              <Grid container spacing={2}>
-                <Grid item xs={6}>
-                  <TextField
-                    label="Luces ON"
-                    type="number"
-                    fullWidth
-                    size="small"
-                    value={settings.lightsOnHour}
-                    onChange={(e) => updateSettings({ lightsOnHour: parseInt(e.target.value) || 0 })}
-                    inputProps={{ min: 0, max: 23 }}
-                    helperText="Hora (0-23)"
-                  />
-                </Grid>
-                <Grid item xs={6}>
-                  <TextField
-                    label="Luces OFF"
-                    type="number"
-                    fullWidth
-                    size="small"
-                    value={settings.lightsOffHour}
-                    onChange={(e) => updateSettings({ lightsOffHour: parseInt(e.target.value) || 0 })}
-                    inputProps={{ min: 0, max: 23 }}
-                    helperText="Hora (0-23)"
-                  />
-                </Grid>
-              </Grid>
-            </Box>
-          </Grid>
-        </Grid>
-      </TabPanel>
-
-      {/* Tab 5: Nutrientes */}
-      <TabPanel value={activeTab} index={5}>
-        <NutrientTracker />
-      </TabPanel>
-
-      {/* Tab 6: Calendario */}
-      <TabPanel value={activeTab} index={6}>
-        <CultivationCalendar />
-      </TabPanel>
     </Box>
   );
 };

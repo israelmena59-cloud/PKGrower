@@ -3,37 +3,84 @@
  * Fast irrigation shots and phase control
  */
 
-import React, { useState } from 'react';
-import { Box, Typography, Button, Grid, Chip, CircularProgress } from '@mui/material';
-import { Droplet, Clock, Zap } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Box, Typography, Button, Grid, Chip, CircularProgress, LinearProgress } from '@mui/material';
+import { Droplet, Clock, Zap, Timer } from 'lucide-react';
 import { useCropSteering } from '../../context/CropSteeringContext';
 import { apiClient } from '../../api/client';
 
+interface IrrigationEvent {
+  timestamp: string;
+  percentage: number;
+  volumeMl: number;
+  durationSec: number;
+}
+
 const QuickActionsWidget: React.FC = () => {
-  const { settings, currentStage } = useCropSteering();
+  const { settings } = useCropSteering();
   const [pulsing, setPulsing] = useState(false);
   const [lastAction, setLastAction] = useState<string | null>(null);
+  const [countdown, setCountdown] = useState<number>(0); // Countdown in seconds
+  const [totalDuration, setTotalDuration] = useState<number>(0); // Total duration for progress
+  const [irrigationLog, setIrrigationLog] = useState<IrrigationEvent[]>([]);
+  const countdownRef = useRef<NodeJS.Timeout | null>(null);
 
   // Calculate shot volume based on pot size
   const getVolume = (pct: number) => (settings.potSizeLiters * 10 * pct).toFixed(0);
+  const pumpRate = settings.pumpRateMlPerMin || 60; // Use dynamic pump rate
 
   const handleQuickShot = async (pct: number) => {
     if (pulsing) return;
     setPulsing(true);
+
     try {
       const volumeMl = settings.potSizeLiters * 10 * pct;
-      const pumpRate = 60; // ml/min default
       const durationMs = Math.round((volumeMl / pumpRate) * 60 * 1000);
+      const durationSec = Math.round(durationMs / 1000);
 
+      // Start countdown
+      setTotalDuration(durationSec);
+      setCountdown(durationSec);
+
+      // Execute pulse command
       await apiClient.pulseDevice('bombaControlador', durationMs);
-      setLastAction(`${pct}% shot (${volumeMl.toFixed(0)}ml)`);
-      setTimeout(() => setLastAction(null), 5000);
+
+      // Start countdown interval
+      countdownRef.current = setInterval(() => {
+        setCountdown(prev => {
+          if (prev <= 1) {
+            clearInterval(countdownRef.current!);
+            setPulsing(false);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+
+      // Log the irrigation event
+      const event: IrrigationEvent = {
+        timestamp: new Date().toLocaleTimeString(),
+        percentage: pct,
+        volumeMl: volumeMl,
+        durationSec: durationSec
+      };
+      setIrrigationLog(prev => [event, ...prev.slice(0, 4)]); // Keep last 5 events
+
+      setLastAction(`${pct}% shot (${volumeMl.toFixed(0)}ml) - ${durationSec}s`);
+
     } catch (e) {
       console.error('Quick shot failed:', e);
-    } finally {
-      setTimeout(() => setPulsing(false), 2000);
+      setPulsing(false);
+      setCountdown(0);
     }
   };
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (countdownRef.current) clearInterval(countdownRef.current);
+    };
+  }, []);
 
   // Current phase indicator
   const now = new Date();
@@ -85,6 +132,37 @@ const QuickActionsWidget: React.FC = () => {
         />
       </Box>
 
+      {/* Active Countdown Timer */}
+      {pulsing && countdown > 0 && (
+        <Box sx={{
+          mb: 2,
+          p: 1.5,
+          borderRadius: '12px',
+          bgcolor: 'rgba(34, 197, 94, 0.15)',
+          border: '1px solid rgba(34, 197, 94, 0.4)'
+        }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+            <Timer size={16} color="#22c55e" />
+            <Typography variant="caption" fontWeight="bold" sx={{ color: '#22c55e' }}>
+              REGANDO...
+            </Typography>
+            <Typography variant="h6" fontWeight="bold" sx={{ color: '#22c55e', ml: 'auto' }}>
+              {countdown}s
+            </Typography>
+          </Box>
+          <LinearProgress
+            variant="determinate"
+            value={((totalDuration - countdown) / totalDuration) * 100}
+            sx={{
+              height: 6,
+              borderRadius: 3,
+              bgcolor: 'rgba(34, 197, 94, 0.2)',
+              '& .MuiLinearProgress-bar': { bgcolor: '#22c55e' }
+            }}
+          />
+        </Box>
+      )}
+
       {/* Quick Shot Buttons - P1-P6 with Gradients */}
       <Grid container spacing={1} sx={{ mb: 2 }}>
         {[
@@ -113,7 +191,9 @@ const QuickActionsWidget: React.FC = () => {
               {pulsing ? <CircularProgress size={14} color="inherit" /> : (
                 <>
                   <Typography variant="body2" fontWeight="bold">{label}</Typography>
-                  <Typography variant="caption" sx={{ opacity: 0.8, fontSize: '0.6rem' }}>{getVolume(pct)}ml</Typography>
+                  <Typography variant="caption" sx={{ opacity: 0.8, fontSize: '0.55rem' }}>
+                    {getVolume(pct)}ml / {Math.round((parseFloat(getVolume(pct)) / pumpRate) * 60)}s
+                  </Typography>
                 </>
               )}
             </Button>
@@ -123,16 +203,17 @@ const QuickActionsWidget: React.FC = () => {
 
       {/* Volume Info */}
       <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1, textAlign: 'center' }}>
-        {settings.potSizeLiters}L maceta → 1% = {getVolume(1)}ml
+        {settings.potSizeLiters}L maceta | Bomba: {pumpRate}ml/min
       </Typography>
 
       {/* Last Action */}
-      {lastAction && (
+      {lastAction && !pulsing && (
         <Box sx={{
           p: 1,
           borderRadius: '8px',
           bgcolor: 'rgba(52, 199, 89, 0.15)',
-          textAlign: 'center'
+          textAlign: 'center',
+          mb: 1
         }}>
           <Typography variant="caption" sx={{ color: '#34C759' }}>
             ✓ {lastAction}
@@ -140,18 +221,32 @@ const QuickActionsWidget: React.FC = () => {
         </Box>
       )}
 
+      {/* Recent Irrigation Log */}
+      {irrigationLog.length > 0 && (
+        <Box sx={{ mt: 1 }}>
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+            📋 Historial reciente:
+          </Typography>
+          {irrigationLog.slice(0, 3).map((event, idx) => (
+            <Typography key={idx} variant="caption" color="text.secondary" sx={{ display: 'block', fontSize: '0.6rem' }}>
+              {event.timestamp} — P{event.percentage} ({event.volumeMl}ml, {event.durationSec}s)
+            </Typography>
+          ))}
+        </Box>
+      )}
+
       {/* Phase Recommendation */}
-      {currentPhase === 'P1' && (
+      {currentPhase === 'P1' && !pulsing && (
         <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
           💡 P1: Primer riego del día. Recomendado 3-5% para activar metabolismo.
         </Typography>
       )}
-      {currentPhase === 'P4' && (
+      {currentPhase === 'P4' && !pulsing && (
         <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
           💡 P4: Último riego. Mantener VWC para el período nocturno.
         </Typography>
       )}
-      {currentPhase === 'P5' && (
+      {currentPhase === 'P5' && !pulsing && (
         <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
           🌙 P5: Período nocturno. Evitar riego para permitir dryback.
         </Typography>

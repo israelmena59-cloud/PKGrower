@@ -9,8 +9,9 @@ import HistoryChart from '../components/dashboard/HistoryChart';
 import CropSteeringWidget from '../components/dashboard/CropSteeringWidget';
 import QuickActionsWidget from '../components/dashboard/QuickActionsWidget';
 import { Thermometer, Droplet, Wind, Droplets, Lightbulb, RefreshCw, Settings, Plus, X, Zap } from 'lucide-react';
-import { Box, Paper, Typography, IconButton, CircularProgress, Button, Tabs, Tab, TextField, Dialog, DialogTitle, DialogContent, DialogActions, Tooltip, Grid } from '@mui/material';
+import { Box, Paper, Typography, IconButton, CircularProgress, Button, Tabs, Tab, TextField, Dialog, DialogTitle, DialogContent, DialogActions, Tooltip, Grid, Chip } from '@mui/material';
 import _ from 'lodash';
+import { useCropSteering } from '../context/CropSteeringContext';
 
 // Initial default layout for a fresh start
 // Default widgets (no charts - they are now static)
@@ -44,6 +45,33 @@ class DashboardErrorBoundary extends React.Component<{ children: React.ReactNode
         return this.props.children;
     }
 }
+
+const DayCounterDisplay = () => {
+    const { daysVeg, daysFlower, settings } = useCropSteering();
+    const isFlower = !!settings.flipDate;
+
+    return (
+        <Paper
+            elevation={0}
+            sx={{
+                px: 2, py: 1,
+                borderRadius: '12px',
+                bgcolor: isFlower ? 'rgba(168, 85, 247, 0.1)' : 'rgba(34, 197, 94, 0.1)',
+                border: isFlower ? '1px solid rgba(168, 85, 247, 0.2)' : '1px solid rgba(34, 197, 94, 0.2)',
+                display: 'flex', alignItems: 'center', gap: 2
+            }}
+        >
+            <Box>
+                <Typography variant="caption" sx={{ color: isFlower ? '#a855f7' : '#15803d', fontWeight: 'bold', display: 'block', lineHeight: 1 }}>
+                    {isFlower ? 'FLORACIÓN' : 'VEGETATIVO'}
+                </Typography>
+                <Typography variant="h6" fontWeight="bold" sx={{ color: isFlower ? '#9333ea' : '#16a34a', lineHeight: 1 }}>
+                    Día {isFlower ? daysFlower : daysVeg}
+                </Typography>
+            </Box>
+        </Paper>
+    );
+};
 
 const Dashboard: React.FC = () => {
     // DATA STATE
@@ -295,6 +323,8 @@ const Dashboard: React.FC = () => {
                 <Typography variant="h5" fontWeight="bold" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                     🌱 Panel de Control
                 </Typography>
+
+                <DayCounterDisplay />
 
                 <Box sx={{ display: 'flex', gap: 1 }}>
                      <Button

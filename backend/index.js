@@ -2567,6 +2567,22 @@ app.post('/api/device/:id/control', async (req, res) => {
              }
         }
 
+        // --- BACKEND FIX: Update Local Cache Immediately ---
+        // This prevents the "reverting" switch bug where the next polling cycle
+        // fetches old data from Tuya Cloud before their API confirms the change.
+        if (primarySuccess) {
+            tuyaDevices[id].on = (action === 'on');
+            // Also update the detailed status array effectively mocking the response
+            if (!tuyaDevices[id].status || typeof tuyaDevices[id].status === 'string') {
+                 tuyaDevices[id].status = [{ code: cmdCode, value: action === 'on' }];
+            } else if (Array.isArray(tuyaDevices[id].status)) {
+                 const sIdx = tuyaDevices[id].status.findIndex(s => s.code === cmdCode);
+                 if (sIdx !== -1) tuyaDevices[id].status[sIdx].value = (action === 'on');
+                 else tuyaDevices[id].status.push({ code: cmdCode, value: (action === 'on') });
+            }
+            console.log(`[CONTROL] Cache updated locally for ${id}: on=${tuyaDevices[id].on}`);
+        }
+
         res.json({
           success: primarySuccess,
           deviceId: id,
@@ -2596,6 +2612,118 @@ app.post('/api/device/:id/control', async (req, res) => {
       res.status(404).json({ error: 'Dispositivo no encontrado' });
     }
   } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// --- PULSE ENDPOINT (Timed Device Activation with Auto-Shutoff) ---
+app.post('/api/device/:id/pulse', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { duration } = req.body; // milliseconds
+
+    if (!duration || duration < 100 || duration > 300000) {
+      return res.status(400).json({ error: 'Invalid duration (100ms - 5min max)' });
+    }
+
+    console.log(`[PULSE] Request for ${id}: ${duration}ms`);
+
+    // Find device (Tuya, Xiaomi, or Meross)
+    const tuyaDevice = tuyaDevices[id];
+    const xiaomiDevice = xiaomiClients[id];
+    const merossDevice = merossDevices[id];
+
+    if (tuyaDevice) {
+      // TUYA PULSE
+      if (!tuyaConnected) {
+        return res.status(400).json({ error: 'Tuya not connected' });
+      }
+
+      const cmdCode = tuyaDevice.switchCode || 'switch';
+
+      // Turn ON
+      await tuyaClient.request({
+        method: 'POST',
+        path: `/v1.0/iot-03/devices/${tuyaDevice.id}/commands`,
+        body: { commands: [{ code: cmdCode, value: true }] },
+      });
+
+      // Update local cache
+      tuyaDevices[id].on = true;
+      console.log(`[PULSE] ${id} turned ON, auto-off in ${duration}ms`);
+
+      // Schedule AUTO-OFF
+      setTimeout(async () => {
+        try {
+          await tuyaClient.request({
+            method: 'POST',
+            path: `/v1.0/iot-03/devices/${tuyaDevice.id}/commands`,
+            body: { commands: [{ code: cmdCode, value: false }] },
+          });
+          tuyaDevices[id].on = false;
+          console.log(`[PULSE] ${id} auto-OFF executed`);
+        } catch (e) {
+          console.error(`[PULSE] Auto-OFF failed for ${id}:`, e.message);
+        }
+      }, duration);
+
+      return res.json({
+        success: true,
+        deviceId: id,
+        duration,
+        message: `Pulsing ${id} for ${(duration/1000).toFixed(1)}s`
+      });
+
+    } else if (xiaomiDevice) {
+      // XIAOMI PULSE
+      await xiaomiDevice.setPower(true);
+      console.log(`[PULSE] Xiaomi ${id} turned ON, auto-off in ${duration}ms`);
+
+      setTimeout(async () => {
+        try {
+          await xiaomiDevice.setPower(false);
+          console.log(`[PULSE] Xiaomi ${id} auto-OFF executed`);
+        } catch (e) {
+          console.error(`[PULSE] Xiaomi auto-OFF failed for ${id}:`, e.message);
+        }
+      }, duration);
+
+      return res.json({
+        success: true,
+        deviceId: id,
+        duration,
+        message: `Pulsing ${id} for ${(duration/1000).toFixed(1)}s`
+      });
+
+    } else if (merossDevice) {
+      // MEROSS PULSE
+      const turnOn = true;
+      await merossDevice.device.controlToggleX(0, turnOn);
+      merossDevices[id].onoff = turnOn;
+      console.log(`[PULSE] Meross ${id} turned ON, auto-off in ${duration}ms`);
+
+      setTimeout(async () => {
+        try {
+          await merossDevice.device.controlToggleX(0, false);
+          merossDevices[id].onoff = false;
+          console.log(`[PULSE] Meross ${id} auto-OFF executed`);
+        } catch (e) {
+          console.error(`[PULSE] Meross auto-OFF failed for ${id}:`, e.message);
+        }
+      }, duration);
+
+      return res.json({
+        success: true,
+        deviceId: id,
+        duration,
+        message: `Pulsing ${id} for ${(duration/1000).toFixed(1)}s`
+      });
+
+    } else {
+      return res.status(404).json({ error: 'Device not found' });
+    }
+  } catch (error) {
+    console.error('[PULSE] Error:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -2860,6 +2988,13 @@ app.post('/api/meross/device/:id/control', express.json(), async (req, res) => {
 
         const turnOn = action === 'on';
         await device.device.controlToggleX(0, turnOn);
+
+        // --- BACKEND FIX: Update Local Cache Immediately ---
+        if (merossDevices[id]) {
+            merossDevices[id].onoff = turnOn;
+            merossDevices[id].status = turnOn; // Ensure both properties are updated
+            console.log(`[MEROSS-CONTROL] Cache updated locally for ${id}: on=${turnOn}`);
+        }
 
         res.json({
             success: true,

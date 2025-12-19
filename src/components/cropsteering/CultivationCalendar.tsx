@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { useRooms } from '../../context/RoomContext';
 import {
   Box,
   Typography,
@@ -61,10 +62,11 @@ const STAGE_OPTIONS = [
 ];
 
 const CultivationCalendar: React.FC = () => {
+  const { activeRoomId } = useRooms();
   const [events, setEvents] = useState<CultivationEvent[]>([]);
   const [showDialog, setShowDialog] = useState(false);
   const [startDate, setStartDate] = useState<string>(() => {
-    const saved = localStorage.getItem('pkgrower_cultivation_start');
+    const saved = localStorage.getItem(`pkgrower_cultivation_start_${activeRoomId}`);
     return saved || new Date().toISOString().split('T')[0];
   });
 
@@ -76,24 +78,32 @@ const CultivationCalendar: React.FC = () => {
   const [toValue, setToValue] = useState('');
   const [description, setDescription] = useState('');
 
-  // Load events from localStorage
+  // Load events from localStorage when activeRoomId changes
   useEffect(() => {
-    const saved = localStorage.getItem('pkgrower_cultivation_events');
+    const saved = localStorage.getItem(`pkgrower_cultivation_events_${activeRoomId}`);
+    const savedStart = localStorage.getItem(`pkgrower_cultivation_start_${activeRoomId}`);
+
     if (saved) {
       setEvents(JSON.parse(saved));
+    } else {
+      setEvents([]);
     }
-  }, []);
 
-  // Save events
+    if (savedStart) {
+      setStartDate(savedStart);
+    }
+  }, [activeRoomId]);
+
+  // Save events with room namespace
   const saveEvents = (newEvents: CultivationEvent[]) => {
-    localStorage.setItem('pkgrower_cultivation_events', JSON.stringify(newEvents));
+    localStorage.setItem(`pkgrower_cultivation_events_${activeRoomId}`, JSON.stringify(newEvents));
     setEvents(newEvents);
   };
 
-  // Save start date
+  // Save start date with room namespace
   const handleStartDateChange = (date: string) => {
     setStartDate(date);
-    localStorage.setItem('pkgrower_cultivation_start', date);
+    localStorage.setItem(`pkgrower_cultivation_start_${activeRoomId}`, date);
   };
 
   // Calculate days since start
@@ -117,6 +127,24 @@ const CultivationCalendar: React.FC = () => {
       .filter(e => e.type === 'stage')
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     return stageEvents[0]?.toValue || 'Vegetativo';
+  }, [events]);
+
+  // Calculate days since flip (12/12 or 11/13)
+  const daysSinceFlip = useMemo(() => {
+    const flipEvent = events
+      .filter(e => e.type === 'photoperiod' && (e.toValue === '12/12' || e.toValue === '11/13'))
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+
+    if (!flipEvent) return null;
+
+    const flipDate = new Date(flipEvent.date);
+    const now = new Date();
+    // Normalize to start of day to avoid partial day mismatches
+    flipDate.setHours(0,0,0,0);
+    now.setHours(0,0,0,0);
+
+    const diffTime = Math.abs(now.getTime() - flipDate.getTime());
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   }, [events]);
 
   const handleSubmit = () => {
@@ -255,13 +283,21 @@ const CultivationCalendar: React.FC = () => {
           </Box>
         </Grid>
 
-        {/* Events Count */}
+        {/* Days Since Flip Counter */}
         <Grid item xs={6} md={3}>
-          <Box className="glass-panel" sx={{ p: 2, borderRadius: '16px', textAlign: 'center' }}>
-            <Typography variant="h3" fontWeight="bold" sx={{ color: '#a855f7' }}>
-              {events.length}
+          <Box className="glass-panel" sx={{
+            p: 2,
+            borderRadius: '16px',
+            textAlign: 'center',
+            background: daysSinceFlip !== null ? 'rgba(168, 85, 247, 0.1)' : 'rgba(255,255,255,0.02)',
+            border: daysSinceFlip !== null ? '1px solid rgba(168, 85, 247, 0.3)' : '1px solid rgba(255,255,255,0.1)'
+          }}>
+            <Typography variant="h3" fontWeight="bold" sx={{ color: daysSinceFlip !== null ? '#a855f7' : 'text.disabled' }}>
+              {daysSinceFlip !== null ? daysSinceFlip : '-'}
             </Typography>
-            <Typography variant="caption" color="text.secondary">Eventos Registrados</Typography>
+            <Typography variant="caption" color="text.secondary">
+              {daysSinceFlip !== null ? 'Días desde 12/12' : 'Sin Flip registrado'}
+            </Typography>
           </Box>
         </Grid>
       </Grid>

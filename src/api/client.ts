@@ -89,14 +89,18 @@ class APIClient {
     }
 
     const contentType = response.headers.get('content-type');
-    if (!contentType || !contentType.includes('application/json')) {
-        // If we get HTML (e.g. 404 page or index.html fallback), throw generic error
-        const text = await response.text();
-        console.warn(`API Expected JSON but got ${contentType}:`, text.substring(0, 100)); // Log for debug
-        throw new Error(`API returned non-JSON response (${response.status})`);
+    if (contentType && contentType.includes('application/json')) {
+        return response.json();
     }
 
-    return response.json();
+    // If not JSON but OK, return success (prevents crashes on simple OK responses)
+    if (response.ok) {
+        return { success: true, message: 'Operation completed (No JSON response)' } as any;
+    }
+
+    const text = await response.text();
+    console.warn(`API Expected JSON but got ${contentType}:`, text.substring(0, 100));
+    throw new Error(`API returned non-JSON response (${response.status})`);
   }
 
   // Sensors

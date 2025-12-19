@@ -1,14 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Box, Typography, Grid, Card, CardHeader, CardContent, Divider,
-  List, ListItem, ListItemIcon, ListItemText, Button, Dialog, DialogTitle,
-  DialogContent, DialogActions, TextField, FormControl, InputLabel, Select,
-  MenuItem, Tabs, Tab, Switch, Chip, Alert, IconButton, Paper
+  Box, Typography, Grid, List, ListItem, ListItemIcon, ListItemText, Divider,
+  Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField,
+  FormControl, InputLabel, Select, MenuItem, Tabs, Tab, Switch, Chip, Alert, IconButton
 } from '@mui/material';
-import { Droplet, Sun, Scissors, AlertCircle, Calendar as CalIcon, Plus, Zap, Clock, Trash2, Play, Pause, TrendingUp, Database } from 'lucide-react';
+import {
+  Droplet, Sun, Scissors, AlertCircle, Calendar as CalIcon, Plus, Zap,
+  Clock, TrendingUp, Database, Play, Pause, Sprout
+} from 'lucide-react';
 import { API_BASE_URL, apiClient } from '../api/client';
 import { useCropSteering } from '../context/CropSteeringContext';
 import HistoryChart from '../components/dashboard/HistoryChart';
+import { GlassCard, MetricCard, GlassButton } from '../components/common/GlassUI';
+import PlantInventory from '../components/cropsteering/PlantInventory';
 
 interface CalendarEvent {
   id?: string;
@@ -60,358 +64,316 @@ const DEFAULT_RULES: AutomationRule[] = [
 ];
 
 const Calendar: React.FC = () => {
-  const [events, setEvents] = useState<CalendarEvent[]>([]);
-  const [rules, setRules] = useState<AutomationRule[]>(DEFAULT_RULES);
-  const [open, setOpen] = useState(false);
-  const [newEvent, setNewEvent] = useState({ title: '', type: 'water', description: '' });
-  const [activeTab, setActiveTab] = useState(0);
-  const [dateRange, setDateRange] = useState<'day' | 'week' | 'month'>('day');
-  const { settings } = useCropSteering();
+    const [events, setEvents] = useState<CalendarEvent[]>([]);
+    const [rules, setRules] = useState<AutomationRule[]>(DEFAULT_RULES);
+    const [open, setOpen] = useState(false);
+    const [newEvent, setNewEvent] = useState({ title: '', type: 'water', description: '' });
+    const [activeTab, setActiveTab] = useState(0);
+    const [dateRange, setDateRange] = useState<'day' | 'week' | 'month'>('day');
 
-  // Calculate grow day
-  const startDate = settings?.growStartDate ? new Date(settings.growStartDate) : new Date();
-  const today = new Date();
-  const growDay = Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-  const growWeek = Math.ceil(growDay / 7);
+    // Context data
+    const { settings, daysIntoGrow, currentStage } = useCropSteering();
+    const growWeek = Math.ceil(daysIntoGrow / 7);
 
-  // Sensor data for Trazabilidad
-  const [sensorData, setSensorData] = useState<any>(null);
-  const [irrigationEvents, setIrrigationEvents] = useState<any[]>([]);
+    // Sensor data for Trazabilidad
+    const [sensorData, setSensorData] = useState<any>(null);
+    const [irrigationEvents, setIrrigationEvents] = useState<any[]>([]);
 
-  useEffect(() => {
-    // Fetch calendar events
-    fetch(`${API_BASE_URL}/api/calendar`)
-      .then(res => res.json())
-      .then(data => setEvents(Array.isArray(data) ? data.reverse() : []))
-      .catch(console.error);
+    useEffect(() => {
+        // Fetch calendar events
+        fetch(`${API_BASE_URL}/api/calendar`)
+            .then(res => res.json())
+            .then(data => setEvents(Array.isArray(data) ? data.reverse() : []))
+            .catch(console.error);
 
-    // Fetch sensor data for Trazabilidad
-    const fetchSensorData = async () => {
-      try {
-        const sensors = await apiClient.getLatestSensors();
-        setSensorData(sensors);
-      } catch (e) {
-        console.error('Error fetching sensors:', e);
-      }
+        const fetchSensorData = async () => {
+            try {
+                const sensors = await apiClient.getLatestSensors();
+                setSensorData(sensors);
+            } catch (e) {
+                console.error('Error fetching sensors:', e);
+            }
+        };
+
+        const fetchIrrigationEvents = async () => {
+            try {
+                const todayStr = new Date().toISOString().split('T')[0];
+                const res = await apiClient.request<any>(`/api/irrigation/events?date=${todayStr}`);
+                if (res?.events) setIrrigationEvents(res.events);
+            } catch (e) {
+                console.error('Error fetching irrigation events:', e);
+            }
+        };
+
+        fetchSensorData();
+        fetchIrrigationEvents();
+
+        const interval = setInterval(() => {
+            fetchSensorData();
+            fetchIrrigationEvents();
+        }, 30000);
+        return () => clearInterval(interval);
+    }, []);
+
+    const handleAdd = async () => {
+        const payload = { ...newEvent, date: new Date().toISOString() };
+        try {
+            const res = await fetch(`${API_BASE_URL}/api/calendar`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const saved = await res.json();
+            if (saved.success) {
+                setEvents(prev => [saved.event, ...prev]);
+                setOpen(false);
+                setNewEvent({ title: '', type: 'water', description: '' });
+            }
+        } catch (e) { console.error(e); }
     };
 
-    // Fetch today's irrigation events
-    const fetchIrrigationEvents = async () => {
-      try {
-        const todayStr = new Date().toISOString().split('T')[0];
-        const res = await apiClient.request<any>(`/api/irrigation/events?date=${todayStr}`);
-        if (res?.events) setIrrigationEvents(res.events);
-      } catch (e) {
-        console.error('Error fetching irrigation events:', e);
-      }
+    const handleRuleToggle = (ruleId: string) => {
+        setRules(prev => prev.map(r => r.id === ruleId ? { ...r, enabled: !r.enabled } : r));
     };
 
-    fetchSensorData();
-    fetchIrrigationEvents();
+    const getIcon = (type: string) => {
+        switch (type) {
+            case 'water': return <Droplet color="#3b82f6" />;
+            case 'light': return <Sun color="#f59e0b" />;
+            case 'prune': return <Scissors color="#22c55e" />;
+            case 'issue': return <AlertCircle color="#ef4444" />;
+            case 'automation': return <Zap color="#a855f7" />;
+            default: return <CalIcon color="#fff" />;
+        }
+    };
 
-    // Refresh every 30s
-    const interval = setInterval(() => {
-      fetchSensorData();
-      fetchIrrigationEvents();
-    }, 30000);
-    return () => clearInterval(interval);
-  }, []);
+    const getTriggerLabel = (trigger: AutomationRule['trigger']) => {
+        if (trigger.type === 'time') return `⏰ ${trigger.value}`;
+        if (trigger.type === 'sensor') {
+            const sensorName = trigger.value === 'temperature' ? 'Temp' : trigger.value === 'humidity' ? 'HR' : trigger.value;
+            return `📊 ${sensorName} ${trigger.operator} ${trigger.threshold}`;
+        }
+        return trigger.value;
+    };
 
-  const handleAdd = async () => {
-    const payload = { ...newEvent, date: new Date().toISOString() };
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/calendar`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      const saved = await res.json();
-      if (saved.success) {
-        setEvents(prev => [saved.event, ...prev]);
-        setOpen(false);
-        setNewEvent({ title: '', type: 'water', description: '' });
-      }
-    } catch (e) { console.error(e); }
-  };
-
-  const handleRuleToggle = (ruleId: string) => {
-    setRules(prev => prev.map(r => r.id === ruleId ? { ...r, enabled: !r.enabled } : r));
-  };
-
-  const getIcon = (type: string) => {
-    switch (type) {
-      case 'water': return <Droplet color="#2196f3" />;
-      case 'light': return <Sun color="#ff9800" />;
-      case 'prune': return <Scissors color="#4caf50" />;
-      case 'issue': return <AlertCircle color="#f44336" />;
-      case 'automation': return <Zap color="#9c27b0" />;
-      default: return <CalIcon />;
-    }
-  };
-
-  const getTriggerLabel = (trigger: AutomationRule['trigger']) => {
-    if (trigger.type === 'time') return `⏰ ${trigger.value}`;
-    if (trigger.type === 'sensor') {
-      const sensorName = trigger.value === 'temperature' ? 'Temp' : trigger.value === 'humidity' ? 'HR' : trigger.value;
-      return `📊 ${sensorName} ${trigger.operator} ${trigger.threshold}`;
-    }
-    return trigger.value;
-  };
-
-  return (
-    <Box sx={{ p: 2 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 2 }}>
-        <Typography variant="h4" fontWeight="bold">Cronología y Automatización</Typography>
-        <Button variant="contained" startIcon={<Plus />} onClick={() => setOpen(true)}>Nuevo Evento</Button>
-      </Box>
-
-      {/* Tabs */}
-      <Tabs value={activeTab} onChange={(_, v) => setActiveTab(v)} sx={{ mb: 3 }}>
-        <Tab icon={<CalIcon size={18} />} label="Eventos" />
-        <Tab icon={<Zap size={18} />} label="Automatizaciones" />
-        <Tab icon={<Database size={18} />} label="Consulta Histórica" />
-        <Tab icon={<Droplet size={18} />} label="Trazabilidad" />
-      </Tabs>
-
-      {/* TAB 0: Events */}
-      {activeTab === 0 && (
-        <Grid container spacing={3}>
-          <Grid item xs={12} md={4}>
-            <Card sx={{ mb: 3, background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)', color: 'white' }}>
-              <CardContent sx={{ textAlign: 'center' }}>
-                <Typography variant="h6">Día de Cultivo</Typography>
-                <Typography variant="h1" fontWeight="bold">{growDay > 0 ? growDay : '--'}</Typography>
-                <Typography variant="subtitle1">Semana {growWeek} - {settings?.currentStage || 'Sin definir'}</Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          <Grid item xs={12} md={8}>
-            <Card>
-              <CardHeader title="Historial de Eventos" />
-              <Divider />
-              <CardContent sx={{ maxHeight: 400, overflow: 'auto' }}>
-                <List>
-                  {events.length === 0 && <Typography color="text.secondary" align="center">No hay eventos registrados.</Typography>}
-                  {events.map((evt) => (
-                    <React.Fragment key={evt.id}>
-                      <ListItem>
-                        <ListItemIcon>{getIcon(evt.type)}</ListItemIcon>
-                        <ListItemText
-                          primary={evt.title}
-                          secondary={`${new Date(evt.date).toLocaleDateString()} ${new Date(evt.date).toLocaleTimeString()} - ${evt.description || ''}`}
-                        />
-                      </ListItem>
-                      <Divider variant="inset" component="li" />
-                    </React.Fragment>
-                  ))}
-                </List>
-              </CardContent>
-            </Card>
-          </Grid>
-        </Grid>
-      )}
-
-      {/* TAB 1: Automations */}
-      {activeTab === 1 && (
-        <Box>
-          <Alert severity="info" sx={{ mb: 2 }}>
-            Las automatizaciones se ejecutan automáticamente según las condiciones definidas.
-          </Alert>
-
-          <Grid container spacing={2}>
-            {rules.map((rule) => (
-              <Grid item xs={12} md={6} key={rule.id}>
-                <Paper sx={{ p: 2, opacity: rule.enabled ? 1 : 0.6 }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      {rule.enabled ? <Play size={16} color="#22c55e" /> : <Pause size={16} color="#666" />}
-                      <Typography fontWeight="bold">{rule.name}</Typography>
-                    </Box>
-                    <Switch checked={rule.enabled} onChange={() => handleRuleToggle(rule.id)} color="success" />
-                  </Box>
-
-                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 1 }}>
-                    <Chip size="small" label={getTriggerLabel(rule.trigger)} color="primary" variant="outlined" />
-                    <Chip size="small" label={`→ ${rule.action.device} ${rule.action.command.toUpperCase()}`} color="secondary" variant="outlined" />
-                  </Box>
-
-                  {rule.lastRun && (
-                    <Typography variant="caption" color="text.secondary">
-                      Última ejecución: {new Date(rule.lastRun).toLocaleString()}
-                    </Typography>
-                  )}
-                </Paper>
-              </Grid>
-            ))}
-          </Grid>
-
-          <Box sx={{ mt: 3, textAlign: 'center' }}>
-            <Button variant="outlined" startIcon={<Plus />}>Crear Nueva Regla</Button>
-          </Box>
-        </Box>
-      )}
-
-      {/* TAB 2: Historical Query */}
-      {activeTab === 2 && (
-        <Box>
-          <Paper sx={{ p: 2, mb: 3 }}>
-            <Typography variant="h6" sx={{ mb: 2 }}>Consultar Datos Históricos</Typography>
-            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
-              <FormControl size="small" sx={{ minWidth: 150 }}>
-                <InputLabel>Rango</InputLabel>
-                <Select value={dateRange} label="Rango" onChange={(e) => setDateRange(e.target.value as any)}>
-                  <MenuItem value="day">Últimas 24h</MenuItem>
-                  <MenuItem value="week">Última Semana</MenuItem>
-                  <MenuItem value="month">Último Mes</MenuItem>
-                </Select>
-              </FormControl>
-              <Button variant="contained" startIcon={<TrendingUp size={18} />}>Consultar</Button>
+    return (
+        <Box sx={{ maxWidth: 1600, mx: 'auto', p: { xs: 2, md: 4 } }}>
+            {/* Header */}
+            <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Box>
+                    <Typography variant="h4" fontWeight="800" className="ai-gradient-text">Hub de Gestión</Typography>
+                    <Typography variant="body1" color="text.secondary">Control Integral de Cultivo • Inventario • Eventos</Typography>
+                </Box>
+                <GlassButton
+                    variant="contained"
+                    startIcon={<Plus size={18} />}
+                    onClick={() => setOpen(true)}
+                    className="hide-mobile"
+                    sx={{ background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)' }}
+                >
+                    Nuevo Evento
+                </GlassButton>
             </Box>
-          </Paper>
 
-          <Box sx={{ height: 400 }}>
-            <HistoryChart type="environment" title="Historial Ambiental" />
-          </Box>
+            {/* Main Tabs */}
+            <GlassCard sx={{ mb: 4, p: 0, overflow: 'hidden' }}>
+                <Tabs
+                    value={activeTab}
+                    onChange={(_, v) => setActiveTab(v)}
+                    textColor="secondary"
+                    indicatorColor="secondary"
+                    variant="scrollable"
+                    scrollButtons="auto"
+                    sx={{ borderBottom: '1px solid rgba(255,255,255,0.1)', px: 2, pt: 2 }}
+                >
+                    <Tab icon={<CalIcon size={20} />} label="Cronología" iconPosition="start" />
+                    <Tab icon={<Sprout size={20} />} label="Inventario" iconPosition="start" />
+                    <Tab icon={<Zap size={20} />} label="Automatizaciones" iconPosition="start" />
+                    <Tab icon={<Droplet size={20} />} label="Trazabilidad" iconPosition="start" />
+                    <Tab icon={<Database size={20} />} label="Historial" iconPosition="start" />
+                </Tabs>
+
+                <Box sx={{ p: { xs: 2, md: 4 } }}>
+                    {/* TAB 0: EVENTS */}
+                    {activeTab === 0 && (
+                        <Grid container spacing={4}>
+                            <Grid item xs={12} lg={4}>
+                                <GlassCard sx={{ background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(22, 163, 74, 0.2) 100%)', border: '1px solid rgba(34, 197, 94, 0.3)' }}>
+                                    <Box sx={{ textAlign: 'center', py: 2 }}>
+                                        <Typography variant="subtitle1" color="#86efac" fontWeight="bold" sx={{ textTransform: 'uppercase', letterSpacing: 1 }}>Día de Cultivo</Typography>
+                                        <Typography variant="h1" fontWeight="900" sx={{ color: '#fff', fontSize: '6rem', lineHeight: 1 }}>
+                                            {daysIntoGrow > 0 ? daysIntoGrow : '--'}
+                                        </Typography>
+                                        <Chip
+                                            label={`Semana ${growWeek} • ${currentStage || 'Sin Fase'}`}
+                                            sx={{ mt: 2, bgcolor: 'rgba(34, 197, 94, 0.2)', color: '#fff', border: '1px solid #22c55e' }}
+                                        />
+                                    </Box>
+                                </GlassCard>
+                            </Grid>
+
+                            <Grid item xs={12} lg={8}>
+                                <GlassCard>
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+                                        <Typography variant="h6" fontWeight="bold">Historial de Eventos</Typography>
+                                        <Button size="small" startIcon={<Plus size={14} />} onClick={() => setOpen(true)} className="hide-desktop">Nuevo</Button>
+                                    </Box>
+                                    <List sx={{ maxHeight: 500, overflow: 'auto' }}>
+                                        {events.length === 0 && <Typography color="text.secondary" align="center" sx={{ py: 4 }}>No hay eventos registrados.</Typography>}
+                                        {events.map((evt) => (
+                                            <React.Fragment key={evt.id}>
+                                                <ListItem sx={{ borderRadius: '12px', mb: 1, '&:hover': { bgcolor: 'rgba(255,255,255,0.03)' } }}>
+                                                    <ListItemIcon sx={{ minWidth: 40 }}>
+                                                        <Box sx={{ p: 1, borderRadius: '8px', bgcolor: 'rgba(255,255,255,0.05)' }}>
+                                                            {getIcon(evt.type)}
+                                                        </Box>
+                                                    </ListItemIcon>
+                                                    <ListItemText
+                                                        primary={<Typography fontWeight="600">{evt.title}</Typography>}
+                                                        secondary={
+                                                            <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                                                                <Clock size={12} />
+                                                                {new Date(evt.date).toLocaleDateString()} {new Date(evt.date).toLocaleTimeString()}
+                                                                {evt.description && ` • ${evt.description}`}
+                                                            </Typography>
+                                                        }
+                                                    />
+                                                </ListItem>
+                                                <Divider component="li" sx={{ borderColor: 'rgba(255,255,255,0.05)' }} />
+                                            </React.Fragment>
+                                        ))}
+                                    </List>
+                                </GlassCard>
+                            </Grid>
+                        </Grid>
+                    )}
+
+                    {/* TAB 1: INVENTORY */}
+                    {activeTab === 1 && (
+                        <PlantInventory />
+                    )}
+
+                    {/* TAB 2: AUTOMATIONS */}
+                    {activeTab === 2 && (
+                        <Grid container spacing={3}>
+                            {rules.map((rule) => (
+                                <Grid item xs={12} md={6} key={rule.id}>
+                                    <GlassCard sx={{ opacity: rule.enabled ? 1 : 0.6, transition: 'all 0.3s ease', border: rule.enabled ? '1px solid rgba(168, 85, 247, 0.3)' : '1px solid rgba(255,255,255,0.05)' }}>
+                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                                                <Box sx={{ p: 1, borderRadius: '50%', bgcolor: rule.enabled ? 'rgba(34, 197, 94, 0.2)' : 'rgba(255,255,255,0.05)' }}>
+                                                    {rule.enabled ? <Play size={16} color="#22c55e" /> : <Pause size={16} color="#666" />}
+                                                </Box>
+                                                <Typography fontWeight="bold" variant="h6">{rule.name}</Typography>
+                                            </Box>
+                                            <Switch checked={rule.enabled} onChange={() => handleRuleToggle(rule.id)} color="secondary" />
+                                        </Box>
+                                        <Divider sx={{ mb: 2, borderColor: 'rgba(255,255,255,0.05)' }} />
+                                        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                                            <Chip label={getTriggerLabel(rule.trigger)} color="primary" variant="filled" size="small" />
+                                            <Chip label={`→ ${rule.action.device} ${rule.action.command.toUpperCase()}`} color="secondary" variant="filled" size="small" />
+                                        </Box>
+                                        {rule.lastRun && (
+                                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 2 }}>
+                                                Última ej: {new Date(rule.lastRun).toLocaleString()}
+                                            </Typography>
+                                        )}
+                                    </GlassCard>
+                                </Grid>
+                            ))}
+                            <Grid item xs={12} sx={{ textAlign: 'center', mt: 2 }}>
+                                <GlassButton variant="outlined" startIcon={<Plus />}>Crear Nueva Regla</GlassButton>
+                            </Grid>
+                        </Grid>
+                    )}
+
+                    {/* TAB 3: TRAZABILIDAD */}
+                    {activeTab === 3 && (
+                        <Box>
+                            <Alert severity="info" sx={{ mb: 3, borderRadius: '12px', bgcolor: 'rgba(59, 130, 246, 0.1)' }}>
+                                <strong>Metodología Athena CCI</strong>: P0 Saturación | P1 Mantenimiento | P2 Ajuste | P3 Dryback
+                            </Alert>
+                             <Grid container spacing={3}>
+                                <Grid item xs={6} md={3}>
+                                    <MetricCard label="Fase 1 (Shots)" value={irrigationEvents.filter(e => e.phase === 'p1').length} unit="shots" color="#22c55e" icon={Droplet} subValue="Mantenimiento" />
+                                </Grid>
+                                <Grid item xs={6} md={3}>
+                                    <MetricCard label="Fase 2 (Shots)" value={irrigationEvents.filter(e => e.phase === 'p2').length} unit="shots" color="#3b82f6" icon={Droplet} subValue="Ajuste" />
+                                </Grid>
+                                <Grid item xs={6} md={3}>
+                                    <MetricCard label="Fase 3 (Dryback)" value={irrigationEvents.filter(e => e.phase === 'p3').length} unit="hrs" color="#8b5cf6" icon={Clock} subValue="Nocturno" />
+                                </Grid>
+                                <Grid item xs={6} md={3}>
+                                    <MetricCard label="Dryback Total" value={sensorData?.drybackPercent?.toFixed(0) || '--'} unit="%" color="#f97316" icon={TrendingUp} subValue="Objetivo 15-20%" />
+                                </Grid>
+                            </Grid>
+                        </Box>
+                    )}
+
+                    {/* TAB 4: HISTORIAL */}
+                    {activeTab === 4 && (
+                        <Box>
+                            <Box sx={{ display: 'flex', gap: 2, mb: 3, alignItems: 'center' }}>
+                                <FormControl size="small" sx={{ minWidth: 150 }}>
+                                    <InputLabel>Rango Temporal</InputLabel>
+                                    <Select value={dateRange} label="Rango Temporal" onChange={(e) => setDateRange(e.target.value as any)}>
+                                        <MenuItem value="day">Últimas 24h</MenuItem>
+                                        <MenuItem value="week">Última Semana</MenuItem>
+                                        <MenuItem value="month">Último Mes</MenuItem>
+                                    </Select>
+                                </FormControl>
+                                <GlassButton variant="contained" startIcon={<TrendingUp size={18} />}>Generar Reporte</GlassButton>
+                            </Box>
+                            <Box sx={{ height: 400 }}>
+                                <HistoryChart type="environment" title="Historial Ambiental" />
+                            </Box>
+                        </Box>
+                    )}
+                </Box>
+            </GlassCard>
+
+            {/* ADD EVENT DIALOG */}
+            <Dialog
+                open={open}
+                onClose={() => setOpen(false)}
+                PaperProps={{
+                    sx: {
+                        borderRadius: '24px',
+                        bgcolor: '#1e293b',
+                        backgroundImage: 'none',
+                        border: '1px solid rgba(255,255,255,0.1)'
+                    }
+                }}
+            >
+                <DialogTitle>Nuevo Evento</DialogTitle>
+                <DialogContent sx={{ minWidth: 300, pt: 1 }}>
+                    <TextField
+                        autoFocus margin="dense" label="Título" fullWidth
+                        value={newEvent.title} onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
+                        sx={{ mb: 2 }}
+                    />
+                    <FormControl fullWidth margin="dense" sx={{ mb: 2 }}>
+                        <InputLabel>Tipo</InputLabel>
+                        <Select value={newEvent.type} label="Tipo" onChange={(e) => setNewEvent({ ...newEvent, type: e.target.value as any })}>
+                            <MenuItem value="water">Riego</MenuItem>
+                            <MenuItem value="light">Iluminación</MenuItem>
+                            <MenuItem value="prune">Poda/Entreno</MenuItem>
+                            <MenuItem value="issue">Problema</MenuItem>
+                            <MenuItem value="automation">Automatización</MenuItem>
+                            <MenuItem value="other">Otro</MenuItem>
+                        </Select>
+                    </FormControl>
+                    <TextField
+                        margin="dense" label="Descripción" fullWidth multiline rows={3}
+                        value={newEvent.description} onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
+                    />
+                </DialogContent>
+                <DialogActions sx={{ p: 3 }}>
+                    <Button onClick={() => setOpen(false)}>Cancelar</Button>
+                    <Button onClick={handleAdd} variant="contained" sx={{ borderRadius: '12px' }}>Guardar</Button>
+                </DialogActions>
+            </Dialog>
         </Box>
-      )}
-
-      {/* TAB 3: Trazabilidad (Daily P1/P2/P3 Tracking) */}
-      {activeTab === 3 && (
-        <Box>
-          <Alert severity="info" sx={{ mb: 3 }}>
-            <strong>🌱 Trazabilidad Diaria</strong> - Basada en metodología Athena CCI.
-            P0: Saturación pre-amanecer | P1: Mantenimiento rápido | P2: Ajuste fino | P3: Dryback nocturno
-          </Alert>
-
-          {/* Daily Summary Cards */}
-          <Grid container spacing={3}>
-            {/* P1 Shots */}
-            <Grid item xs={6} md={3}>
-              <Paper sx={{ p: 2, textAlign: 'center', background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)', color: 'white' }}>
-                <Typography variant="overline">Fase 1</Typography>
-                <Typography variant="h2" fontWeight="bold">{irrigationEvents.filter(e => e.phase === 'p1').length}</Typography>
-                <Typography variant="caption">disparos hoy</Typography>
-                <Chip label="Mantenimiento" size="small" sx={{ mt: 1, bgcolor: 'rgba(255,255,255,0.2)' }} />
-              </Paper>
-            </Grid>
-
-            {/* P2 Shots */}
-            <Grid item xs={6} md={3}>
-              <Paper sx={{ p: 2, textAlign: 'center', background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)', color: 'white' }}>
-                <Typography variant="overline">Fase 2</Typography>
-                <Typography variant="h2" fontWeight="bold">{irrigationEvents.filter(e => e.phase === 'p2').length}</Typography>
-                <Typography variant="caption">disparos hoy</Typography>
-                <Chip label="Ajuste" size="small" sx={{ mt: 1, bgcolor: 'rgba(255,255,255,0.2)' }} />
-              </Paper>
-            </Grid>
-
-            {/* P3 Duration */}
-            <Grid item xs={6} md={3}>
-              <Paper sx={{ p: 2, textAlign: 'center', background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)', color: 'white' }}>
-                <Typography variant="overline">Fase 3</Typography>
-                <Typography variant="h2" fontWeight="bold">{irrigationEvents.filter(e => e.phase === 'p3').length}</Typography>
-                <Typography variant="caption">horas dryback</Typography>
-                <Chip label="Nocturno" size="small" sx={{ mt: 1, bgcolor: 'rgba(255,255,255,0.2)' }} />
-              </Paper>
-            </Grid>
-
-            {/* Dryback % */}
-            <Grid item xs={6} md={3}>
-              <Paper sx={{ p: 2, textAlign: 'center', background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)', color: 'white' }}>
-                <Typography variant="overline">Dryback</Typography>
-                <Typography variant="h2" fontWeight="bold">{sensorData?.drybackPercent?.toFixed(0) || '--'}%</Typography>
-                <Typography variant="caption">desde lights on</Typography>
-                <Chip label="Objetivo 15-20%" size="small" sx={{ mt: 1, bgcolor: 'rgba(255,255,255,0.2)' }} />
-              </Paper>
-            </Grid>
-          </Grid>
-
-          {/* Sensor Summary for the Day */}
-          <Paper sx={{ p: 3, mt: 3 }}>
-            <Typography variant="h6" sx={{ mb: 2 }}>📊 Resumen de Sensores (Hoy)</Typography>
-            <Grid container spacing={2}>
-              <Grid item xs={6} md={3}>
-                <Box sx={{ textAlign: 'center', p: 2, bgcolor: '#FEE2E2', borderRadius: 2 }}>
-                  <Typography variant="caption" color="text.secondary">Temp Promedio</Typography>
-                  <Typography variant="h5" fontWeight="bold" color="#DC2626">{sensorData?.temperature?.toFixed(1) || '--'} °C</Typography>
-                  <Typography variant="caption">Actual</Typography>
-                </Box>
-              </Grid>
-              <Grid item xs={6} md={3}>
-                <Box sx={{ textAlign: 'center', p: 2, bgcolor: '#DBEAFE', borderRadius: 2 }}>
-                  <Typography variant="caption" color="text.secondary">HR Promedio</Typography>
-                  <Typography variant="h5" fontWeight="bold" color="#2563EB">{sensorData?.humidity?.toFixed(0) || '--'} %</Typography>
-                  <Typography variant="caption">Actual</Typography>
-                </Box>
-              </Grid>
-              <Grid item xs={6} md={3}>
-                <Box sx={{ textAlign: 'center', p: 2, bgcolor: '#D1FAE5', borderRadius: 2 }}>
-                  <Typography variant="caption" color="text.secondary">VPD Promedio</Typography>
-                  <Typography variant="h5" fontWeight="bold" color="#059669">{sensorData?.vpd?.toFixed(2) || '--'} kPa</Typography>
-                  <Typography variant="caption">Ideal: 0.8-1.4</Typography>
-                </Box>
-              </Grid>
-              <Grid item xs={6} md={3}>
-                <Box sx={{ textAlign: 'center', p: 2, bgcolor: '#FEF3C7', borderRadius: 2 }}>
-                  <Typography variant="caption" color="text.secondary">VWC Promedio</Typography>
-                  <Typography variant="h5" fontWeight="bold" color="#D97706">{sensorData?.substrateHumidity?.toFixed(0) || '--'} %</Typography>
-                  <Typography variant="caption">Sustrato</Typography>
-                </Box>
-              </Grid>
-            </Grid>
-          </Paper>
-
-          {/* Daily Timeline */}
-          <Paper sx={{ p: 3, mt: 3 }}>
-            <Typography variant="h6" sx={{ mb: 2 }}>⏱️ Timeline del Día</Typography>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, overflowX: 'auto', py: 1 }}>
-              <Chip icon={<Sun size={14} />} label="06:00 Lights ON" color="warning" variant="outlined" />
-              <Typography>→</Typography>
-              <Chip icon={<Droplet size={14} />} label="P0 Saturación" color="info" variant="outlined" />
-              <Typography>→</Typography>
-              <Chip icon={<Droplet size={14} />} label="P1 Shots" color="success" variant="outlined" />
-              <Typography>→</Typography>
-              <Chip icon={<Droplet size={14} />} label="P2 Shots" color="primary" variant="outlined" />
-              <Typography>→</Typography>
-              <Chip icon={<Clock size={14} />} label="00:00 Lights OFF" color="secondary" variant="outlined" />
-              <Typography>→</Typography>
-              <Chip label="P3 Dryback" color="default" variant="outlined" />
-            </Box>
-          </Paper>
-        </Box>
-      )}
-
-      {/* ADD EVENT DIALOG */}
-      <Dialog open={open} onClose={() => setOpen(false)}>
-        <DialogTitle>Nuevo Evento</DialogTitle>
-        <DialogContent sx={{ minWidth: 300 }}>
-          <TextField
-            autoFocus margin="dense" label="Título" fullWidth
-            value={newEvent.title} onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
-          />
-          <FormControl fullWidth margin="dense">
-            <InputLabel>Tipo</InputLabel>
-            <Select value={newEvent.type} label="Tipo" onChange={(e) => setNewEvent({ ...newEvent, type: e.target.value as any })}>
-              <MenuItem value="water">Riego</MenuItem>
-              <MenuItem value="light">Iluminación</MenuItem>
-              <MenuItem value="prune">Poda/Entreno</MenuItem>
-              <MenuItem value="issue">Problema</MenuItem>
-              <MenuItem value="automation">Automatización</MenuItem>
-              <MenuItem value="other">Otro</MenuItem>
-            </Select>
-          </FormControl>
-          <TextField
-            margin="dense" label="Descripción" fullWidth multiline rows={2}
-            value={newEvent.description} onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpen(false)}>Cancelar</Button>
-          <Button onClick={handleAdd} variant="contained">Guardar</Button>
-        </DialogActions>
-      </Dialog>
-    </Box>
-  );
+    );
 };
 
 export default Calendar;

@@ -2,6 +2,7 @@ import { useState, Suspense, lazy } from 'react';
 import Layout, { Page } from './components/Layout';
 import DebugOverlay from './components/DebugOverlay';
 import { ThemeProvider } from './context/ThemeContext';
+import { RoomProvider } from './context/RoomContext';
 import { CropSteeringProvider } from './context/CropSteeringContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { Box, CircularProgress } from '@mui/material';
@@ -97,11 +98,13 @@ function ProtectedApp() {
 function App() {
   return (
     <ThemeProvider>
-      <CropSteeringProvider>
-        <AuthProvider>
-          <ProtectedApp />
-        </AuthProvider>
-      </CropSteeringProvider>
+      <RoomProvider>
+        <CropSteeringProvider>
+          <AuthProvider>
+            <ProtectedApp />
+          </AuthProvider>
+        </CropSteeringProvider>
+      </RoomProvider>
     </ThemeProvider>
   );
 }

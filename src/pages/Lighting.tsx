@@ -1,492 +1,451 @@
-/**
- * Lighting Page - Integrated with Crop Steering
- * DLI Calculator, Stage-based PPFD recommendations
- */
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { Box, Typography, Card, CardContent, CardHeader, Grid, Switch, FormControlLabel, Button, TextField, Divider, Chip, Slider, Alert, LinearProgress, Dialog, DialogTitle, DialogContent, DialogActions, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Checkbox } from '@mui/material';
-import { Lightbulb, Clock, Save, Sun, Moon, Zap, Info, Leaf, Target, Calculator } from 'lucide-react';
-import DeviceSwitch from '../components/dashboard/DeviceSwitch';
+import React, { useState, useEffect } from 'react';
+import { Box, Typography, Paper, Grid, Slider, Switch, FormControlLabel, TextField, Button, CircularProgress, IconButton } from '@mui/material';
+import { Sun, Moon, Zap, Activity, Info, AlertTriangle, Lightbulb } from 'lucide-react';
 import { apiClient } from '../api/client';
-import { useCropSteering } from '../context/CropSteeringContext';
-import { GROWTH_STAGES } from '../config/cropSteeringConfig';
+import { useAuth } from '../context/AuthContext';
 
-interface LightingSettings {
-    enabled: boolean;
-    mode: 'manual' | 'schedule';
-    photoperiod: string;
-    onTime: string;
-    offTime: string;
-    emerson: boolean;
-    emersonOffset: number;
-    devices: string[];
-    ppfd?: number; // Current PPFD reading
-}
+// --- TYPES ---
+type SpectrumMode = 'veg' | 'flower' | 'final';
 
-// PPFD recommendations per stage from PDFs
-const PPFD_RECOMMENDATIONS = {
-  clone: { min: 100, max: 200, dli: { min: 5, max: 10 } },
-  veg_early: { min: 200, max: 400, dli: { min: 15, max: 25 } },
-  veg_late: { min: 400, max: 600, dli: { min: 25, max: 40 } },
-  flower_transition: { min: 500, max: 700, dli: { min: 30, max: 45 } },
-  flower_early: { min: 600, max: 800, dli: { min: 35, max: 50 } },
-  flower_mid: { min: 700, max: 1000, dli: { min: 40, max: 55 } },
-  flower_late: { min: 800, max: 1200, dli: { min: 40, max: 55 } },
-  flush: { min: 600, max: 800, dli: { min: 30, max: 45 } }
-};
+// --- COMPONENTS ---
+const SpectrumCard = ({
+    mode,
+    active,
+    onClick,
+    title,
+    desc,
+    color
+}: {
+    mode: SpectrumMode,
+    active: boolean,
+    onClick: () => void,
+    title: string,
+    desc: string,
+    color: string
+}) => (
+    <Paper
+        onClick={onClick}
+        elevation={0}
+        sx={{
+            p: 3,
+            cursor: 'pointer',
+            borderRadius: '16px',
+            border: active ? `2px solid ${color}` : '1px solid rgba(255,255,255,0.1)',
+            background: active
+                ? `linear-gradient(135deg, ${color}22 0%, ${color}05 100%)`
+                : 'var(--glass-bg)',
+            backdropFilter: 'var(--backdrop-blur)',
+            transition: 'all 0.3s ease',
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 1,
+            '&:hover': {
+                transform: 'translateY(-2px)',
+                boxShadow: `0 8px 24px ${color}33`
+            }
+        }}
+    >
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+             <Box sx={{ bgcolor: `${color}22`, p: 1, borderRadius: '12px' }}>
+                <Sun size={24} color={color} />
+             </Box>
+             {active && (
+                 <Box sx={{ bgcolor: color, borderRadius: '20px', px: 1.5, py: 0.5 }}>
+                     <Typography variant="caption" sx={{ color: '#000', fontWeight: 'bold' }}>ACTIVO</Typography>
+                 </Box>
+             )}
+        </Box>
+        <Typography variant="h6" fontWeight="bold" sx={{ mt: 1 }}>{title}</Typography>
+        <Typography variant="body2" color="text.secondary">{desc}</Typography>
+
+        {/* Spectrum visualizer bar */}
+        <Box sx={{ display: 'flex', height: 6, borderRadius: 4, mt: 2, overflow: 'hidden', opacity: 0.8 }}>
+            {mode === 'veg' && (
+                <>
+                    <Box sx={{ flex: 6, bgcolor: '#3b82f6' }} />
+                    <Box sx={{ flex: 3, bgcolor: '#ef4444' }} />
+                    <Box sx={{ flex: 1, bgcolor: '#ffffff' }} />
+                </>
+            )}
+            {mode === 'flower' && (
+                <>
+                    <Box sx={{ flex: 3, bgcolor: '#3b82f6' }} />
+                    <Box sx={{ flex: 6, bgcolor: '#ef4444' }} />
+                    <Box sx={{ flex: 1, bgcolor: '#ffffff' }} />
+                </>
+            )}
+             {mode === 'final' && (
+                <>
+                    <Box sx={{ flex: 2, bgcolor: '#3b82f6' }} />
+                    <Box sx={{ flex: 4, bgcolor: '#ef4444' }} />
+                    <Box sx={{ flex: 4, bgcolor: '#8b5cf6' }} />
+                </>
+            )}
+        </Box>
+    </Paper>
+);
 
 const Lighting: React.FC = () => {
-  const [settings, setSettings] = useState<LightingSettings | null>(null);
-  const [devices, setDevices] = useState<any>({});
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [successMsg, setSuccessMsg] = useState('');
-  const [ppfdInput, setPpfdInput] = useState(600);
+    const { user } = useAuth();
 
-  // New state for device selection
-  const [deviceDialogOpen, setDeviceDialogOpen] = useState(false);
-  const [availableDevices, setAvailableDevices] = useState<any[]>([]);
+    // STATE
+    const [intensity, setIntensity] = useState<number>(75);
+    const [mode, setMode] = useState<SpectrumMode>('flower');
+    const [emerson, setEmerson] = useState<boolean>(false);
 
-  // Crop Steering Integration
-  const { currentStage, settings: cropSettings } = useCropSteering();
+    // DLI Calculator State
+    const [ppfd, setPpfd] = useState<string>('800');
+    const [hours, setHours] = useState<string>('12');
+    const [dli, setDli] = useState<number>(0);
 
-  const stageRecommendation = PPFD_RECOMMENDATIONS[currentStage as keyof typeof PPFD_RECOMMENDATIONS] || PPFD_RECOMMENDATIONS.veg_early;
-
-  // Calculate light hours from settings
-  const lightHours = useMemo(() => {
-    if (!settings) return 18;
-    const [onH, onM] = (settings.onTime || '06:00').split(':').map(Number);
-    const [offH, offM] = (settings.offTime || '00:00').split(':').map(Number);
-    let hours = offH - onH + (offM - onM) / 60;
-    if (hours <= 0) hours += 24;
-    return hours;
-  }, [settings]);
-
-  // DLI Calculation
-  const calculateDLI = (ppfd: number, hoursLight: number) => {
-    return (ppfd * hoursLight * 3600) / 1000000;
-  };
-
-  const currentDLI = calculateDLI(ppfdInput, lightHours);
-  const dliStatus = currentDLI >= stageRecommendation.dli.min && currentDLI <= stageRecommendation.dli.max
-    ? 'optimal'
-    : currentDLI < stageRecommendation.dli.min ? 'low' : 'high';
-
-  // Fetch initial data
-  useEffect(() => {
-    let active = true;
-    const loadData = async () => {
-      try {
-        const data = await apiClient.getSettings();
-        if (active && data && data.lighting) {
-            setSettings(data.lighting);
-            if (data.lighting.ppfd) setPpfdInput(data.lighting.ppfd);
+    // Calculate DLI on change
+    useEffect(() => {
+        const p = parseFloat(ppfd);
+        const h = parseFloat(hours);
+        if (!isNaN(p) && !isNaN(h)) {
+            // Formula: PPFD * Hours * 3600 / 1000000 -> approx PPFD * Hours * 0.0036
+            setDli(parseFloat((p * h * 0.0036).toFixed(1)));
         }
-        const devs = await apiClient.getDeviceStates();
-        if (active) setDevices(devs);
-      } catch (err) {
-        console.error("Error loading lighting data", err);
-      } finally {
-        if (active) setLoading(false);
-      }
-    };
-    loadData();
-    const interval = setInterval(async () => {
-         try {
-            const devs = await apiClient.getDeviceStates();
-            if (active) setDevices(devs);
-         } catch(e) {}
-    }, 5000);
-    return () => { active = false; clearInterval(interval); };
-  }, []);
+    }, [ppfd, hours]);
 
-  const handleSave = async () => {
-    if (!settings) return;
-    setSaving(true);
-    try {
-       await apiClient.saveSettings({ lighting: { ...settings, ppfd: ppfdInput } });
-       setSuccessMsg('Configuración guardada');
-       setTimeout(() => setSuccessMsg(''), 3000);
-    } catch (err) {
-        console.error("Error saving", err);
-    } finally {
-        setSaving(false);
-    }
-  };
-
-  const applyPreset = (preset: 'veg' | 'flower') => {
-      if (!settings) return;
-      if (preset === 'veg') {
-          setSettings({ ...settings, photoperiod: '18/6', onTime: '06:00', offTime: '00:00' });
-      } else {
-          setSettings({ ...settings, photoperiod: '12/12', onTime: '08:00', offTime: '20:00' });
-      }
-  };
-
-  const handleToggleDevice = async (key: string) => {
-      const currentState = devices?.[key] || false;
-      const action = currentState ? 'off' : 'on';
-      await apiClient.controlDevice(key, action);
-      setDevices((prev: any) => ({ ...prev, [key]: !prev[key] }));
-  };
-
-  // Handler to open add device dialog
-  const handleOpenAddDevice = async () => {
-    try {
-      const allDevices = await apiClient.getDevices();
-      // Filter for light-type devices or switches
-      const lightDevices = (allDevices || []).filter((d: any) =>
-        d.type === 'light' || d.type === 'switch' || d.capabilities?.includes('switch')
-      );
-      setAvailableDevices(lightDevices);
-      setDeviceDialogOpen(true);
-    } catch (err) {
-      console.error('Error loading devices:', err);
-    }
-  };
-
-  // Handler to add device to lighting configuration
-  const handleAddDevice = (deviceId: string) => {
-    if (!settings) return;
-    const currentDevices = settings.devices || [];
-    if (!currentDevices.includes(deviceId)) {
-      setSettings({ ...settings, devices: [...currentDevices, deviceId] });
-      setSuccessMsg('Dispositivo agregado');
-      setTimeout(() => setSuccessMsg(''), 2000);
-    }
-    setDeviceDialogOpen(false);
-  };
-
-  if (loading || !settings) return <Box sx={{ p: 4 }}><Typography>Cargando configuración...</Typography></Box>;
-
-  const stageLabel = currentStage.replace('_', ' ').toUpperCase();
-
-  return (
-    <Box sx={{ p: 2, maxWidth: 1600, mx: 'auto' }}>
-      {/* Header with Stage Info */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 2 }}>
-        <Box>
-            <Typography variant="h4" fontWeight="bold">Control de Iluminación</Typography>
-            <Typography variant="body2" color="text.secondary">Gestión de espectro, fotoperiodos y DLI</Typography>
-        </Box>
-        <Box sx={{ display: 'flex', gap: 1 }}>
-          <Chip icon={<Leaf size={14} />} label={`Etapa: ${stageLabel}`} size="small" sx={{ bgcolor: 'rgba(52, 199, 89, 0.2)', color: '#34C759' }} />
-          {successMsg && <Chip label={successMsg} color="success" />}
-        </Box>
-      </Box>
-
-      <Grid container spacing={3}>
-        {/* DLI Calculator Panel */}
-        <Grid item xs={12} lg={4}>
-            <Box className="glass-panel" sx={{
-                mb: 2,
-                borderRadius: 'var(--squircle-radius)',
-                bgcolor: 'var(--glass-bg)',
-                backdropFilter: 'var(--backdrop-blur)',
-                border: 'var(--glass-border)',
-                boxShadow: 'var(--glass-shadow)',
-                overflow: 'hidden'
-            }}>
-                <CardHeader
-                  title="Calculadora DLI"
-                  subheader="Daily Light Integral"
-                  avatar={<Calculator color="#f59e0b" />}
-                  titleTypographyProps={{ fontWeight: 'bold' }}
-                />
-                <Divider sx={{ borderColor: 'rgba(255,255,255,0.1)' }} />
-                <CardContent>
-                    {/* PPFD Input */}
-                    <Box sx={{ mb: 3 }}>
-                      <Typography variant="body2" fontWeight="bold" sx={{ mb: 1 }}>PPFD Actual (µmol/m²/s)</Typography>
-                      <Slider
-                        value={ppfdInput}
-                        onChange={(_, v) => setPpfdInput(v as number)}
-                        min={100}
-                        max={1500}
-                        step={50}
-                        valueLabelDisplay="on"
-                        sx={{
-                          color: ppfdInput >= stageRecommendation.min && ppfdInput <= stageRecommendation.max ? '#34C759' : '#FF9500'
-                        }}
-                      />
-                      <Typography variant="caption" color="text.secondary">
-                        Recomendado para {stageLabel}: {stageRecommendation.min}-{stageRecommendation.max} µmol/m²/s
-                      </Typography>
-                    </Box>
-
-                    {/* DLI Result */}
-                    <Box sx={{
-                      p: 2,
-                      borderRadius: 2,
-                      bgcolor: dliStatus === 'optimal' ? 'rgba(52, 199, 89, 0.1)' : dliStatus === 'low' ? 'rgba(255, 149, 0, 0.1)' : 'rgba(255, 59, 48, 0.1)',
-                      border: `1px solid ${dliStatus === 'optimal' ? '#34C759' : dliStatus === 'low' ? '#FF9500' : '#FF3B30'}40`,
-                      textAlign: 'center',
-                      mb: 2
-                    }}>
-                      <Typography variant="h3" fontWeight="bold" sx={{
-                        color: dliStatus === 'optimal' ? '#34C759' : dliStatus === 'low' ? '#FF9500' : '#FF3B30'
-                      }}>
-                        {currentDLI.toFixed(1)}
-                      </Typography>
-                      <Typography variant="body2">mol/m²/día (DLI)</Typography>
-                    </Box>
-
-                    {/* DLI Progress */}
-                    <Box sx={{ mb: 2 }}>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                        <Typography variant="caption">Min: {stageRecommendation.dli.min}</Typography>
-                        <Typography variant="caption">Target: {((stageRecommendation.dli.min + stageRecommendation.dli.max) / 2).toFixed(0)}</Typography>
-                        <Typography variant="caption">Max: {stageRecommendation.dli.max}</Typography>
-                      </Box>
-                      <LinearProgress
-                        variant="determinate"
-                        value={Math.min(100, (currentDLI / stageRecommendation.dli.max) * 100)}
-                        sx={{ height: 8, borderRadius: 4, bgcolor: 'rgba(255,255,255,0.1)' }}
-                      />
-                    </Box>
-
-                    {/* Light Hours Info */}
-                    <Alert severity="info" sx={{ fontSize: '0.75rem' }}>
-                      <strong>{lightHours.toFixed(1)}h</strong> de luz × <strong>{ppfdInput}</strong> PPFD = <strong>{currentDLI.toFixed(1)}</strong> DLI
-                    </Alert>
-                </CardContent>
+    return (
+        <Box sx={{ maxWidth: 1600, mx: 'auto', p: { xs: 2, md: 4 } }}>
+            {/* Header */}
+            <Box sx={{ mb: 4, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Box>
+                    <Typography variant="h4" fontWeight="800" className="ai-gradient-text" sx={{ mb: 1 }}>
+                        Control Fotónico
+                    </Typography>
+                    <Typography variant="body1" color="text.secondary">
+                        Gestión avanzada de espectro y densidad fotónica (DLI)
+                    </Typography>
+                </Box>
+                <Box sx={{ display: 'flex', gap: 2 }}>
+                     <Paper sx={{ px: 2, py: 1, borderRadius: '12px', background: 'rgba(251, 191, 36, 0.1)', border: '1px solid rgba(251, 191, 36, 0.3)', display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Sun size={20} color="#fbbf24" />
+                        <Box>
+                            <Typography variant="caption" sx={{ color: '#fbbf24', display: 'block', lineHeight: 1 }}>INTENSIDAD</Typography>
+                            <Typography variant="body1" fontWeight="bold" sx={{ color: '#fbbf24', lineHeight: 1 }}>{intensity}%</Typography>
+                        </Box>
+                     </Paper>
+                </Box>
             </Box>
 
-            {/* Device Management */}
-            <Box className="glass-panel" sx={{
-                mb: 2,
-                borderRadius: 'var(--squircle-radius)',
-                bgcolor: 'var(--glass-bg)',
-                backdropFilter: 'var(--backdrop-blur)',
-                border: 'var(--glass-border)',
-                boxShadow: 'var(--glass-shadow)',
-                overflow: 'hidden'
-            }}>
-                <CardHeader
-                  title="Dispositivos de Luz"
-                  avatar={<Lightbulb color="#f59e0b" />}
-                  titleTypographyProps={{ fontWeight: 'bold' }}
-                  action={
-                    <Button size="small" variant="outlined" startIcon={<Zap size={14} />} onClick={handleOpenAddDevice}>
-                      + Agregar
-                    </Button>
-                  }
-                />
-                <Divider sx={{ borderColor: 'rgba(255,255,255,0.1)' }} />
-                <CardContent>
-                    <Grid container spacing={1}>
-                        {['luzPanel1', 'luzPanel2', 'luzPanel3', 'luzPanel4'].map((key, idx) => (
-                          <Grid item xs={6} key={key}>
-                            <Box sx={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'space-between',
-                              p: 1,
-                              borderRadius: 1,
-                              bgcolor: devices[key] ? 'rgba(245, 158, 11, 0.1)' : 'rgba(255,255,255,0.03)'
-                            }}>
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <Lightbulb size={16} color={devices[key] ? '#f59e0b' : '#666'} />
-                                <Typography variant="body2">Panel {idx + 1}</Typography>
-                              </Box>
-                              <Switch
-                                size="small"
-                                checked={devices[key] || false}
-                                onChange={() => handleToggleDevice(key)}
-                                color="warning"
-                              />
-                            </Box>
-                          </Grid>
-                        ))}
-                        <Grid item xs={12}>
-                          <Box sx={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            p: 1,
-                            borderRadius: 1,
-                            bgcolor: devices.controladorLuzRoja ? 'rgba(239, 68, 68, 0.1)' : 'rgba(255,255,255,0.03)'
-                          }}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                              <Sun size={16} color={devices.controladorLuzRoja ? '#ef4444' : '#666'} />
-                              <Typography variant="body2">Luz Roja (Emerson)</Typography>
+            <Grid container spacing={3}>
+                {/* LEFT COL: SPECTRUM & CONTROLS */}
+                <Grid item xs={12} lg={8}>
+                    {/* Main Intensity Control */}
+                    <Paper elevation={0} sx={{ p: 4, mb: 3, borderRadius: '24px', background: 'var(--glass-bg)', backdropFilter: 'var(--backdrop-blur)', border: 'var(--glass-border)' }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 4 }}>
+                            <Typography variant="h6" fontWeight="bold">Potencia Global (PPF)</Typography>
+                            <Zap size={24} color="#fbbf24" />
+                        </Box>
+
+                        <Slider
+                            value={intensity}
+                            onChange={(_, v) => setIntensity(v as number)}
+                            valueLabelDisplay="on"
+                            step={5}
+                            marks
+                            min={0}
+                            max={100}
+                            sx={{
+                                height: 8,
+                                '& .MuiSlider-thumb': {
+                                    width: 28,
+                                    height: 28,
+                                    boxShadow: '0 0 20px rgba(34, 197, 94, 0.5)',
+                                },
+                                '& .MuiSlider-track': {
+                                    background: 'linear-gradient(90deg, #22c55e, #fbbf24)'
+                                },
+                                '& .MuiSlider-rail': {
+                                    opacity: 0.1
+                                }
+                            }}
+                        />
+                        <Typography variant="caption" color="text.secondary" sx={{ mt: 2, display: 'block' }}>
+                            Ajuste directo al driver del panel. Recomendado: 75% para Floración Semana 1-4.
+                        </Typography>
+                    </Paper>
+
+                    {/* Spectrum Modes */}
+                    <Grid container spacing={2}>
+                        <Grid item xs={12} md={4}>
+                            <SpectrumCard
+                                title="Vegetativo"
+                                desc="Alto Azul (450nm) para entrenudos cortos."
+                                mode="veg"
+                                color="#3b82f6"
+                                active={mode === 'veg'}
+                                onClick={() => setMode('veg')}
+                            />
+                        </Grid>
+                        <Grid item xs={12} md={4}>
+                            <SpectrumCard
+                                title="Floración"
+                                desc="Full Spectrum equilibrado para biomasa."
+                                mode="flower"
+                                color="#ef4444"
+                                active={mode === 'flower'}
+                                onClick={() => setMode('flower')}
+                            />
+                        </Grid>
+                        <Grid item xs={12} md={4}>
+                            <SpectrumCard
+                                title="Ultravioleta (UV)"
+                                desc="Estrés controlado para resina (Fin de ciclo)."
+                                mode="final"
+                                color="#8b5cf6"
+                                active={mode === 'final'}
+                                onClick={() => setMode('final')}
+                            />
+                        </Grid>
+                    </Grid>
+                </Grid>
+
+                {/* RIGHT COL: TOOLS & EMERSON */}
+                <Grid item xs={12} lg={4}>
+                    {/* Emerson Effect Toggle */}
+                    <Paper elevation={0} sx={{ p: 3, mb: 3, borderRadius: '20px', background: 'linear-gradient(135deg, rgba(220, 38, 38, 0.1) 0%, rgba(220, 38, 38, 0.05) 100%)', border: '1px solid rgba(220, 38, 38, 0.3)' }}>
+                         <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+                            <Box>
+                                <Typography variant="h6" fontWeight="bold" sx={{ color: '#fca5a5' }}>Efecto Emerson</Typography>
+                                <Typography variant="caption" sx={{ color: '#fca5a5', opacity: 0.8 }}>
+                                    Boost Rojo Lejano (730nm)
+                                </Typography>
                             </Box>
                             <Switch
-                              size="small"
-                              checked={devices.controladorLuzRoja || false}
-                              onChange={() => handleToggleDevice('controladorLuzRoja')}
-                              color="error"
+                                checked={emerson}
+                                onChange={(e) => setEmerson(e.target.checked)}
+                                sx={{
+                                    '& .MuiSwitch-switchBase.Mui-checked': { color: '#ef4444' },
+                                    '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { backgroundColor: '#ef4444' },
+                                }}
                             />
-                          </Box>
-                        </Grid>
-                    </Grid>
-                </CardContent>
-            </Box>
-        </Grid>
+                         </Box>
+                         {emerson && (
+                             <Box sx={{ mt: 2, p: 1.5, bgcolor: 'rgba(220, 38, 38, 0.2)', borderRadius: '8px', display: 'flex', gap: 1 }}>
+                                 <AlertTriangle size={16} color="#fca5a5" />
+                                 <Typography variant="caption" sx={{ color: '#fca5a5' }}>
+                                     Activo: 15 min antes y después de apagar luces. Acelera el ciclo de sueño.
+                                 </Typography>
+                             </Box>
+                         )}
+                    </Paper>
 
-        {/* Schedule & Emerson */}
-        <Grid item xs={12} lg={8}>
-            <Box className="glass-panel" sx={{
-                height: '100%',
-                borderRadius: 'var(--squircle-radius)',
-                bgcolor: 'var(--glass-bg)',
-                backdropFilter: 'var(--backdrop-blur)',
-                border: 'var(--glass-border)',
-                boxShadow: 'var(--glass-shadow)',
-                overflow: 'hidden'
-            }}>
-                <CardHeader
-                    title="Programación Inteligente"
-                    subheader="Fotoperiodo y Efecto Emerson"
-                    titleTypographyProps={{ fontWeight: 'bold' }}
-                    avatar={<Clock color="#3b82f6" />}
-                    action={
-                        <FormControlLabel
-                            control={<Switch checked={settings.enabled} onChange={(e) => setSettings({...settings, enabled: e.target.checked})} />}
-                            label={settings.enabled ? "Activado" : "Desactivado"}
-                        />
-                    }
-                />
-                <Divider sx={{ borderColor: 'rgba(255,255,255,0.1)' }} />
-                <CardContent>
-                    {/* Stage-Based Recommendations */}
-                    <Alert severity="success" sx={{ mb: 3 }}>
-                      <Typography variant="body2">
-                        <strong>Recomendación para {stageLabel}:</strong><br/>
-                        PPFD: {stageRecommendation.min}-{stageRecommendation.max} µmol/m²/s |
-                        DLI: {stageRecommendation.dli.min}-{stageRecommendation.dli.max} mol/m²/día |
-                        Horas: {currentStage.includes('flower') ? '12' : '18'}h
-                      </Typography>
-                    </Alert>
+                    {/* DLI Calculator */}
+                    <Paper elevation={0} sx={{ p: 3, borderRadius: '24px', background: 'var(--glass-bg)', backdropFilter: 'var(--backdrop-blur)', border: 'var(--glass-border)' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
+                            <Activity size={20} color="#22c55e" />
+                            <Typography variant="h6" fontWeight="bold">Calculadora DLI</Typography>
+                        </Box>
 
-                    {/* Presets */}
-                    <Box sx={{ mb: 3 }}>
-                        <Typography variant="h6" sx={{ mb: 2 }}>Presets de Cultivo</Typography>
                         <Grid container spacing={2}>
-                            <Grid item xs={12} md={6}>
-                                <Button
-                                    variant={settings.photoperiod === '18/6' ? 'contained' : 'outlined'}
-                                    fullWidth size="large" color="success"
-                                    onClick={() => applyPreset('veg')}
-                                    startIcon={<Sun />}
-                                    sx={{ py: 2, borderRadius: 2 }}
-                                >
-                                    Vegetativo (18/6) - DLI 20-35
-                                </Button>
+                            <Grid item xs={6}>
+                                <TextField
+                                    label="PPFD (umol)"
+                                    value={ppfd}
+                                    onChange={(e) => setPpfd(e.target.value)}
+                                    type="number"
+                                    fullWidth
+                                    variant="outlined"
+                                    size="small"
+                                />
                             </Grid>
-                            <Grid item xs={12} md={6}>
-                                <Button
-                                    variant={settings.photoperiod === '12/12' ? 'contained' : 'outlined'}
-                                    fullWidth size="large" color="secondary"
-                                    onClick={() => applyPreset('flower')}
-                                    startIcon={<Moon />}
-                                    sx={{ py: 2, borderRadius: 2 }}
-                                >
-                                    Floración (12/12) - DLI 40-60
-                                </Button>
-                            </Grid>
-                        </Grid>
-                    </Box>
-
-                    <Divider sx={{ mb: 3 }} />
-
-                    <Grid container spacing={4}>
-                        {/* Schedule */}
-                        <Grid item xs={12} md={6}>
-                            <Typography variant="h6" sx={{ mb: 2 }}>Ciclo Principal</Typography>
-                            <Grid container spacing={2}>
-                                <Grid item xs={6}>
-                                    <TextField
-                                        label="Encendido (ON)"
-                                        type="time"
-                                        fullWidth
-                                        value={settings.onTime}
-                                        onChange={(e) => setSettings({...settings, onTime: e.target.value, mode: 'schedule'})}
-                                        InputLabelProps={{ shrink: true }}
-                                    />
-                                </Grid>
-                                <Grid item xs={6}>
-                                    <TextField
-                                        label="Apagado (OFF)"
-                                        type="time"
-                                        fullWidth
-                                        value={settings.offTime}
-                                        onChange={(e) => setSettings({...settings, offTime: e.target.value, mode: 'schedule'})}
-                                        InputLabelProps={{ shrink: true }}
-                                    />
-                                </Grid>
+                            <Grid item xs={6}>
+                                <TextField
+                                    label="Horas Luz"
+                                    value={hours}
+                                    onChange={(e) => setHours(e.target.value)}
+                                    type="number"
+                                    fullWidth
+                                    variant="outlined"
+                                    size="small"
+                                />
                             </Grid>
                         </Grid>
 
-                        {/* Emerson Effect */}
-                        <Grid item xs={12} md={6}>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                                <Typography variant="h6">Efecto Emerson</Typography>
-                                <Switch checked={settings.emerson} onChange={(e) => setSettings({...settings, emerson: e.target.checked})} color="error" />
-                            </Box>
-                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 2 }}>
-                              Luz far-red al final del ciclo mejora eficiencia fotosintética hasta 30%
+                        <Box sx={{ mt: 3, textAlign: 'center', p: 2, bgcolor: 'rgba(0,0,0,0.2)', borderRadius: '16px' }}>
+                            <Typography variant="caption" color="text.secondary">INTEGRAL LUZ DIARIA</Typography>
+                            <Typography variant="h2" fontWeight="800" sx={{ color: dli > 45 ? '#f59e0b' : (dli < 20 ? '#ef4444' : '#22c55e') }}>
+                                {dli}
                             </Typography>
-                            <Slider
-                                value={settings.emersonOffset}
-                                onChange={(_, val) => setSettings({...settings, emersonOffset: val as number})}
-                                valueLabelDisplay="auto"
-                                step={5}
-                                marks
-                                min={0}
-                                max={60}
-                                disabled={!settings.emerson}
-                                sx={{ color: '#ef4444' }}
-                            />
-                            <Typography variant="caption">Offset: {settings.emersonOffset} minutos antes/después</Typography>
-                        </Grid>
-                    </Grid>
+                            <Typography variant="body2" color="text.secondary">mol/m²/día</Typography>
+                        </Box>
 
-                    <Box sx={{ mt: 4, display: 'flex', justifyContent: 'flex-end' }}>
-                        <Button variant="contained" size="large" startIcon={<Save />} onClick={handleSave} disabled={saving} sx={{ px: 4, borderRadius: 2 }}>
-                            {saving ? 'Guardando...' : 'Guardar Configuración'}
-                        </Button>
-                    </Box>
-                </CardContent>
-            </Box>
-        </Grid>
-      </Grid>
+                        <Box sx={{ mt: 2 }}>
+                            {dli < 25 && <Typography variant="caption" sx={{ color: '#ef4444', display: 'flex', alignItems: 'center', gap: 0.5 }}><Info size={12}/> Bajo para Floración</Typography>}
+                            {dli >= 25 && dli <= 45 && <Typography variant="caption" sx={{ color: '#22c55e', display: 'flex', alignItems: 'center', gap: 0.5 }}><Info size={12}/> Óptimo con CO2 ambiental</Typography>}
+                            {dli > 45 && <Typography variant="caption" sx={{ color: '#f59e0b', display: 'flex', alignItems: 'center', gap: 0.5 }}><Info size={12}/> Requiere CO2 suplementario</Typography>}
+                        </Box>
+                    </Paper>
+                </Grid>
 
-      {/* Add Device Dialog */}
-      <Dialog open={deviceDialogOpen} onClose={() => setDeviceDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Agregar Dispositivo de Luz</DialogTitle>
-        <DialogContent>
-          {availableDevices.length === 0 ? (
-            <Typography color="text.secondary" sx={{ py: 2 }}>
-              No hay dispositivos disponibles. Conecta una plataforma en Configuración.
-            </Typography>
-          ) : (
-            <List>
-              {availableDevices.map((device) => (
-                <ListItem key={device.id} disablePadding>
-                  <ListItemButton onClick={() => handleAddDevice(device.id)}>
-                    <ListItemIcon>
-                      <Lightbulb color={settings?.devices?.includes(device.id) ? "#f59e0b" : "#666"} />
-                    </ListItemIcon>
-                    <ListItemText
-                      primary={device.name || device.id}
-                      secondary={`${device.platform || 'unknown'} - ${device.type}`}
-                    />
-                    {settings?.devices?.includes(device.id) && (
-                      <Chip label="Agregado" size="small" color="success" />
-                    )}
-                  </ListItemButton>
-                </ListItem>
-              ))}
-            </List>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDeviceDialogOpen(false)}>Cerrar</Button>
-        </DialogActions>
-      </Dialog>
-    </Box>
-  );
+                {/* BOTTOM ROW: DEVICE CONTROL */}
+                <Grid item xs={12}>
+                    <Typography variant="h5" fontWeight="bold" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Lightbulb size={24} className="text-yellow-400" />
+                        Dispositivos Conectados
+                    </Typography>
+
+                    <Paper elevation={0} sx={{ p: 3, borderRadius: '24px', background: 'var(--glass-bg)', backdropFilter: 'var(--backdrop-blur)', border: 'var(--glass-border)' }}>
+                        <DeviceControlSection />
+                    </Paper>
+                </Grid>
+            </Grid>
+        </Box>
+    );
 };
+
+// --- SUB-COMPONENTS ---
+
+const DeviceControlSection = () => {
+    const [devices, setDevices] = useState<any[]>([]);
+    const [loading, setLoading] = useState(false);
+
+    const fetchDevices = async () => {
+        setLoading(true);
+        try {
+            const allDevs = await apiClient.getAllDevices();
+            // Filter for lights or switches that might be lights
+            const lights = allDevs.filter(d => d.type === 'light' || d.type === 'switch');
+
+            if (lights.length > 0) {
+                // Robust parsing for status
+                const parsedLights = lights.map(d => {
+                    let isActive = false;
+                    const s = d.status;
+                    if (typeof s === 'boolean') isActive = s;
+                    else if (typeof s === 'string') {
+                        const low = s.toLowerCase();
+                        isActive = low === 'on' || low === 'true' || low === '1';
+                    } else if (typeof s === 'number') {
+                        isActive = s === 1;
+                    }
+                    return { ...d, status: isActive };
+                });
+                setDevices(parsedLights);
+            } else {
+                // Fallback Simulation if no real devices found
+                setDevices([
+                    { id: 'sim_main', name: 'Panel Principal LED', type: 'light', status: true, platform: 'tuya' },
+                    { id: 'sim_uv', name: 'Barras UV Suplementarias', type: 'light', status: false, platform: 'meross' },
+                    { id: 'sim_side', name: 'Luz Lateral', type: 'light', status: true, platform: 'tuya' }
+                ]);
+            }
+        } catch (e) {
+            console.error("Error fetching lighting devices", e);
+             setDevices([
+                { id: 'err_main', name: 'Panel Principal (Simul)', type: 'light', status: true, platform: 'sim' },
+                { id: 'err_uv', name: 'UV Boost (Simul)', type: 'light', status: false, platform: 'sim' }
+            ]);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchDevices();
+        const interval = setInterval(fetchDevices, 5000); // Poll every 5s
+        return () => clearInterval(interval);
+    }, []);
+
+    const handleRefresh = () => {
+        fetchDevices();
+    };
+
+    const handleToggle = async (id: string, currentStatus: boolean) => {
+        // Optimistic update
+        setDevices(prev => prev.map(d => d.id === id ? { ...d, status: !currentStatus } : d));
+        try {
+            if (!id.startsWith('sim_') && !id.startsWith('err_')) {
+               await apiClient.controlDevice(id, !currentStatus ? 'on' : 'off');
+            }
+        } catch (e) {
+            console.error("Failed to toggle device", e);
+            // Revert on failure
+            setDevices(prev => prev.map(d => d.id === id ? { ...d, status: currentStatus } : d));
+        }
+    };
+
+    const handleMasterToggle = async (turnOn: boolean) => {
+        // Optimistic
+        setDevices(prev => prev.map(d => ({ ...d, status: turnOn })));
+
+        // Parallel requests
+        const realDevices = devices.filter(d => !d.id.startsWith('sim_') && !d.id.startsWith('err_'));
+        await Promise.allSettled(realDevices.map(d => apiClient.controlDevice(d.id, turnOn ? 'on' : 'off')));
+    };
+
+    const allOn = devices.every(d => d.status);
+
+    if (loading) return <Box sx={{ p: 4, display: 'flex', justifyContent: 'center' }}><CircularProgress /></Box>;
+
+    return (
+        <Box>
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+                <Button
+                    onClick={handleRefresh}
+                    disabled={loading}
+                    size="small"
+                    sx={{ color: 'text.secondary', textTransform: 'none' }}
+                >
+                    {loading ? 'Buscando...' : 'Refrescar Dispositivos'}
+                </Button>
+            </Box>
+
+            {/* Master Control */}
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, pb: 2, borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                <Box>
+                    <Typography variant="subtitle1" fontWeight="bold">Control Maestro</Typography>
+                    <Typography variant="caption" color="text.secondary">{devices.length} dispositivos detectados</Typography>
+                </Box>
+                <Button
+                    variant={allOn ? "contained" : "outlined"}
+                    color={allOn ? "error" : "success"}
+                    onClick={() => handleMasterToggle(!allOn)}
+                    startIcon={<PowerIcon size={18} />}
+                >
+                    {allOn ? "APAGAR TODO" : "ENCENDER TODO"}
+                </Button>
+            </Box>
+
+            {/* Individual Cards */}
+            <Grid container spacing={2}>
+                {devices.map((device) => (
+                    <Grid item xs={12} sm={6} md={4} key={device.id}>
+                        <Paper sx={{
+                            p: 2,
+                            borderRadius: '16px',
+                            bgcolor: device.status ? 'rgba(34, 197, 94, 0.1)' : 'rgba(255,255,255,0.03)',
+                            border: device.status ? '1px solid #22c55e' : '1px solid rgba(255,255,255,0.1)',
+                            transition: 'all 0.3s ease',
+                            '&:hover': { transform: 'translateY(-2px)' }
+                        }}>
+                             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                                <Typography variant="subtitle2" fontWeight="bold">{device.name}</Typography>
+                                <Switch
+                                    checked={!!device.status}
+                                    onChange={() => handleToggle(device.id, device.status)}
+                                    color="success"
+                                />
+                             </Box>
+                             <Typography variant="caption" sx={{ color: device.status ? '#22c55e' : 'text.secondary', display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                <Zap size={12} /> {device.status ? 'ENCENDIDO' : 'APAGADO'}
+                             </Typography>
+                        </Paper>
+                    </Grid>
+                ))}
+            </Grid>
+        </Box>
+    );
+};
+
+const PowerIcon = ({ size }: { size: number }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line></svg>
+);
 
 export default Lighting;

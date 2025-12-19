@@ -1,388 +1,387 @@
 
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, Grid, CardHeader, CardContent, CircularProgress, Alert, Divider, TextField, Button } from '@mui/material';
-import { Droplet, Activity, Settings } from 'lucide-react'; // Check icons used
-import { SoilChart } from '../components/dashboard/SoilChart';
-import { CropSteeringPanel } from '../components/dashboard/CropSteeringPanel';
-import DeviceSwitch from '../components/dashboard/DeviceSwitch';
-import HistoryChart from '../components/dashboard/HistoryChart';
+import { Box, Typography, Paper, Grid, Slider, Button, Stack, Chip, Tabs, Tab, Alert } from '@mui/material';
+import { Activity, Zap, Play, Square, TrendingDown, AlertCircle, Waves, Timer, History, Settings2, Droplet } from 'lucide-react';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, ReferenceArea, Line } from 'recharts';
+import { IrrigationTimeline, AutomationPanel } from '../components/cropsteering'; // Migrated components
+import { useCropSteering } from '../context/CropSteeringContext';
 import { apiClient } from '../api/client';
 
-interface SensorData {
-    timestamp: string;
-    temperature: number;
-    humidity: number;
-    substrateHumidity: number;
-    sh1: number;
-    sh2: number;
-    sh3: number;
-    vpd: number;
-}
+// --- MOCK DATA GENERATOR ---
+const generateStrategyData = () => {
+    const data = [];
+    // Generate 24h of data (simulating a day starting at 6 AM lights on)
+    let vwc = 45; // Starting VWC
+    let ec = 2.5;
+    let temp = 21;
 
-interface IrrigationSettings {
-    enabled: boolean;
-    mode: 'manual' | 'auto';
-    potSize: number;
-    pumpRate: number;
-    targetVWC: number;
-    drybackTarget: number;
-}
+    for (let i = 0; i < 24; i++) {
+        const hour = i;
+
+        // P1: Ramping (6am - 11am)
+        if (hour >= 6 && hour < 11) {
+            vwc += 4; // steep watering
+            ec += 0.1;
+            temp += 0.2;
+        }
+        // P2: Maintenance (11am - 4pm)
+        else if (hour >= 11 && hour < 16) {
+             vwc += (Math.random() > 0.5 ? 1.5 : -1.5); // flat maintenance
+             ec += (Math.random() > 0.5 ? 0.05 : -0.05);
+        }
+        // P3: Dryback (4pm - 6am next day)
+        else {
+            vwc -= 1.8; // dryback
+            ec -= 0.05;
+            temp -= 0.1;
+        }
+
+        // Clamp and noise
+        if (vwc > 70) vwc = 70;
+        if (vwc < 30) vwc = 30;
+
+        data.push({
+            time: `${hour}:00`,
+            vwc: Number(vwc.toFixed(1)),
+            ec: Number(ec.toFixed(2)),
+            temp: Number(temp.toFixed(1)),
+            phase: hour >= 6 && hour < 11 ? 'P1 Ramp' : (hour >= 11 && hour < 16 ? 'P2 Maint' : 'P3 Dryback')
+        });
+    }
+    return data;
+};
+
+// --- SUB-COMPONENTS ---
+
+const PumpDeck = ({
+    active,
+    onShot,
+    onStop,
+    shotVolume,
+    setShotVolume
+}: {
+    active: boolean;
+    onShot: () => void;
+    onStop: () => void;
+    shotVolume: number;
+    setShotVolume: (v: number) => void;
+}) => (
+    <Paper sx={{
+        p: 3,
+        borderRadius: '20px',
+        background: active
+            ? 'linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(34, 197, 94, 0.05) 100%)'
+            : 'var(--glass-bg)',
+        border: active ? '1px solid #22c55e' : 'var(--glass-border)',
+        backdropFilter: 'var(--backdrop-blur)',
+        position: 'relative',
+        overflow: 'hidden'
+    }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+            <Box>
+                <Typography variant="h6" fontWeight="bold" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Zap size={20} className={active ? "text-green-500 fill-current" : "text-gray-400"} />
+                    Solenoid Valve 1
+                </Typography>
+                <Typography variant="caption" color="text.secondary">Main Line • 24V AC</Typography>
+            </Box>
+            <Box sx={{
+                px: 2,
+                py: 0.5,
+                borderRadius: '12px',
+                bgcolor: active ? 'rgba(34, 197, 94, 0.2)' : 'rgba(128, 128, 128, 0.1)',
+                border: active ? '1px solid #22c55e' : '1px solid rgba(128, 128, 128, 0.2)'
+            }}>
+                <Typography variant="caption" fontWeight="bold" sx={{ color: active ? '#22c55e' : 'text.secondary' }}>
+                    {active ? 'ACTIVO' : 'STANDBY'}
+                </Typography>
+            </Box>
+        </Box>
+
+        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mt: 2 }}>
+            <Button
+                variant="contained"
+                color="success"
+                startIcon={<Play size={16} />}
+                disabled={active}
+                onClick={onShot}
+                fullWidth
+                sx={{ borderRadius: '12px', fontWeight: 'bold' }}
+            >
+                SHOT MANUAL
+            </Button>
+            <Button
+                variant="outlined"
+                color="error"
+                startIcon={<Square size={16} />}
+                disabled={!active}
+                onClick={onStop}
+                fullWidth
+                sx={{ borderRadius: '12px', fontWeight: 'bold' }}
+            >
+                STOP
+            </Button>
+        </Box>
+
+        {active && (
+            <Box sx={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '4px', bgcolor: '#22c55e', animation: 'pulse 1.5s infinite' }} />
+        )}
+    </Paper>
+);
+
+const MetricCard = ({ label, value, unit, icon: Icon, color }: any) => (
+    <Paper elevation={0} sx={{ p: 2, borderRadius: '16px', bgcolor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+            <Typography variant="caption" color="text.secondary">{label}</Typography>
+            <Icon size={16} color={color} />
+        </Box>
+        <Typography variant="h5" fontWeight="bold" sx={{ color: color }}>
+            {value} <Typography component="span" variant="caption" sx={{ color: 'text.secondary' }}>{unit}</Typography>
+        </Typography>
+    </Paper>
+);
+
 
 const Irrigation: React.FC = () => {
-  // Data State
-  const [sensorHistory, setSensorHistory] = useState<SensorData[]>([]);
-  const [latestVWC, setLatestVWC] = useState(0);
-  const [phase, setPhase] = useState<'vegetative' | 'generative'>('vegetative');
-  const [devices, setDevices] = useState<any>({});
+    const { settings } = useCropSteering();
+    const [strategyData, setStrategyData] = useState<any[]>([]);
+    const [valveActive, setValveActive] = useState(false);
+    const [shotVolume, setShotVolume] = useState(100);
+    const [tabIndex, setTabIndex] = useState(0);
+    const [automationEnabled, setAutomationEnabled] = useState(true);
 
-  // Config State
-  const [settings, setSettings] = useState<IrrigationSettings | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [pulsing, setPulsing] = useState(false);
+    useEffect(() => {
+        setStrategyData(generateStrategyData());
+    }, []);
 
-  // Load Data
-  useEffect(() => {
-    let active = true;
-    const fetchData = async () => {
+    const handleManualShot = async () => {
         try {
-            // 1. Settings (Resilient)
-            let loadedSettings: IrrigationSettings | null = null;
-            try {
-                const setData = await apiClient.getSettings();
-                if (setData && setData.irrigation) loadedSettings = setData.irrigation;
-            } catch (e) { console.warn("Settings load failed, using defaults"); }
+            const pumpRate = settings.pumpRateMlPerMin || 60; // ml/min from settings
+            const durationMs = Math.round((shotVolume / pumpRate) * 60 * 1000);
 
-            // Default Fallback
-            if (!loadedSettings) {
-                loadedSettings = {
-                    enabled: true, mode: 'auto',
-                    potSize: 11, pumpRate: 60,
-                    targetVWC: 45, drybackTarget: 15
-                };
-            }
-            if (active) setSettings(loadedSettings);
+            console.log(`[IRRIGATION] Executing shot: ${shotVolume}ml for ${durationMs}ms`);
 
-            // 2. Devices
-            const devs = await apiClient.getDeviceStates();
-            if (active) setDevices(devs);
+            await apiClient.pulseDevice('bombaControlador', durationMs);
+            setValveActive(true);
 
-            // 3. History (Immediate Load)
-            const hist = await apiClient.getHistoryRange('day');
-            const processedHist = hist.map((h: any) => ({
-                ...h,
-                dp: h.temperature - ((100 - h.humidity) / 5)
-            }));
-            if (active) setSensorHistory(processedHist);
-            if (active) setSensorHistory(processedHist);
-            if (processedHist.length > 0) {
-                 const last = processedHist[processedHist.length - 1];
-                 setLatestVWC(last?.substrateHumidity || 0);
-            }
+            // Auto-update UI after pulse completes
+            setTimeout(() => {
+                setValveActive(false);
+            }, durationMs + 500); // Add 500ms buffer
 
-        } catch (e) { console.error(e); } finally { if (active) setLoading(false); }
+        } catch (e) {
+            console.error('[IRRIGATION] Shot failed:', e);
+            alert('Error al ejecutar riego');
+        }
     };
-    fetchData();
 
-    // Polling Loop for Real Data
-    const interval = setInterval(async () => {
+    const handleStop = async () => {
         try {
-            const devs = await apiClient.getDeviceStates();
-            if (active) setDevices(devs);
+            await apiClient.controlDevice('bombaControlador', 'off');
+            setValveActive(false);
+        } catch (e) {
+            console.error('[IRRIGATION] Stop failed:', e);
+            alert('Error al detener bomba');
+        }
+    };
 
-            // Fetch Real History from Backend (which now logs T/H/Soil properly)
-            const hist = await apiClient.getHistoryRange('day');
-
-            // Process History for Dew Point if backend doesn't send it, or just use backend's
-            const processedHist = hist.map((h: any) => ({
-                ...h,
-                // Calculate DP if missing. DP = T - (100-RH)/5 (Approximation) or Magnus formula
-                dp: h.temperature - ((100 - h.humidity) / 5)
-            }));
-
-            if (active) setSensorHistory(processedHist);
-
-            // Update Latest VWC from last history point
-            if (processedHist.length > 0) {
-                const last = processedHist[processedHist.length - 1];
-                setLatestVWC(last.substrateHumidity || 0);
-            }
-
-        } catch(e) { console.error("Poll error", e); }
-    }, 10000); // Optimized to 10s
-    return () => { active = false; clearInterval(interval); };
-  }, []);
-
-  const handleSettingsChange = (field: keyof IrrigationSettings, value: any) => {
-      if (settings) {
-          const newSettings = { ...settings, [field]: value };
-          setSettings(newSettings);
-          // Auto save debounce could be added here
-      }
-  };
-
-  const saveSettings = async () => {
-      if (!settings) return;
-      await apiClient.saveSettings({ irrigation: settings });
-  };
-
-  const handleShot = async (pct: number) => {
-      if (pulsing || !settings) return;
-      setPulsing(true);
-      try {
-          // Calculation Logic:
-          // Volume needed (ml) = (PotSize in Liters * 1000) * (Percentage / 100)
-          // Simplified: Liters * 10 * Percentage
-          const volumeMl = settings.potSize * 10 * pct;
-
-          // Time needed (min) = Volume / Rate (ml/min)
-          const minutes = volumeMl / settings.pumpRate;
-
-          // Time (ms)
-          const durationMs = Math.round(minutes * 60 * 1000);
-
-          console.log(`[PULSE] ${pct}% Shot -> ${volumeMl}ml -> ${durationMs}ms`);
-
-          await apiClient.pulseDevice('bombaControlador', durationMs);
-
-      } catch (e) {
-          console.error("Shot failed:", e);
-      } finally {
-          setTimeout(() => setPulsing(false), 2000); // UI Cooldown
-      }
-  };
-
-  if (loading) {
     return (
-      <Box sx={{ p: 3 }}>
-        <Typography variant="h4" sx={{ mb: 3 }}>Riego y Sustrato</Typography>
-        <Box className="loading-shimmer glass-panel" sx={{ height: 60, borderRadius: '16px', mb: 2 }} />
-        <Box className="loading-shimmer glass-panel" sx={{ height: 300, borderRadius: '16px' }} />
-      </Box>
+
+        <Box sx={{ maxWidth: 1600, mx: 'auto', p: { xs: 2, md: 4 } }}>
+            {/* Header */}
+            <Box sx={{ mb: 4, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Box>
+                    <Typography variant="h4" fontWeight="800" className="ai-gradient-text" sx={{ mb: 1 }}>
+                        Riego de Precisión
+                    </Typography>
+                    <Typography variant="body1" color="text.secondary">
+                        Centro de Control Hidrológico & Crop Steering
+                    </Typography>
+                </Box>
+                <Chip
+                    icon={<Activity size={16} />}
+                    label="P3: DRYBACK PHASE"
+                    color="warning"
+                    variant="outlined"
+                    sx={{ fontWeight: 'bold', borderRadius: '8px' }}
+                />
+            </Box>
+
+            <Grid container spacing={3}>
+                {/* TOP ROW: ADVANCED STRATEGY VISUALIZER */}
+                <Grid item xs={12} lg={8}>
+                    <Paper elevation={0} sx={{ p: 3, borderRadius: '24px', background: 'var(--glass-bg)', backdropFilter: 'var(--backdrop-blur)', border: 'var(--glass-border)', height: '100%', minHeight: 450 }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
+                            <Box>
+                                <Typography variant="h6" fontWeight="bold">Estrategia Crop Steering</Typography>
+                                <Typography variant="caption" color="text.secondary">Visualización de Fases P1/P2/P3 y Métricas</Typography>
+                            </Box>
+
+                            <Stack direction="row" spacing={2}>
+                                <Chip label="P1 Ramp" size="small" sx={{ bgcolor: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', borderColor: '#3b82f6', border: 1 }} />
+                                <Chip label="P2 Maint" size="small" sx={{ bgcolor: 'rgba(34, 197, 94, 0.1)', color: '#22c55e', borderColor: '#22c55e', border: 1 }} />
+                                <Chip label="P3 Dry" size="small" sx={{ bgcolor: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', borderColor: '#ef4444', border: 1 }} />
+                            </Stack>
+                        </Box>
+
+                        <ResponsiveContainer width="100%" height={350}>
+                            <AreaChart data={strategyData}>
+                                <defs>
+                                    <linearGradient id="colorVwc" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4}/>
+                                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={true} vertical={false} />
+                                <XAxis dataKey="time" stroke="#666" fontSize={12} tickLine={false} axisLine={false} />
+
+                                {/* Y-Axis Left: VWC */}
+                                <YAxis yAxisId="left" domain={[20, 80]} stroke="#3b82f6" fontSize={12} tickLine={false} axisLine={false} unit="%" width={30} />
+                                {/* Y-Axis Right: EC */}
+                                <YAxis yAxisId="right" orientation="right" domain={[1, 5]} stroke="#f59e0b" fontSize={12} tickLine={false} axisLine={false} width={30} />
+
+                                <RechartsTooltip
+                                    contentStyle={{ backgroundColor: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' }}
+                                    itemStyle={{ color: '#fff', fontSize: '12px' }}
+                                    labelStyle={{ color: '#94a3b8', marginBottom: '8px' }}
+                                />
+
+                                {/* Phase Background Highlights */}
+                                <ReferenceArea x1="6:00" x2="11:00" yAxisId="left" fill="#3b82f6" fillOpacity={0.05} />
+                                <ReferenceArea x1="11:00" x2="16:00" yAxisId="left" fill="#22c55e" fillOpacity={0.05} />
+
+                                {/* Data Series */}
+                                <Area
+                                    yAxisId="left"
+                                    type="monotone"
+                                    dataKey="vwc"
+                                    name="VWC (Humedad)"
+                                    stroke="#3b82f6"
+                                    strokeWidth={3}
+                                    fillOpacity={1}
+                                    fill="url(#colorVwc)"
+                                />
+                                <Line
+                                    yAxisId="right"
+                                    type="monotone"
+                                    dataKey="ec"
+                                    name="Electroconductividad"
+                                    stroke="#f59e0b"
+                                    strokeWidth={2}
+                                    dot={false}
+                                />
+                                <Line
+                                    yAxisId="left" // Share left scale or create third
+                                    type="monotone"
+                                    dataKey="temp"
+                                    name="Temp Raíz"
+                                    stroke="#ef4444"
+                                    strokeWidth={2}
+                                    dot={false}
+                                    strokeDasharray="5 5"
+                                />
+                            </AreaChart>
+                        </ResponsiveContainer>
+                    </Paper>
+                </Grid>
+
+                {/* RIGHT COLUMN: METRICS & AI */}
+                <Grid item xs={12} lg={4}>
+                    <Grid container spacing={2}>
+                         {/* Metrics Grid */}
+                        <Grid item xs={6}>
+                            <MetricCard label="VWC Actual" value="44.2" unit="%" icon={Waves} color="#3b82f6" />
+                        </Grid>
+                        <Grid item xs={6}>
+                            <MetricCard label="EC Sustrato" value="3.1" unit="dS/m" icon={Activity} color="#f59e0b" />
+                        </Grid>
+                        <Grid item xs={6}>
+                            <MetricCard label="Temp Raíz" value="22.4" unit="°C" icon={Timer} color="#ef4444" />
+                        </Grid>
+                        <Grid item xs={6}>
+                            <MetricCard label="Dryback (24h)" value="4.8" unit="%" icon={TrendingDown} color="#22c55e" />
+                        </Grid>
+
+                        {/* AI Insight */}
+                        <Grid item xs={12}>
+                            <Paper sx={{ p: 2, borderRadius: '16px', background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(37, 99, 235, 0.05) 100%)', border: '1px solid rgba(59, 130, 246, 0.3)' }}>
+                                <Box sx={{ display: 'flex', gap: 1.5 }}>
+                                    <AlertCircle size={20} className="text-blue-400" />
+                                    <Box>
+                                        <Typography variant="subtitle2" fontWeight="bold" sx={{ color: '#60a5fa' }}>AI Strategy Insight</Typography>
+                                        <Typography variant="caption" sx={{ color: '#93c5fd', display: 'block', mt: 0.5 }}>
+                                            La fase P1 está siendo muy suave. Aumenta el volumen de riego matutino +50mL para alcanzar el target de saturación más rápido.
+                                        </Typography>
+                                    </Box>
+                                </Box>
+                            </Paper>
+                        </Grid>
+                    </Grid>
+                </Grid>
+
+                {/* BOTTOM ROW: CONTROL & HISTORY TABS */}
+                <Grid item xs={12}>
+                    <Paper elevation={0} sx={{ overflow: 'hidden', borderRadius: '24px', background: 'var(--glass-bg)', backdropFilter: 'var(--backdrop-blur)', border: 'var(--glass-border)' }}>
+                        <Box sx={{ borderBottom: 1, borderColor: 'rgba(255,255,255,0.1)' }}>
+                            <Tabs value={tabIndex} onChange={(_, v) => setTabIndex(v)} textColor="inherit" indicatorColor="secondary">
+                                <Tab icon={<Zap size={18} />} iconPosition="start" label="Pump Deck (Manual)" />
+                                <Tab icon={<History size={18} />} iconPosition="start" label="Historial de Riego" />
+                                <Tab icon={<Settings2 size={18} />} iconPosition="start" label="Automatización" />
+                            </Tabs>
+                        </Box>
+
+                        <Box sx={{ p: 3 }}>
+                            {tabIndex === 0 && (
+                                <Grid container spacing={4}>
+                                    <Grid item xs={12} md={5}>
+                                        <PumpDeck
+                                            active={valveActive}
+                                            onShot={handleManualShot}
+                                            onStop={handleStop}
+                                            shotVolume={shotVolume}
+                                            setShotVolume={setShotVolume}
+                                        />
+                                    </Grid>
+                                    <Grid item xs={12} md={7}>
+                                         <Typography variant="subtitle2" color="text.secondary" gutterBottom>Configuración de Disparo</Typography>
+                                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 2 }}>
+                                            <Slider
+                                                value={shotVolume}
+                                                onChange={(_, v) => setShotVolume(v as number)}
+                                                min={50}
+                                                max={500}
+                                                step={10}
+                                                sx={{ color: '#22c55e', flex: 1 }}
+                                            />
+                                            <Typography fontWeight="bold" sx={{ minWidth: 80, textAlign: 'right' }}>
+                                                {shotVolume}mL
+                                                <Typography variant="caption" display="block" color="text.secondary">
+                                                    ~{(shotVolume / 60).toFixed(1)}seg
+                                                </Typography>
+                                            </Typography>
+                                         </Box>
+                                         <Alert severity="info" sx={{ mt: 2 }} icon={<Droplet size={18} />}>
+                                            <Typography variant="caption">
+                                                Maceta: <strong>{settings.potSizeLiters}L</strong> |
+                                                1% = {(settings.potSizeLiters * 10).toFixed(0)}mL
+                                            </Typography>
+                                         </Alert>
+                                    </Grid>
+                                </Grid>
+                            )}
+
+                            {tabIndex === 1 && (
+                                <IrrigationTimeline showDetails={true} />
+                            )}
+                            {tabIndex === 2 && (
+                                <AutomationPanel enabled={automationEnabled} onEnabledChange={setAutomationEnabled} />
+                            )}
+                        </Box>
+                    </Paper>
+                </Grid>
+            </Grid>
+        </Box>
     );
-  }
-
-  if (!settings) return (
-      <Box sx={{ p: 4 }}>
-          <Alert severity="error" sx={{ mb: 2, borderRadius: '12px' }}>
-              No se pudo cargar la configuración de Riego.
-              <br/>
-              Verifica que el Backend esté corriendo y que la conexión HTTPS sea segura.
-          </Alert>
-          <Button variant="outlined" onClick={() => window.location.reload()}>Reintentar</Button>
-      </Box>
-  );
-
-  // Calc Pump Time 1%
-  const volume1Pct = settings.potSize * 10; // 1% of X Liters * 1000ml / 100 = X * 10
-  const time1Pct = volume1Pct / settings.pumpRate;
-
-  return (
-    <Box sx={{ p: 2 }}>
-      {/* Header with Glass Styling */}
-      <Box className="glass-panel" sx={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        mb: 3,
-        p: 2,
-        borderRadius: '16px',
-        flexWrap: 'wrap',
-        gap: 2
-      }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Box sx={{
-            p: 1.5,
-            borderRadius: '12px',
-            bgcolor: 'rgba(0, 122, 255, 0.2)',
-            color: '#007AFF'
-          }}>
-            <Droplet size={28} />
-          </Box>
-          <Box>
-            <Typography variant="h5" fontWeight="bold">Riego y Sustrato</Typography>
-            <Typography variant="caption" color="text.secondary">
-              Control de irrigación y VWC
-            </Typography>
-          </Box>
-        </Box>
-        <Box sx={{ display: 'flex', gap: 1 }}>
-          <Button
-            variant={phase === 'vegetative' ? 'contained' : 'outlined'}
-            size="small"
-            onClick={() => setPhase('vegetative')}
-            sx={{
-              borderRadius: '12px',
-              bgcolor: phase === 'vegetative' ? 'linear-gradient(135deg, #22c55e, #16a34a)' : 'transparent',
-              background: phase === 'vegetative' ? 'linear-gradient(135deg, #22c55e, #16a34a)' : undefined,
-              borderColor: '#22c55e',
-              color: phase === 'vegetative' ? 'white' : '#22c55e'
-            }}
-          >
-            Vegetativo
-          </Button>
-          <Button
-            variant={phase === 'generative' ? 'contained' : 'outlined'}
-            size="small"
-            onClick={() => setPhase('generative')}
-            sx={{
-              borderRadius: '12px',
-              bgcolor: phase === 'generative' ? 'linear-gradient(135deg, #8b5cf6, #6366f1)' : 'transparent',
-              background: phase === 'generative' ? 'linear-gradient(135deg, #8b5cf6, #6366f1)' : undefined,
-              borderColor: '#8b5cf6',
-              color: phase === 'generative' ? 'white' : '#8b5cf6'
-            }}
-          >
-            Generativo
-          </Button>
-        </Box>
-      </Box>
-
-      <Grid container spacing={3}>
-          {/* LEFT: Charts & Strategy */}
-          <Grid item xs={12} lg={8}>
-              <Box sx={{ mb: 3 }}>
-                <HistoryChart type="substrate" title="Historial Sustrato" data={sensorHistory} />
-              </Box>
-              <CropSteeringPanel phase={phase} currentVWC={latestVWC} history={sensorHistory} />
-
-              {/* IRRIGATION LOG */}
-              <Box className="glass-panel" sx={{
-                  mt: 3,
-                  borderRadius: 'var(--squircle-radius)',
-                  bgcolor: 'var(--glass-bg)',
-                  backdropFilter: 'var(--backdrop-blur)',
-                  border: 'var(--glass-border)',
-                  boxShadow: 'var(--glass-shadow)',
-                  overflow: 'hidden'
-              }}>
-                  <CardHeader title="Bitácora de Riego & Runoff" subheader="Registra mediciones para análisis de IA" />
-                  <Divider sx={{ borderColor: 'rgba(255,255,255,0.1)' }} />
-                  <CardContent>
-                      <Grid container spacing={2}>
-                          <Grid item xs={12} md={6}>
-                              <Typography variant="subtitle2" sx={{ mb: 1, color: 'text.secondary' }}>Entrada (Riego)</Typography>
-                              <Box sx={{ display: 'flex', gap: 2 }}>
-                                  <TextField label="pH Entrada" size="small" type="number" fullWidth />
-                                  <TextField label="EC Entrada" size="small" type="number" fullWidth />
-                              </Box>
-                          </Grid>
-                          <Grid item xs={12} md={6}>
-                              <Typography variant="subtitle2" sx={{ mb: 1, color: 'text.secondary' }}>Salida (Runoff)</Typography>
-                              <Box sx={{ display: 'flex', gap: 2 }}>
-                                  <TextField label="pH Runoff" size="small" type="number" fullWidth />
-                                  <TextField label="EC Runoff" size="small" type="number" fullWidth />
-                              </Box>
-                          </Grid>
-                          <Grid item xs={12}>
-                               <TextField label="Volumen Riego (L) - Opcional" size="small" type="number" fullWidth sx={{ mb: 2 }} />
-                               <Button variant="contained" color="primary" fullWidth>
-                                   Guardar Registro
-                               </Button>
-                          </Grid>
-                      </Grid>
-                  </CardContent>
-              </Box>
-          </Grid>
-
-          {/* RIGHT: Controls */}
-          <Grid item xs={12} lg={4}>
-              <Box className="glass-panel" sx={{
-                  mb: 3,
-                  borderRadius: 'var(--squircle-radius)',
-                  bgcolor: 'var(--glass-bg)',
-                  backdropFilter: 'var(--backdrop-blur)',
-                  border: 'var(--glass-border)',
-                  boxShadow: 'var(--glass-shadow)',
-                  overflow: 'hidden'
-              }}>
-                  <CardHeader title="Control de Bomba" subheader="Ejecución manual de disparos (Shots)" avatar={<Droplet />} titleTypographyProps={{ fontWeight: 'bold' }} />
-                  <Divider sx={{ borderColor: 'rgba(255,255,255,0.1)' }} />
-                  <CardContent>
-                      <Grid container spacing={1} sx={{ mb: 3 }}>
-                          {[1, 2, 3, 5].map((pct) => (
-                              <Grid item xs={6} key={pct}>
-                                  <Button
-                                    fullWidth
-                                    variant="contained"
-                                    size="large"
-                                    disabled={pulsing}
-                                    onClick={() => handleShot(pct)}
-                                    sx={{ py: 2, fontSize: '1.rem' }}
-                                  >
-                                      {pct}% Shot
-                                  </Button>
-                              </Grid>
-                          ))}
-                      </Grid>
-
-                      <DeviceSwitch
-                        icon={<Activity />}
-                        name="Bomba Manual"
-                        isOn={devices.bombaControlador}
-                        onToggle={async () => { await apiClient.toggleDevice('bombaControlador'); }}
-                      />
-                  </CardContent>
-              </Box>
-
-              <Box className="glass-panel" sx={{
-                  borderRadius: 'var(--squircle-radius)',
-                  bgcolor: 'var(--glass-bg)',
-                  backdropFilter: 'var(--backdrop-blur)',
-                  border: 'var(--glass-border)',
-                  boxShadow: 'var(--glass-shadow)',
-                  overflow: 'hidden'
-              }}>
-                  <CardHeader
-                    title="Calibración"
-                    subheader="Configura tu sistema"
-                    titleTypographyProps={{ fontWeight: 'bold' }}
-                    action={<Button size="small" onClick={saveSettings} startIcon={<Settings />}>Guardar</Button>}
-                  />
-                  <Divider sx={{ borderColor: 'rgba(255,255,255,0.1)' }}  />
-                  <CardContent>
-                      <Grid container spacing={2}>
-                          <Grid item xs={6}>
-                              <TextField
-                                label="Volumen Maceta (L)"
-                                type="number"
-                                fullWidth
-                                value={settings.potSize}
-                                onChange={(e) => handleSettingsChange('potSize', parseFloat(e.target.value))}
-                              />
-                          </Grid>
-                          <Grid item xs={6}>
-                              <TextField
-                                label="Flujo Bomba (ml/s)"
-                                type="number"
-                                fullWidth
-                                value={settings.pumpRate}
-                                onChange={(e) => handleSettingsChange('pumpRate', parseFloat(e.target.value))}
-                              />
-                          </Grid>
-                      </Grid>
-
-                      <Alert severity="info" sx={{ mt: 2 }}>
-                          Calculado: <strong>1% ({volume1Pct}ml)</strong> = <strong>{time1Pct.toFixed(1)} segundos</strong> de bombeo.
-                      </Alert>
-                  </CardContent>
-              </Box>
-          </Grid>
-      </Grid>
-
-
-      {/* HISTORICAL CHART */}
-      <Box sx={{ mt: 3 }}>
-          <HistoryChart
-              type="substrate"
-              title="Historial Sustrato"
-              targets={{
-                  vwc: settings?.targetVWC || 60,
-                  dryback: settings?.drybackTarget || 20
-              }}
-          />
-      </Box>
-    </Box>
-  );
 };
 
 export default Irrigation;

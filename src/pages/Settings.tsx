@@ -34,10 +34,12 @@ import {
   Sun,
   Moon,
   LogOut,
-  User
+  User,
+  Droplet
 } from 'lucide-react';
 import { apiClient, API_BASE_URL } from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import { useCropSteering } from '../context/CropSteeringContext';
 
 
 interface TabPanelProps {
@@ -80,6 +82,11 @@ interface XiaomiCredentials {
 
 const SettingsPage: React.FC = () => {
   const { user, logout } = useAuth();
+  const {
+    settings,
+    updateSettings: updateCropSteeringSettings,
+    saveSettings: saveCropSteering
+  } = useCropSteering();
   const [tabValue, setTabValue] = useState(0);
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -110,17 +117,12 @@ const SettingsPage: React.FC = () => {
 
   });
 
+  /* Removed cropSteeringSettings state - using Context */
+
   const [lightingSettings, setLightingSettings] = useState({
     onTime: '06:00',
     offTime: '00:00',
     mode: 'manual'
-  });
-
-  // Crop Steering Settings
-  const [cropSteeringSettings, setCropSteeringSettings] = useState({
-    stage: 'none' as 'veg' | 'flower' | 'none',
-    targetVWC: 50,
-    targetDryback: 15
   });
 
   const [showSecrets, setShowSecrets] = useState({
@@ -279,7 +281,10 @@ const SettingsPage: React.FC = () => {
         setXiaomiSettings(response.xiaomi || xiaomiSettings);
         setLightingSettings(response.lighting || lightingSettings);
         if (response.cropSteering) {
-          setCropSteeringSettings(response.cropSteering);
+          // Settings from backend - merge with context
+          Object.keys(response.cropSteering).forEach(key => {
+            updateCropSteeringSettings({ [key]: response.cropSteering[key] });
+          });
         }
       }
     } catch (error) {
@@ -297,8 +302,19 @@ const SettingsPage: React.FC = () => {
         tuya: tuyaSettings,
         xiaomi: xiaomiSettings,
         lighting: lightingSettings,
-        cropSteering: cropSteeringSettings
+        // Save using the LATEST context settings, merging with what's on screen if needed
+        // but since we are binding inputs to context, 'settings' is already up to date
+        // if we were using it directly. However, inputs below are still bound to local 'cropSteeringSettings'.
+        // We need to bind inputs to 'settings' from context or update context on change.
+        cropSteering: settings // Use global context settings directly
       });
+
+      // Persist context to its own storage logic too
+      await saveCropSteering();
+
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch (error) {
@@ -830,12 +846,37 @@ const SettingsPage: React.FC = () => {
                 <Alert severity="info" sx={{ mb: 3 }}>
                     Selecciona la etapa actual de tu cultivo para ver los rangos ideales de temperatura, humedad y VPD en los widgets.
                 </Alert>
+
+                <Grid container spacing={3} sx={{ mb: 4 }}>
+                    <Grid item xs={6}>
+                         <TextField
+                            label="Fecha Inicio (Vegetativo)"
+                            type="date"
+                            fullWidth
+                            value={settings.growStartDate || ''}
+                            onChange={e => updateCropSteeringSettings({ growStartDate: e.target.value })}
+                            InputLabelProps={{ shrink: true }}
+                            helperText="Día 0 de Vegetativo"
+                         />
+                    </Grid>
+                    <Grid item xs={6}>
+                         <TextField
+                            label="Fecha Flip (Floración)"
+                            type="date"
+                            fullWidth
+                            value={settings.flipDate || ''}
+                            onChange={e => updateCropSteeringSettings({ flipDate: e.target.value })}
+                            InputLabelProps={{ shrink: true }}
+                            helperText="Inicio ciclo 12/12"
+                         />
+                    </Grid>
+                </Grid>
                 <Box sx={{ display: 'flex', gap: 2, mb: 4 }}>
                     {['veg', 'flower', 'none'].map(stage => (
                         <Button
                             key={stage}
-                            variant={cropSteeringSettings.stage === stage ? 'contained' : 'outlined'}
-                            onClick={() => setCropSteeringSettings({ ...cropSteeringSettings, stage: stage as any })}
+                            variant={settings.currentStage?.startsWith(stage) ? 'contained' : 'outlined'}
+                            onClick={() => updateCropSteeringSettings({ currentStage: (stage === 'veg' ? 'veg_early' : stage === 'flower' ? 'flower_early' : 'veg_early') as any })}
                             sx={{ flex: 1, py: 1.5 }}
                             color={stage === 'veg' ? 'success' : stage === 'flower' ? 'secondary' : 'inherit'}
                         >
@@ -872,6 +913,52 @@ const SettingsPage: React.FC = () => {
                             InputLabelProps={{ shrink: true }}
                             InputProps={{ startAdornment: <Moon size={18} className="mr-2 text-blue-400"/> }}
                          />
+                    </Grid>
+                </Grid>
+
+                <Divider sx={{ my: 3 }} />
+
+                <Typography variant="h6" gutterBottom>💧 Configuración de Riego</Typography>
+                <Alert severity="info" sx={{ mb: 3 }}>
+                    Configura el tamaño de tu maceta y la tasa de flujo de tu bomba para calcular automáticamente los shots de riego.
+                </Alert>
+                <Grid container spacing={3}>
+                    <Grid item xs={12} md={6}>
+                         <TextField
+                            label="Tamaño de Maceta"
+                            type="number"
+                            fullWidth
+                            value={settings.potSizeLiters}
+                            onChange={e => updateCropSteeringSettings({ potSizeLiters: parseFloat(e.target.value) || 3.8 })}
+                            InputProps={{
+                                endAdornment: <Typography variant="caption" sx={{ ml: 1 }}>Litros</Typography>,
+                            }}
+                            InputLabelProps={{ shrink: true }}
+                            helperText="Volumen total de sustrato por planta (usado para calcular shots)"
+                         />
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                         <TextField
+                            label="Tasa de Bomba (Calibración)"
+                            type="number"
+                            fullWidth
+                            value={settings.pumpRateMlPerMin || 60}
+                            onChange={e => updateCropSteeringSettings({ pumpRateMlPerMin: parseFloat(e.target.value) || 60 })}
+                            InputProps={{
+                                endAdornment: <Typography variant="caption" sx={{ ml: 1 }}>ml/min</Typography>,
+                            }}
+                            InputLabelProps={{ shrink: true }}
+                            helperText="Flujo medido de tu bomba (calibrar con vaso medidor)"
+                         />
+                    </Grid>
+                    <Grid item xs={12}>
+                        <Alert severity="success" icon={<Droplet size={18} />}>
+                            <Typography variant="body2">
+                                <strong>Shot de 1%</strong> = {(settings.potSizeLiters * 10 * 1).toFixed(0)}ml
+                                {' | '}
+                                <strong>Duración</strong>: ~{(((settings.potSizeLiters * 10 * 1) / (settings.pumpRateMlPerMin || 60)) * 60).toFixed(0)} segundos
+                            </Typography>
+                        </Alert>
                     </Grid>
                 </Grid>
             </Box>

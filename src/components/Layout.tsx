@@ -1,10 +1,45 @@
 
 // src/components/Layout.tsx
 import React, { useState, useEffect } from 'react';
+import RoomSelector from './navigation/RoomSelector';
 import Alerts, { Alert } from './Alerts';
 import { Box, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Typography, Divider, GlobalStyles, Fade, IconButton, Tooltip, useMediaQuery, Drawer, AppBar, Toolbar } from '@mui/material';
 import { LayoutDashboard, Zap, Droplets, Wind, Bot, Calendar, Settings, Camera, Cpu, Sun, Moon, Menu as MenuIcon, Leaf, Beaker } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
+import { useCropSteering } from '../context/CropSteeringContext';
+
+const TimelineBadge = () => {
+    const { daysVeg, daysFlower, daysIntoGrow, settings } = useCropSteering();
+    const isFlower = !!settings.flipDate;
+
+    return (
+        <Box sx={{
+            mt: 2,
+            p: 1.5,
+            borderRadius: '12px',
+            background: isFlower
+                ? 'linear-gradient(135deg, rgba(168, 85, 247, 0.2) 0%, rgba(168, 85, 247, 0.1) 100%)'
+                : 'linear-gradient(135deg, rgba(34, 197, 94, 0.2) 0%, rgba(34, 197, 94, 0.1) 100%)',
+            border: isFlower ? '1px solid rgba(168, 85, 247, 0.3)' : '1px solid rgba(34, 197, 94, 0.3)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between'
+        }}>
+            <Box>
+                <Typography variant="caption" sx={{ color: isFlower ? '#e9d5ff' : '#dcfce7', fontWeight: 'bold', display: 'block' }}>
+                    {isFlower ? '🌸 FLORACIÓN' : '🌿 VEGETATIVO'}
+                </Typography>
+                <Typography variant="body2" fontWeight="bold" sx={{ color: isFlower ? '#c084fc' : '#4ade80' }}>
+                    {isFlower ? `Día ${daysFlower}` : `Día ${daysVeg}`}
+                </Typography>
+            </Box>
+            <Box sx={{ textAlign: 'right' }}>
+                 <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>Total</Typography>
+                 <Typography variant="caption" fontWeight="bold">{daysIntoGrow} días</Typography>
+            </Box>
+        </Box>
+    );
+};
 
 // Define the type for the pages
 export type Page = 'dashboard' | 'lighting' | 'irrigation' | 'environment' | 'cropsteering' | 'nutrients' | 'ai_assistant' | 'calendar' | 'devices' | 'camera' | 'settings';
@@ -139,12 +174,23 @@ const Layout: React.FC<LayoutProps> = ({ children, onNavigate, activePage }) => 
         </Box>
 
         <Box sx={{ flex: 1, overflowY: 'auto', py: 2 }}>
+            {/* Room Selector */}
+            <Box sx={{ px: 3, mb: 3 }}>
+                <RoomSelector />
+                {/* Timeline Badge */}
+                <TimelineBadge />
+            </Box>
+
             {/* MAIN SECTIONS - Consolidated */}
             <Typography variant="caption" sx={{ px: 4, mb: 1, display: 'block', fontWeight: 'bold', color: mode === 'dark' ? 'rgba(255,255,255,0.4)' : 'text.disabled', letterSpacing: 1 }}>PRINCIPAL</Typography>
             <List component="nav">
                 <NavItem page="dashboard" icon={<LayoutDashboard size={20} />} label="Dashboard" />
                 <NavItem page="cropsteering" icon={<Leaf size={20} />} label="Cultivo" />
+                <NavItem page="irrigation" icon={<Droplets size={20} />} label="Riego" />
                 <NavItem page="environment" icon={<Wind size={20} />} label="Ambiente" />
+                <NavItem page="nutrients" icon={<Beaker size={20} />} label="Nutrientes" />
+                <NavItem page="lighting" icon={<Zap size={20} />} label="Iluminación" />
+                <NavItem page="calendar" icon={<Calendar size={20} />} label="Gestión" />
                 <NavItem page="devices" icon={<Cpu size={20} />} label="Dispositivos" />
             </List>
 

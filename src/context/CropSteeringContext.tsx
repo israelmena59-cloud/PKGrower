@@ -8,8 +8,7 @@ import {
   GrowthStageId,
   GROWTH_STAGES,
   getStage,
-  calculateDaysIntoGrow,
-  determineStageFromDays
+  calculateDaysIntoGrow
 } from '../config/cropSteeringConfig';
 import {
   calculateVPD,
@@ -20,17 +19,21 @@ import {
   IrrigationPhaseId,
   EnvironmentStatus
 } from '../utils/cropSteeringCalculations';
+import { useRooms } from './RoomContext';
 
 // ==================== TYPES ====================
 
 export interface CropSteeringSettings {
   enabled: boolean;
-  growStartDate: string | null; // ISO date string
+  growStartDate: string | null; // Start of Veg
+  flipDate: string | null; // Start of 12/12
+  harvestDate: string | null; // Expected harvest
   currentStage: GrowthStageId;
   autoStageProgression: boolean;
   lightsOnHour: number;
   lightsOffHour: number;
   potSizeLiters: number;
+  pumpRateMlPerMin: number; // Pump flow rate in ml/min for shot duration calculation
   // Override values (null = use stage defaults)
   overrides: {
     vpdTarget: number | null;
@@ -59,7 +62,9 @@ interface CropSteeringContextType {
   // Current state
   currentStage: GrowthStageId;
   setCurrentStage: (stage: GrowthStageId) => void;
-  daysIntoGrow: number;
+  daysIntoGrow: number; // Total days
+  daysVeg: number;
+  daysFlower: number;
   daysIntoStage: number;
   daysRemainingInStage: number;
 
@@ -89,11 +94,14 @@ interface CropSteeringContextType {
 const defaultSettings: CropSteeringSettings = {
   enabled: true,
   growStartDate: null,
+  flipDate: null,
+  harvestDate: null,
   currentStage: 'veg_early',
   autoStageProgression: true,
   lightsOnHour: 6,
   lightsOffHour: 0, // Midnight for 18/6
   potSizeLiters: 3.8, // 1 gallon
+  pumpRateMlPerMin: 60, // Default pump rate
   overrides: {
     vpdTarget: null,
     tempDayTarget: null,
@@ -132,38 +140,93 @@ interface CropSteeringProviderProps {
 }
 
 export const CropSteeringProvider: React.FC<CropSteeringProviderProps> = ({ children }) => {
+  const { activeRoomId } = useRooms();
   const [settings, setSettings] = useState<CropSteeringSettings>(defaultSettings);
   const [conditions, setConditions] = useState<CurrentConditions>(defaultConditions);
 
-  // Load settings from localStorage on mount
+  // Load settings from localStorage when activeRoomId changes
   useEffect(() => {
-    const saved = localStorage.getItem('cropSteeringSettings');
+    const key = `cropSteeringSettings_${activeRoomId}`;
+    const saved = localStorage.getItem(key);
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        setSettings(prev => ({ ...prev, ...parsed }));
+        setSettings({ ...defaultSettings, ...parsed });
       } catch (e) {
         console.error('Error loading crop steering settings:', e);
+        setSettings(defaultSettings);
       }
+    } else {
+        setSettings(defaultSettings);
     }
-  }, []);
+  }, [activeRoomId]);
 
-  // Auto-update stage based on days
+  // Auto-update stage based on days and flip date
   useEffect(() => {
-    if (settings.autoStageProgression && settings.growStartDate) {
-      const days = calculateDaysIntoGrow(new Date(settings.growStartDate));
-      const suggestedStage = determineStageFromDays(days);
+    if (!settings.autoStageProgression) return;
 
-      if (suggestedStage !== settings.currentStage) {
-        setSettings(prev => ({ ...prev, currentStage: suggestedStage }));
-      }
+    let suggestedStage: GrowthStageId | 'none' = 'none';
+
+    // 1. Check if we are in Flower (Flip Date set)
+    if (settings.flipDate) {
+        const flowerDays = calculateDaysIntoGrow(new Date(settings.flipDate));
+        // Determine flower week based on valid GrowthStageIds
+        if (flowerDays <= 14) suggestedStage = 'flower_transition'; // Weeks 1-2
+        else if (flowerDays <= 35) suggestedStage = 'flower_early'; // Weeks 3-5
+        else if (flowerDays <= 56) suggestedStage = 'flower_mid'; // Weeks 6-8
+        else suggestedStage = 'flower_late'; // Week 8+
     }
-  }, [settings.growStartDate, settings.autoStageProgression]);
+    // 2. Check if we are in Veg (Only Start Date set)
+    else if (settings.growStartDate) {
+        const vegDays = calculateDaysIntoGrow(new Date(settings.growStartDate));
+        if (vegDays <= 14) suggestedStage = 'veg_early';
+        else suggestedStage = 'veg_late';
+    }
 
-  // Calculate derived values
-  const daysIntoGrow = settings.growStartDate
-    ? calculateDaysIntoGrow(new Date(settings.growStartDate))
-    : 0;
+    // Apply update if changed
+    if (suggestedStage !== 'none' && suggestedStage !== settings.currentStage) {
+        console.log(`[AutoStage] Switching to ${suggestedStage} based on dates`);
+        setSettings(prev => ({ ...prev, currentStage: suggestedStage }));
+    }
+  }, [settings.growStartDate, settings.flipDate, settings.autoStageProgression]);
+
+
+  // Robust Date Parsing Helper
+  const parseDate = (d: string | null) => {
+      if (!d || d === '') return null;
+      const date = new Date(d);
+      return isNaN(date.getTime()) ? null : date;
+  };
+
+  const daysIntoGrow = (() => {
+      const start = parseDate(settings.growStartDate);
+      if (!start) return 1; // Default to Day 1
+      const now = new Date();
+      const diff = now.getTime() - start.getTime();
+      return Math.max(1, Math.floor(diff / (1000 * 60 * 60 * 24)) + 1);
+  })();
+
+  const daysVeg = (() => {
+    const start = parseDate(settings.growStartDate);
+    if (!start) return 0;
+
+    // If flipped, veg ends at flip date. If not, veg ends now.
+    const end = parseDate(settings.flipDate) || new Date();
+
+    const diff = end.getTime() - start.getTime();
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+
+    // If not flipped yet, add 1 (current day counts). If flipped, exact diff.
+    return Math.max(0, settings.flipDate ? days : days + 1);
+  })();
+
+  const daysFlower = (() => {
+    const start = parseDate(settings.flipDate);
+    if (!start) return 0;
+    const now = new Date();
+    const diff = now.getTime() - start.getTime();
+    return Math.max(1, Math.floor(diff / (1000 * 60 * 60 * 24)) + 1);
+  })();
 
   const stage = getStage(settings.currentStage);
 
@@ -171,14 +234,9 @@ export const CropSteeringProvider: React.FC<CropSteeringProviderProps> = ({ chil
   const daysIntoStage = (() => {
     if (!settings.growStartDate) return 0;
 
-    let accumulated = 0;
-    for (const s of Object.values(GROWTH_STAGES)) {
-      if (s.id === settings.currentStage) {
-        return Math.max(0, daysIntoGrow - accumulated);
-      }
-      accumulated += s.durationDays;
-    }
-    return 0;
+    // Use specific counters for the active phase
+    if (settings.flipDate) return daysFlower;
+    return daysVeg;
   })();
 
   const daysRemainingInStage = Math.max(0, stage.durationDays - daysIntoStage);
@@ -255,10 +313,11 @@ export const CropSteeringProvider: React.FC<CropSteeringProviderProps> = ({ chil
   const updateSettings = useCallback((updates: Partial<CropSteeringSettings>) => {
     setSettings(prev => {
       const updated = { ...prev, ...updates };
-      localStorage.setItem('cropSteeringSettings', JSON.stringify(updated));
+      const key = `cropSteeringSettings_${activeRoomId}`;
+      localStorage.setItem(key, JSON.stringify(updated));
       return updated;
     });
-  }, []);
+  }, [activeRoomId]);
 
   const setCurrentStage = useCallback((stageId: GrowthStageId) => {
     updateSettings({ currentStage: stageId, autoStageProgression: false });
@@ -294,8 +353,8 @@ export const CropSteeringProvider: React.FC<CropSteeringProviderProps> = ({ chil
 
   const saveSettings = useCallback(async () => {
     try {
-      // Save to backend
-      const response = await fetch('/api/settings', {
+      // Save to backend with room ID
+      const response = await fetch(`/api/settings/${activeRoomId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ cropSteering: settings })
@@ -303,12 +362,13 @@ export const CropSteeringProvider: React.FC<CropSteeringProviderProps> = ({ chil
 
       if (!response.ok) throw new Error('Failed to save settings');
 
-      localStorage.setItem('cropSteeringSettings', JSON.stringify(settings));
+      const key = `cropSteeringSettings_${activeRoomId}`;
+      localStorage.setItem(key, JSON.stringify(settings));
     } catch (e) {
       console.error('Error saving crop steering settings:', e);
-      throw e;
+      // throw e; // Don't throw to prevent UI crashes, just log
     }
-  }, [settings]);
+  }, [settings, activeRoomId]);
 
   const loadSettings = useCallback(async () => {
     try {
@@ -330,6 +390,8 @@ export const CropSteeringProvider: React.FC<CropSteeringProviderProps> = ({ chil
     currentStage: settings.currentStage,
     setCurrentStage,
     daysIntoGrow,
+    daysVeg,
+    daysFlower,
     daysIntoStage,
     daysRemainingInStage,
     conditions,
