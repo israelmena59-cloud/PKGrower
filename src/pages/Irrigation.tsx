@@ -327,29 +327,57 @@ const Irrigation: React.FC = () => {
                 {/* RIGHT COLUMN: METRICS & AI */}
                 <Grid item xs={12} lg={4}>
                     <Grid container spacing={2}>
-                         {/* Metrics Grid */}
+                         {/* Metrics Grid - Using Live Data */}
                         <Grid item xs={6}>
-                            <MetricCard label="VWC Actual" value="44.2" unit="%" icon={Waves} color="#3b82f6" />
+                            <MetricCard
+                                label="VWC Actual"
+                                value={latestSensors?.substrateHumidity?.toFixed(1) || '--'}
+                                unit="%"
+                                icon={Waves}
+                                color="#3b82f6"
+                            />
                         </Grid>
                         <Grid item xs={6}>
-                            <MetricCard label="EC Sustrato" value="3.1" unit="dS/m" icon={Activity} color="#f59e0b" />
+                            <MetricCard
+                                label="EC Sustrato"
+                                value="--"
+                                unit="dS/m"
+                                icon={Activity}
+                                color="#f59e0b"
+                            />
                         </Grid>
                         <Grid item xs={6}>
-                            <MetricCard label="Temp Raíz" value="22.4" unit="°C" icon={Timer} color="#ef4444" />
+                            <MetricCard
+                                label="Temp Ambiente"
+                                value={latestSensors?.temperature?.toFixed(1) || '--'}
+                                unit="°C"
+                                icon={Timer}
+                                color="#ef4444"
+                            />
                         </Grid>
                         <Grid item xs={6}>
-                            <MetricCard label="Dryback (24h)" value="4.8" unit="%" icon={TrendingDown} color="#22c55e" />
+                            <MetricCard
+                                label="Humedad Aire"
+                                value={latestSensors?.humidity?.toFixed(0) || '--'}
+                                unit="%"
+                                icon={TrendingDown}
+                                color="#22c55e"
+                            />
                         </Grid>
 
-                        {/* AI Insight */}
+                        {/* AI Insight - Now using AIContextPanel */}
                         <Grid item xs={12}>
                             <Paper sx={{ p: 2, borderRadius: '16px', background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(37, 99, 235, 0.05) 100%)', border: '1px solid rgba(59, 130, 246, 0.3)' }}>
                                 <Box sx={{ display: 'flex', gap: 1.5 }}>
                                     <AlertCircle size={20} className="text-blue-400" />
                                     <Box>
-                                        <Typography variant="subtitle2" fontWeight="bold" sx={{ color: '#60a5fa' }}>AI Strategy Insight</Typography>
+                                        <Typography variant="subtitle2" fontWeight="bold" sx={{ color: '#60a5fa' }}>Sugerencia IA</Typography>
                                         <Typography variant="caption" sx={{ color: '#93c5fd', display: 'block', mt: 0.5 }}>
-                                            La fase P1 está siendo muy suave. Aumenta el volumen de riego matutino +50mL para alcanzar el target de saturación más rápido.
+                                            {latestSensors?.substrateHumidity && latestSensors.substrateHumidity < 40
+                                                ? '💧 VWC bajo - considera iniciar riego P2 para mantener hidratación.'
+                                                : latestSensors?.substrateHumidity && latestSensors.substrateHumidity > 60
+                                                ? '⏳ VWC alto - espera dryback antes del próximo riego.'
+                                                : '✓ VWC en rango óptimo. Monitorear curva de dryback.'}
                                         </Typography>
                                     </Box>
                                 </Box>

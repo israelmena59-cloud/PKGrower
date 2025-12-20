@@ -384,8 +384,7 @@ const Dashboard: React.FC = () => {
                 </Grid>
             </Grid>
 
-            {/* STATIC CHARTS SECTION */}
-            {/* Crop Steering Widgets Row */}
+            {/* MAIN CHARTS ROW - Crop Steering + Environment */}
             <Grid container spacing={2} sx={{ mb: 3 }}>
                 <Grid item xs={12} md={4}>
                     <CropSteeringWidget />
@@ -395,37 +394,9 @@ const Dashboard: React.FC = () => {
                 </Grid>
                 <Grid item xs={12} md={4}>
                     <HistoryChart
-                        type="substrate"
-                        title="VWC Rápido"
-                        data={sensorHistory}
-                        targets={{
-                            vwc: settings?.cropSteering?.targetVWC || 50,
-                            dryback: settings?.cropSteering?.targetDryback || 15
-                        }}
-                        irrigationEvents={irrigationEvents}
-                    />
-                </Grid>
-            </Grid>
-
-            {/* Environment Charts Row */}
-            <Grid container spacing={2} sx={{ mb: 3 }}>
-                <Grid item xs={12} md={6}>
-                    <HistoryChart
                         type="environment"
-                        title="Historial Ambiental"
+                        title="Ambiente (T/H/VPD)"
                         data={sensorHistory}
-                    />
-                </Grid>
-                <Grid item xs={12} md={6}>
-                    <HistoryChart
-                        type="substrate"
-                        title="Historial de Sustrato"
-                        data={sensorHistory}
-                        targets={{
-                            vwc: settings?.cropSteering?.targetVWC || 50,
-                            dryback: settings?.cropSteering?.targetDryback || 15
-                        }}
-                        irrigationEvents={irrigationEvents}
                     />
                 </Grid>
             </Grid>

@@ -4166,20 +4166,32 @@ app.post('/api/settings/verify-2fa', async (req, res) => {
 
         const newRecord = {
             timestamp,
-            temperature: countTemp > 0 ? parseFloat((countTemp === 1 ? avgTemp : avgTemp / countTemp).toFixed(1)) : 0,
-            humidity: avgHum, // Now using Real Ambient Humidity
-            substrateHumidity: countSubstrate > 0 ? parseFloat((avgSubstrate / countSubstrate).toFixed(0)) : 0,
-            // Individual values for chart (Ensure they are numbers)
-            sh1: typeof sh1 === 'number' ? sh1 : 0,
-            sh2: typeof sh2 === 'number' ? sh2 : 0,
-            sh3: typeof sh3 === 'number' ? sh3 : 0
+            // Use null for missing values to prevent chart drops (frontend filters nulls)
+            temperature: countTemp > 0 ? parseFloat((countTemp === 1 ? avgTemp : avgTemp / countTemp).toFixed(1)) : null,
+            humidity: avgHum > 0 ? avgHum : null,
+            substrateHumidity: countSubstrate > 0 ? parseFloat((avgSubstrate / countSubstrate).toFixed(0)) : null,
+            // Individual sensors - null if not available
+            sh1: (typeof sh1 === 'number' && sh1 > 0) ? sh1 : null,
+            sh2: (typeof sh2 === 'number' && sh2 > 0) ? sh2 : null,
+            sh3: (typeof sh3 === 'number' && sh3 > 0) ? sh3 : null,
+            // VPD calculation
+            vpd: (countTemp > 0 && avgHum > 0) ? parseFloat(calculateVPD(
+                countTemp === 1 ? avgTemp : avgTemp / countTemp,
+                avgHum
+            ).toFixed(2)) : null
         };
 
-        sensorHistory.push(newRecord);
-        if (sensorHistory.length > MAX_HISTORY_LENGTH) sensorHistory.shift();
+        // Only save if we have valid data (at least temp or humidity)
+        if (newRecord.temperature !== null || newRecord.humidity !== null || newRecord.substrateHumidity !== null) {
+            sensorHistory.push(newRecord);
+            if (sensorHistory.length > MAX_HISTORY_LENGTH) sensorHistory.shift();
 
-        // Save to Persistence (Firestore)
-        firestore.saveSensorRecord(newRecord);
+            // Save to Persistence (Firestore)
+            firestore.saveSensorRecord(newRecord);
+            console.log(`[HISTORY] Saved: T${newRecord.temperature} H${newRecord.humidity} VPD${newRecord.vpd} VWC${newRecord.substrateHumidity}`);
+        } else {
+            console.log('[HISTORY] Skipped empty record - no valid sensor data');
+        }
 
         // Backup local (Legacy/Backup for Dev)
         // fs.writeFileSync(HISTORY_FILE, JSON.stringify(sensorHistory)); // Disabled for Cloud Cloud to avoid disk I/O cost/errors
