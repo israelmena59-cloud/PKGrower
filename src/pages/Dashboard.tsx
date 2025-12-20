@@ -8,6 +8,8 @@ import RulesModal from '../components/dashboard/RulesModal';
 import HistoryChart from '../components/dashboard/HistoryChart';
 import CropSteeringWidget from '../components/dashboard/CropSteeringWidget';
 import QuickActionsWidget from '../components/dashboard/QuickActionsWidget';
+import AIStatusBanner from '../components/dashboard/AIStatusBanner';
+import QuickInsightsPanel from '../components/dashboard/QuickInsightsPanel';
 import { Thermometer, Droplet, Wind, Droplets, Lightbulb, RefreshCw, Settings, Plus, X, Zap } from 'lucide-react';
 import { Box, Paper, Typography, IconButton, CircularProgress, Button, Tabs, Tab, TextField, Dialog, DialogTitle, DialogContent, DialogActions, Tooltip, Grid, Chip } from '@mui/material';
 import _ from 'lodash';
@@ -345,6 +347,42 @@ const Dashboard: React.FC = () => {
 
             <ConfigModal open={isConfigOpen} onClose={() => setIsConfigOpen(false)} />
             <RulesModal open={isRulesOpen} onClose={() => setIsRulesOpen(false)} />
+
+            {/* AI STATUS BANNER - Natural Language Cultivation Status */}
+            <AIStatusBanner
+                temperature={latestSensors?.temperature || 0}
+                humidity={latestSensors?.humidity || 0}
+                vpd={latestSensors?.vpd || 0}
+                vwc={latestSensors?.substrateHumidity || 0}
+            />
+
+            {/* QUICK INSIGHTS + CHARTS ROW */}
+            <Grid container spacing={3} sx={{ mb: 3 }}>
+                {/* Quick Insights Panel */}
+                <Grid item xs={12} lg={4}>
+                    <QuickInsightsPanel
+                        temperature={latestSensors?.temperature || 0}
+                        humidity={latestSensors?.humidity || 0}
+                        vpd={latestSensors?.vpd || 0}
+                        vwc={latestSensors?.substrateHumidity || 0}
+                        onAction={(msg) => console.log('[ACTION]', msg)}
+                    />
+                </Grid>
+
+                {/* VWC History Chart */}
+                <Grid item xs={12} lg={8}>
+                    <HistoryChart
+                        type="substrate"
+                        title="VWC Rápido (24h)"
+                        data={sensorHistory}
+                        targets={{
+                            vwc: settings?.cropSteering?.targetVWC || 50,
+                            dryback: settings?.cropSteering?.targetDryback || 15
+                        }}
+                        irrigationEvents={irrigationEvents}
+                    />
+                </Grid>
+            </Grid>
 
             {/* STATIC CHARTS SECTION */}
             {/* Crop Steering Widgets Row */}

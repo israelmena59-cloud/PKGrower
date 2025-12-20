@@ -1,11 +1,11 @@
-
 import React, { useState, useEffect } from 'react';
 import { Box, Typography, Paper, Grid, Slider, Button, Stack, Chip, Tabs, Tab, Alert } from '@mui/material';
 import { Activity, Zap, Play, Square, TrendingDown, AlertCircle, Waves, Timer, History, Settings2, Droplet } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, ReferenceArea, Line } from 'recharts';
-import { IrrigationTimeline, AutomationPanel } from '../components/cropsteering'; // Migrated components
+import { IrrigationTimeline, AutomationPanel } from '../components/cropsteering';
 import { useCropSteering } from '../context/CropSteeringContext';
 import { apiClient } from '../api/client';
+import AIContextPanel from '../components/common/AIContextPanel';
 
 // --- STRATEGY DATA FROM REAL SENSORS ---
 // This function formats sensor history data for the crop steering chart
@@ -161,15 +161,24 @@ const Irrigation: React.FC = () => {
             try {
                 const historyData = await apiClient.getSensorHistory();
                 setStrategyData(formatStrategyData(historyData));
+
+                // Also fetch latest sensor data for AI panel
+                const latest = await apiClient.getLatestSensors();
+                if (latest) {
+                    setLatestSensors(latest);
+                }
             } catch (e) {
                 console.warn('[IRRIGATION] Could not load history:', e);
-                setStrategyData(formatStrategyData([])); // Use placeholder
+                setStrategyData(formatStrategyData([]));
             }
         };
         loadData();
         const interval = setInterval(loadData, 30000); // Refresh every 30s
         return () => clearInterval(interval);
     }, []);
+
+    // Sensor data state for AI panel
+    const [latestSensors, setLatestSensors] = useState<any>(null);
 
     const handleManualShot = async () => {
         try {
@@ -223,6 +232,19 @@ const Irrigation: React.FC = () => {
                     sx={{ fontWeight: 'bold', borderRadius: '8px' }}
                 />
             </Box>
+
+            {/* AI CONTEXT PANEL - Irrigation Insights */}
+            {latestSensors && (
+                <Box sx={{ mb: 3 }}>
+                    <AIContextPanel
+                        context="irrigation"
+                        temperature={latestSensors.temperature}
+                        humidity={latestSensors.humidity}
+                        vpd={latestSensors.vpd}
+                        vwc={latestSensors.substrateHumidity}
+                    />
+                </Box>
+            )}
 
             <Grid container spacing={3}>
                 {/* TOP ROW: ADVANCED STRATEGY VISUALIZER */}

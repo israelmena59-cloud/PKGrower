@@ -10,6 +10,7 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsToolti
 import { API_BASE_URL, apiClient } from '../api/client';
 import { useCropSteering } from '../context/CropSteeringContext';
 import { VPDGauge } from '../components/cropsteering';
+import AIContextPanel from '../components/common/AIContextPanel';
 
 // --- SUB-COMPONENTS (Reusable Glass UI) ---
 
@@ -205,6 +206,18 @@ const Environment: React.FC = () => {
                     {saving ? 'Guardando...' : 'Guardar Configuración'}
                 </Button>
             </Box>
+      </Box>
+
+      {/* AI CONTEXT PANEL - Environment Insights */}
+      <Box sx={{ mb: 3 }}>
+          <AIContextPanel
+              context="environment"
+              temperature={devices.sensorAmbiente?.temperature || 0}
+              humidity={devices.sensorAmbiente?.humidity || 0}
+              vpd={currentVpd}
+              vwc={0}
+              compact
+          />
       </Box>
 
       <Grid container spacing={3}>
