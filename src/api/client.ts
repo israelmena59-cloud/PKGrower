@@ -293,7 +293,96 @@ class APIClient {
       body: JSON.stringify(data)
     });
   }
+
+  // ==========================================
+  // CROP STEERING API
+  // ==========================================
+
+  async getCropSteeringStatus(): Promise<{
+    success: boolean;
+    enabled: boolean;
+    direction: string;
+    phase: string;
+    phaseMessage: string;
+    isInWindow: boolean;
+    lightsOn: boolean;
+    currentVWC: number;
+    targetVWC: number;
+    action: string;
+    reasoning: string;
+    nextAction: string;
+    irrigationCountToday: number;
+    lastIrrigationTime: string | null;
+    timing: {
+      minutesSinceLightsOn: number | null;
+      minutesUntilP1: number | null;
+      minutesUntilP2End: number | null;
+    };
+  }> {
+    return this.request('/api/crop-steering/status');
+  }
+
+  async getCropSteeringSchedule(): Promise<{
+    success: boolean;
+    direction: string;
+    lightsOn: string;
+    lightsOff: string;
+    dayLengthHours: number;
+    p1Start: string;
+    p2End: string;
+    irrigationWindowHours: number;
+    profile: {
+      eventSize: string;
+      maxEvents: number;
+      minInterval: string;
+      drybackP3: string;
+      vpdTarget: string;
+    };
+  }> {
+    return this.request('/api/crop-steering/schedule');
+  }
+
+  async getCropSteeringProfiles(): Promise<{
+    success: boolean;
+    profiles: Record<string, any>;
+  }> {
+    return this.request('/api/crop-steering/profiles');
+  }
+
+  async setCropSteeringDirection(direction: 'vegetative' | 'generative' | 'balanced' | 'ripening'): Promise<{
+    success: boolean;
+    direction: string;
+  }> {
+    return this.request('/api/crop-steering/direction', {
+      method: 'POST',
+      body: JSON.stringify({ direction })
+    });
+  }
+
+  async toggleCropSteeringAutomation(enabled: boolean): Promise<{
+    success: boolean;
+    enabled: boolean;
+  }> {
+    return this.request('/api/crop-steering/toggle', {
+      method: 'POST',
+      body: JSON.stringify({ enabled })
+    });
+  }
+
+  async triggerManualIrrigation(eventSize?: number, force?: boolean): Promise<{
+    success: boolean;
+    message: string;
+    eventSize: number;
+    volumeMl: number;
+    durationMs: number;
+  }> {
+    return this.request('/api/crop-steering/manual-irrigation', {
+      method: 'POST',
+      body: JSON.stringify({ eventSize, force })
+    });
+  }
 }
 
 // Export singleton instance
 export const apiClient = new APIClient(API_BASE_URL)
+

@@ -427,9 +427,30 @@ let appSettings = {
     drybackTarget: 20
   },
   cropSteering: {
-    stage: 'none', // 'veg', 'flower', 'none'
-    targetVWC: 50,
-    targetDryback: 15
+    enabled: false,              // Automation disabled by default
+    direction: 'vegetative',     // 'vegetative' | 'generative' | 'balanced' | 'ripening'
+    stage: 'veg_early',          // 'veg_early' | 'veg_late' | 'flower_early' | 'flower_mid' | 'flower_late' | 'ripening'
+    flipDate: null,              // Date of flip to flower (ISO string)
+
+    // Targets (can be overridden, otherwise use profile defaults)
+    targetVWC: 60,               // % VWC objetivo
+    targetDryback: 15,           // % dryback objetivo
+
+    // Manual overrides (null = use profile defaults)
+    overrides: {
+      p1StartOffset: null,       // minutos después de luces ON
+      p2EndOffset: null,         // minutos antes de luces OFF
+      eventSize: null,           // % del contenedor
+      minTimeBetweenEvents: null // minutos
+    },
+
+    // Runtime state (updated by automation)
+    state: {
+      currentPhase: 'unknown',
+      lastIrrigationTime: null,
+      irrigationCountToday: 0,
+      lastDecision: null
+    }
   },
   ai: {
     apiKey: process.env.GEMINI_API_KEY || '',
@@ -4296,6 +4317,244 @@ setInterval(async () => {
         } catch (e) { console.error(`[RULES] Error processing rule ${rule.id}:`, e.message); }
     }
 }, 10000);
+
+// =========================================
+// CROP STEERING INTELLIGENT AUTOMATION
+// =========================================
+const cropSteeringEngine = require('./cropSteeringEngine');
+
+// Track irrigation for rate limiting
+let cropSteeringState = {
+    lastIrrigationTime: null,
+    irrigationCountToday: 0,
+    lastResetDate: new Date().toDateString()
+};
+
+// Reset daily counter at midnight
+setInterval(() => {
+    const today = new Date().toDateString();
+    if (cropSteeringState.lastResetDate !== today) {
+        cropSteeringState.irrigationCountToday = 0;
+        cropSteeringState.lastResetDate = today;
+        console.log('[CROP-STEERING] Daily irrigation counter reset');
+    }
+}, 60000);
+
+// Crop Steering Automation Loop (every 30 seconds)
+setInterval(async () => {
+    try {
+        // Check if automation is enabled
+        if (!appSettings.cropSteering?.enabled) return;
+
+        // Get decision from engine
+        const decision = cropSteeringEngine.evaluateIrrigation(
+            sensorHistory,
+            appSettings,
+            pumpState
+        );
+
+        // Update state
+        appSettings.cropSteering.state = {
+            ...appSettings.cropSteering.state,
+            currentPhase: decision.phase,
+            lastDecision: {
+                ...decision,
+                timestamp: new Date().toISOString()
+            }
+        };
+
+        // Log decision (not every time to reduce noise)
+        if (decision.action !== 'wait' && decision.action !== 'vwc_ok') {
+            console.log(`[CROP-STEERING] Phase: ${decision.phase} | VWC: ${decision.currentVWC}% | Action: ${decision.action} | ${decision.reasoning}`);
+        }
+
+        // Execute irrigation if needed
+        if (decision.shouldIrrigate) {
+            const profile = cropSteeringEngine.getProfile(appSettings.cropSteering.direction);
+
+            // Check daily limit
+            if (cropSteeringState.irrigationCountToday >= profile.maxEventsPerDay) {
+                console.log(`[CROP-STEERING] Daily limit reached (${profile.maxEventsPerDay} events). Skipping.`);
+                return;
+            }
+
+            console.log(`[CROP-STEERING] 💧 IRRIGATING: ${decision.eventSize}% | Phase: ${decision.phase}`);
+
+            // Calculate volume and duration
+            const config = appSettings.irrigation;
+            const volumeMl = config.potSize * 1000 * (decision.eventSize / 100);
+            const durationMs = (volumeMl / config.pumpRate) * 1000;
+
+            // Execute pump sequence
+            const pumpKey = 'bombaControlador';
+
+            try {
+                // Turn pump ON
+                await setDeviceState(pumpKey, true);
+                pumpState.isOn = true;
+                pumpState.lastOnTime = new Date().toISOString();
+                pumpState.lastVwcAtOn = decision.currentVWC;
+
+                // Schedule pump OFF
+                setTimeout(async () => {
+                    await setDeviceState(pumpKey, false);
+                    pumpState.isOn = false;
+                    pumpState.lastOffTime = new Date().toISOString();
+
+                    // Update counters
+                    cropSteeringState.lastIrrigationTime = new Date().toISOString();
+                    cropSteeringState.irrigationCountToday++;
+                    appSettings.cropSteering.state.lastIrrigationTime = cropSteeringState.lastIrrigationTime;
+                    appSettings.cropSteering.state.irrigationCountToday = cropSteeringState.irrigationCountToday;
+
+                    // Log irrigation event
+                    const event = {
+                        timestamp: new Date().toISOString(),
+                        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                        phase: decision.phase,
+                        vwcValue: decision.currentVWC,
+                        percentage: decision.eventSize,
+                        volumeMl,
+                        durationMs,
+                        direction: appSettings.cropSteering.direction
+                    };
+                    irrigationEvents.push(event);
+                    if (irrigationEvents.length > 50) irrigationEvents.shift();
+
+                    console.log(`[CROP-STEERING] ✅ Irrigation complete: ${volumeMl}ml in ${(durationMs/1000).toFixed(1)}s`);
+
+                }, durationMs);
+
+            } catch (pumpError) {
+                console.error('[CROP-STEERING] Pump control error:', pumpError.message);
+                pumpState.isOn = false;
+            }
+        }
+
+    } catch (error) {
+        console.error('[CROP-STEERING] Automation error:', error.message);
+    }
+}, 30000);
+
+// --- CROP STEERING API ENDPOINTS ---
+
+// Get current status
+app.get('/api/crop-steering/status', (req, res) => {
+    try {
+        const status = cropSteeringEngine.getStatusSummary(appSettings, sensorHistory, pumpState);
+        res.json({
+            success: true,
+            enabled: appSettings.cropSteering.enabled,
+            ...status,
+            irrigationCountToday: cropSteeringState.irrigationCountToday,
+            lastIrrigationTime: cropSteeringState.lastIrrigationTime
+        });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Get day schedule
+app.get('/api/crop-steering/schedule', (req, res) => {
+    try {
+        const schedule = cropSteeringEngine.getDaySchedule(appSettings);
+        res.json({ success: true, ...schedule });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Update direction
+app.post('/api/crop-steering/direction', async (req, res) => {
+    try {
+        const { direction } = req.body;
+        const validDirections = ['vegetative', 'generative', 'balanced', 'ripening'];
+
+        if (!validDirections.includes(direction)) {
+            return res.status(400).json({ error: `Invalid direction. Use: ${validDirections.join(', ')}` });
+        }
+
+        appSettings.cropSteering.direction = direction;
+        await firestore.saveGlobalSettings(appSettings);
+
+        console.log(`[CROP-STEERING] Direction changed to: ${direction}`);
+        res.json({ success: true, direction });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Toggle automation
+app.post('/api/crop-steering/toggle', async (req, res) => {
+    try {
+        const { enabled } = req.body;
+        appSettings.cropSteering.enabled = !!enabled;
+        await firestore.saveGlobalSettings(appSettings);
+
+        console.log(`[CROP-STEERING] Automation ${enabled ? 'ENABLED' : 'DISABLED'}`);
+        res.json({ success: true, enabled: appSettings.cropSteering.enabled });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Get profiles info
+app.get('/api/crop-steering/profiles', (req, res) => {
+    res.json({
+        success: true,
+        profiles: cropSteeringEngine.STEERING_PROFILES
+    });
+});
+
+// Manual irrigation trigger (respects phase rules but forces event)
+app.post('/api/crop-steering/manual-irrigation', async (req, res) => {
+    try {
+        const { eventSize, force = false } = req.body;
+        const size = eventSize || appSettings.cropSteering.overrides?.eventSize || 3;
+
+        // Check if we should block (unless force)
+        if (!force) {
+            const phaseInfo = cropSteeringEngine.getCurrentPhase(
+                appSettings.lighting,
+                appSettings.cropSteering.direction
+            );
+
+            if (!phaseInfo.isInWindow && phaseInfo.phase === 'night') {
+                return res.status(400).json({
+                    error: 'Riego bloqueado - Período nocturno',
+                    phase: phaseInfo.phase,
+                    message: phaseInfo.message
+                });
+            }
+        }
+
+        // Execute irrigation
+        const config = appSettings.irrigation;
+        const volumeMl = config.potSize * 1000 * (size / 100);
+        const durationMs = (volumeMl / config.pumpRate) * 1000;
+
+        const pumpKey = 'bombaControlador';
+        await setDeviceState(pumpKey, true);
+
+        setTimeout(async () => {
+            await setDeviceState(pumpKey, false);
+            cropSteeringState.irrigationCountToday++;
+        }, durationMs);
+
+        console.log(`[CROP-STEERING] Manual irrigation: ${size}% (${volumeMl}ml)`);
+
+        res.json({
+            success: true,
+            message: `Riego manual iniciado: ${volumeMl}ml (${(durationMs/1000).toFixed(1)}s)`,
+            eventSize: size,
+            volumeMl,
+            durationMs
+        });
+
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
 
 // =========================================
 // GEMINI AI CHAT ENDPOINT
