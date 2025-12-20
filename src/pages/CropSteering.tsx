@@ -4,8 +4,8 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { Box, Typography, Grid, Alert, Button, Tabs, Tab, Chip, FormControlLabel, Switch, Divider } from '@mui/material';
-import { Leaf, RefreshCw, Save, Bell, Droplet, Beaker, Calendar, Sprout, Activity, TrendingUp } from 'lucide-react';
+import { Box, Typography, Grid, Alert, Button, Tabs, Tab } from '@mui/material';
+import { Leaf, RefreshCw, Save, Bell } from 'lucide-react';
 import {
   VPDGauge,
   StageSelector,
@@ -13,14 +13,8 @@ import {
   AlertList,
   StageDashboard
 } from '../components/cropsteering';
-import NutrientTracker from '../components/cropsteering/NutrientTracker';
-import CultivationCalendar from '../components/cropsteering/CultivationCalendar';
-import PlantInventory from '../components/cropsteering/PlantInventory';
 import { useCropSteering } from '../context/CropSteeringContext';
 import { API_BASE_URL, apiClient } from '../api/client';
-import { DEFAULT_AUTOMATION_RULES, AutomationRule } from '../utils/automationEngine';
-import DeviceSwitch from '../components/dashboard/DeviceSwitch';
-import HistoryChart from '../components/dashboard/HistoryChart';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -45,13 +39,6 @@ const CropSteering: React.FC = () => {
   } = useCropSteering();
 
   const [activeTab, setActiveTab] = useState(0);
-  const [automationEnabled, setAutomationEnabled] = useState(true);
-  const [automationRules, setAutomationRules] = useState<AutomationRule[]>(DEFAULT_AUTOMATION_RULES);
-
-  // Irrigation state
-  const [devices, setDevices] = useState<any>({});
-  const [pulsing, setPulsing] = useState(false);
-  const [irrigationEvents, setIrrigationEvents] = useState<any[]>([]);
 
   // Fetch sensor data and update conditions
   useEffect(() => {
@@ -219,9 +206,6 @@ const CropSteering: React.FC = () => {
         >
           <Tab label="Monitoreo" icon={<Leaf size={16} />} iconPosition="start" />
           <Tab label="Alertas" icon={<Bell size={16} />} iconPosition="start" />
-          <Tab label="Nutrientes" icon={<Beaker size={16} />} iconPosition="start" />
-          <Tab label="Calendario" icon={<Calendar size={16} />} iconPosition="start" />
-          <Tab label="Inventario" icon={<Sprout size={16} />} iconPosition="start" />
         </Tabs>
       </Box>
 
@@ -275,75 +259,6 @@ const CropSteering: React.FC = () => {
           <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 2 }}>🔔 Alertas del Sistema</Typography>
           <AlertList maxAlerts={10} />
         </Box>
-      </TabPanel>
-
-      {/* Tab 2: Nutrients */}
-      <TabPanel value={activeTab} index={2}>
-        <NutrientTracker />
-      </TabPanel>
-
-      {/* Tab 3: Calendar */}
-      <TabPanel value={activeTab} index={3}>
-        <CultivationCalendar />
-      </TabPanel>
-
-      {/* Tab 4: Inventory + Devices + History */}
-      <TabPanel value={activeTab} index={4}>
-        <Grid container spacing={3}>
-          <Grid item xs={12} md={8}>
-            <PlantInventory />
-          </Grid>
-          <Grid item xs={12} md={4}>
-            <Box sx={{ mb: 3 }}>
-              <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 2 }}>
-                <Activity size={16} style={{ marginRight: 8 }} />Dispositivos Activos
-              </Typography>
-              <DeviceSwitch
-                deviceId="bombaControlador"
-                label="Bomba Principal"
-                icon={<Droplet size={18} />}
-              />
-            </Box>
-            <Box>
-              <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 2 }}>
-                <TrendingUp size={16} style={{ marginRight: 8 }} />Historial VWC
-              </Typography>
-              <HistoryChart type="vwc" height={150} />
-            </Box>
-          </Grid>
-        </Grid>
-        {/* Automation Switch */}
-        <Divider sx={{ my: 3 }} />
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <FormControlLabel
-            control={
-              <Switch
-                checked={automationEnabled}
-                onChange={(e) => setAutomationEnabled(e.target.checked)}
-              />
-            }
-            label="Automatización Habilitada"
-          />
-          <Box sx={{ display: 'flex', gap: 1 }}>
-            {automationRules.slice(0, 3).map(rule => (
-              <Chip
-                key={rule.id}
-                label={rule.name}
-                size="small"
-                color={rule.enabled ? 'success' : 'default'}
-              />
-            ))}
-          </Box>
-        </Box>
-        {/* Recent Irrigation Events */}
-        {irrigationEvents.length > 0 && (
-          <Box sx={{ mt: 2 }}>
-            <Typography variant="caption" color="text.secondary">Últimos riegos: </Typography>
-            {irrigationEvents.slice(0, 3).map((e, i) => (
-              <Chip key={i} label={`${e.pct}% • ${e.volumeMl}ml`} size="small" sx={{ ml: 0.5 }} />
-            ))}
-          </Box>
-        )}
       </TabPanel>
 
     </Box>
