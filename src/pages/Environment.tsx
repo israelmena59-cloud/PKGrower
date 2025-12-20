@@ -106,20 +106,24 @@ const Environment: React.FC = () => {
               vwc: sensorsData.substrateHumidity || 50
             });
 
-            // Generate chart data (Mock for now, would be history API)
-            const mock = [];
-            for (let i = 0; i < 24; i++) {
-                const t = 22 + Math.sin(i / 3) * 2;
-                const h = 60 + Math.cos(i / 4) * 10;
-                mock.push({
-                    time: `${i}:00`,
-                    vpd: (0.61078 * Math.exp((17.27 * t) / (t + 237.3)) * (1 - h / 100)).toFixed(2),
-                    temp: t.toFixed(1),
-                    hum: h.toFixed(0)
-                });
+            // 4. Get real history data for chart (past 24h)
+            try {
+                const historyData = await apiClient.getSensorHistory();
+                if (historyData && historyData.length > 0) {
+                    // Format for chart - take last 48 points for ~24h
+                    const chartData = historyData.slice(-48).map((d: any) => ({
+                        time: new Date(d.timestamp).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }),
+                        vpd: d.vpd?.toFixed(2) || 0,
+                        temp: d.temperature?.toFixed(1) || 0,
+                        hum: d.humidity?.toFixed(0) || 0
+                    }));
+                    if (active) setVpdData(chartData);
+                }
+            } catch (histErr) {
+                console.warn('Could not load VPD history:', histErr);
             }
+
             if (active) {
-                setVpdData(mock);
                 setCurrentVpd(currentVpdVal);
             }
         } catch (e) { console.error(e); }

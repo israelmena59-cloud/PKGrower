@@ -7,48 +7,31 @@ import { IrrigationTimeline, AutomationPanel } from '../components/cropsteering'
 import { useCropSteering } from '../context/CropSteeringContext';
 import { apiClient } from '../api/client';
 
-// --- MOCK DATA GENERATOR ---
-const generateStrategyData = () => {
-    const data = [];
-    // Generate 24h of data (simulating a day starting at 6 AM lights on)
-    let vwc = 45; // Starting VWC
-    let ec = 2.5;
-    let temp = 21;
-
-    for (let i = 0; i < 24; i++) {
-        const hour = i;
-
-        // P1: Ramping (6am - 11am)
-        if (hour >= 6 && hour < 11) {
-            vwc += 4; // steep watering
-            ec += 0.1;
-            temp += 0.2;
-        }
-        // P2: Maintenance (11am - 4pm)
-        else if (hour >= 11 && hour < 16) {
-             vwc += (Math.random() > 0.5 ? 1.5 : -1.5); // flat maintenance
-             ec += (Math.random() > 0.5 ? 0.05 : -0.05);
-        }
-        // P3: Dryback (4pm - 6am next day)
-        else {
-            vwc -= 1.8; // dryback
-            ec -= 0.05;
-            temp -= 0.1;
-        }
-
-        // Clamp and noise
-        if (vwc > 70) vwc = 70;
-        if (vwc < 30) vwc = 30;
-
-        data.push({
-            time: `${hour}:00`,
-            vwc: Number(vwc.toFixed(1)),
-            ec: Number(ec.toFixed(2)),
-            temp: Number(temp.toFixed(1)),
-            phase: hour >= 6 && hour < 11 ? 'P1 Ramp' : (hour >= 11 && hour < 16 ? 'P2 Maint' : 'P3 Dryback')
-        });
+// --- STRATEGY DATA FROM REAL SENSORS ---
+// This function formats sensor history data for the crop steering chart
+const formatStrategyData = (historyData: any[]) => {
+    if (!historyData || historyData.length === 0) {
+        // Return placeholder if no data
+        return Array.from({ length: 24 }, (_, i) => ({
+            time: `${i}:00`,
+            vwc: 45,
+            ec: 2.5,
+            temp: 22,
+            phase: i >= 6 && i < 11 ? 'P1 Ramp' : (i >= 11 && i < 16 ? 'P2 Maint' : 'P3 Dryback')
+        }));
     }
-    return data;
+
+    // Format real data - take last 48 points (~24h)
+    return historyData.slice(-48).map((d: any) => {
+        const hour = new Date(d.timestamp).getHours();
+        return {
+            time: new Date(d.timestamp).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }),
+            vwc: d.substrateHumidity || 0,
+            ec: 2.5, // EC not tracked yet - placeholder
+            temp: d.temperature || 0,
+            phase: hour >= 6 && hour < 11 ? 'P1 Ramp' : (hour >= 11 && hour < 16 ? 'P2 Maint' : 'P3 Dryback')
+        };
+    });
 };
 
 // --- SUB-COMPONENTS ---
@@ -174,7 +157,18 @@ const Irrigation: React.FC = () => {
     const [automationEnabled, setAutomationEnabled] = useState(true);
 
     useEffect(() => {
-        setStrategyData(generateStrategyData());
+        const loadData = async () => {
+            try {
+                const historyData = await apiClient.getSensorHistory();
+                setStrategyData(formatStrategyData(historyData));
+            } catch (e) {
+                console.warn('[IRRIGATION] Could not load history:', e);
+                setStrategyData(formatStrategyData([])); // Use placeholder
+            }
+        };
+        loadData();
+        const interval = setInterval(loadData, 30000); // Refresh every 30s
+        return () => clearInterval(interval);
     }, []);
 
     const handleManualShot = async () => {
