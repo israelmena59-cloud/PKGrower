@@ -72,6 +72,9 @@ const NutrientTracker: React.FC = () => {
   const [entries, setEntries] = useState<NutrientEntry[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [tabIndex, setTabIndex] = useState(0); // 0: Registro, 1: Historial, 2: Dosificación
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'synced' | 'error'>('idle');
 
   // Form state
   const [nutrients, setNutrients] = useState<{ name: string; mlPerLiter: number }[]>([
@@ -85,18 +88,48 @@ const NutrientTracker: React.FC = () => {
   const [tankVolume, setTankVolume] = useState<number>(50); // Reservoir volume in liters
   const [notes, setNotes] = useState('');
 
-  // Load entries from localStorage
+  // Load entries from localStorage and try to sync from backend
   useEffect(() => {
-    const saved = localStorage.getItem('pkgrower_nutrient_entries');
-    if (saved) {
-      setEntries(JSON.parse(saved));
-    }
+    const loadEntries = async () => {
+      setLoading(true);
+      try {
+        // First load from localStorage for instant display
+        const saved = localStorage.getItem('pkgrower_nutrient_entries');
+        if (saved) {
+          setEntries(JSON.parse(saved));
+        }
+        // Try to sync with backend
+        setSyncStatus('syncing');
+        const response = await apiClient.getSettings();
+        if (response.nutrientEntries) {
+          setEntries(response.nutrientEntries);
+          localStorage.setItem('pkgrower_nutrient_entries', JSON.stringify(response.nutrientEntries));
+        }
+        setSyncStatus('synced');
+      } catch (e) {
+        console.log('Offline mode - using local data');
+        setSyncStatus('idle');
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadEntries();
   }, []);
 
-  // Save entries to localStorage
-  const saveEntries = (newEntries: NutrientEntry[]) => {
+  // Save entries to localStorage and optionally sync to backend
+  const saveEntries = async (newEntries: NutrientEntry[]) => {
     localStorage.setItem('pkgrower_nutrient_entries', JSON.stringify(newEntries));
     setEntries(newEntries);
+
+    // Try to sync to backend
+    try {
+      setSyncStatus('syncing');
+      await apiClient.saveSettings({ nutrientEntries: newEntries });
+      setSyncStatus('synced');
+    } catch (e) {
+      console.log('Saved locally, will sync when online');
+      setSyncStatus('error');
+    }
   };
 
   const handleAddNutrient = () => {
@@ -115,13 +148,25 @@ const NutrientTracker: React.FC = () => {
       updated[index].mlPerLiter = Number(value);
     }
     setNutrients(updated);
+    setValidationError(null);
   };
 
   const handleSubmit = () => {
+    // Validation
+    const validNutrients = nutrients.filter(n => n.name && n.mlPerLiter > 0);
+    if (validNutrients.length === 0) {
+      setValidationError('Debes agregar al menos un nutriente con dosis válida');
+      return;
+    }
+    if (ecInput < 0.1 || ecInput > 10) {
+      setValidationError('EC debe estar entre 0.1 y 10 mS');
+      return;
+    }
+
     const entry: NutrientEntry = {
       id: Date.now().toString(),
       date: new Date().toISOString(),
-      nutrients: nutrients.filter(n => n.name && n.mlPerLiter > 0),
+      nutrients: validNutrients,
       ecInput,
       phInput,
       ecRunoff,
@@ -142,11 +187,35 @@ const NutrientTracker: React.FC = () => {
     setVolumeL(2);
     setNotes('');
     setShowForm(false);
+    setValidationError(null);
   };
 
   const handleDelete = (id: string) => {
     const newEntries = entries.filter(e => e.id !== id);
     saveEntries(newEntries);
+  };
+
+  const handleExportCSV = () => {
+    if (entries.length === 0) return;
+
+    const headers = ['Fecha', 'Nutrientes', 'EC Entrada', 'pH Entrada', 'EC Runoff', 'pH Runoff', 'Volumen', 'Notas'];
+    const rows = entries.map(e => [
+      new Date(e.date).toLocaleString(),
+      e.nutrients.map(n => `${n.name}:${n.mlPerLiter}ml`).join('; '),
+      e.ecInput,
+      e.phInput,
+      e.ecRunoff || '',
+      e.phRunoff || '',
+      e.volumeL,
+      e.notes || ''
+    ]);
+
+    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `nutrientes_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
   };
 
   const formatDate = (dateStr: string) => {
@@ -160,44 +229,91 @@ const NutrientTracker: React.FC = () => {
 
   return (
     <Box>
-      {/* Header */}
+      {/* Header with Tabs */}
       <Box className="glass-panel" sx={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
         p: 2,
         borderRadius: '16px',
         mb: 3
       }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Box sx={{
-            p: 1.5,
-            borderRadius: '12px',
-            background: 'linear-gradient(135deg, rgba(234, 88, 12, 0.3), rgba(249, 115, 22, 0.2))',
-            color: '#fb923c'
-          }}>
-            <Beaker size={24} />
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Box sx={{
+              p: 1.5,
+              borderRadius: '12px',
+              background: 'linear-gradient(135deg, rgba(234, 88, 12, 0.3), rgba(249, 115, 22, 0.2))',
+              color: '#fb923c'
+            }}>
+              <Beaker size={24} />
+            </Box>
+            <Box>
+              <Typography variant="h6" fontWeight="bold">Trazabilidad de Nutrientes</Typography>
+              <Typography variant="caption" color="text.secondary">
+                Registro de nutrientes aplicados al riego
+                {syncStatus === 'syncing' && ' • Sincronizando...'}
+                {syncStatus === 'synced' && ' • ✓ Sincronizado'}
+                {syncStatus === 'error' && ' • ⚠ Solo local'}
+              </Typography>
+            </Box>
           </Box>
-          <Box>
-            <Typography variant="h6" fontWeight="bold">Trazabilidad de Nutrientes</Typography>
-            <Typography variant="caption" color="text.secondary">
-              Registro de nutrientes aplicados al riego
-            </Typography>
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            {entries.length > 0 && (
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<Download size={16} />}
+                onClick={handleExportCSV}
+                sx={{ borderRadius: '12px' }}
+              >
+                CSV
+              </Button>
+            )}
+            <Button
+              variant="contained"
+              size="small"
+              startIcon={<Plus size={16} />}
+              onClick={() => { setShowForm(!showForm); setTabIndex(0); }}
+              sx={{
+                borderRadius: '12px',
+                background: 'linear-gradient(135deg, #22c55e, #16a34a)'
+              }}
+            >
+              Nuevo Registro
+            </Button>
           </Box>
         </Box>
-        <Button
-          variant="contained"
-          size="small"
-          startIcon={<Plus size={16} />}
-          onClick={() => setShowForm(!showForm)}
+
+        {/* Tabs */}
+        <Tabs
+          value={tabIndex}
+          onChange={(_, v) => setTabIndex(v)}
           sx={{
-            borderRadius: '12px',
-            background: 'linear-gradient(135deg, #22c55e, #16a34a)'
+            minHeight: 36,
+            '& .MuiTab-root': { minHeight: 36, py: 0.5, fontSize: '0.8rem' }
           }}
         >
-          Nuevo Registro
-        </Button>
+          <Tab label="📝 Registro" />
+          <Tab label={`📋 Historial (${entries.length})`} />
+          <Tab label="💊 Dosificación Pro" />
+        </Tabs>
       </Box>
+
+      {/* Validation Alert */}
+      {validationError && (
+        <Alert
+          severity="error"
+          onClose={() => setValidationError(null)}
+          sx={{ mb: 2, borderRadius: '12px' }}
+        >
+          {validationError}
+        </Alert>
+      )}
+
+      {/* Loading Indicator */}
+      {loading && (
+        <Alert severity="info" sx={{ mb: 2, borderRadius: '12px' }}>
+          Cargando registros de nutrientes...
+        </Alert>
+      )}
 
       {/* Form */}
       {showForm && (

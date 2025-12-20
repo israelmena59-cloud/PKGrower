@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, Card, CardContent, CardHeader, Grid, TextField, Button, Avatar, List, ListItem, ListItemAvatar, ListItemText, Paper, Divider, CircularProgress, IconButton, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
+import { Box, Typography, CardContent, CardHeader, Grid, TextField, Button, Avatar, List, ListItem, ListItemAvatar, ListItemText, Paper, Divider, CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
 import { Bot, Send, Sparkles, CheckCircle, Key, AlertTriangle } from 'lucide-react';
 import { apiClient, API_BASE_URL, SensorData } from '../api/client';
 
@@ -69,16 +69,18 @@ const AIAssistant: React.FC = () => {
       try {
           // Gather Context
           const devices = await apiClient.getDeviceStates();
-          const soil = await (await fetch(`${API_BASE_URL}/api/sensors/soil`)).json(); // simplified
+          const soilResponse = await (await fetch(`${API_BASE_URL}/api/sensors/soil`)).json();
+          const soil: SensorData = soilResponse.data || soilResponse;
 
           const context = {
               phase: 'Vegetativo', // Start dynamic phase later
               lightStatus: devices.luzPanel1,
               irrigationMode: appSettings?.irrigation?.mode,
-              vpd: 1.0, // Mock or Calc
-              temp: 24,
-              hum: 60,
-              vwc: 45
+              vpd: soil?.vpd || 1.0,
+              temp: soil?.temperature || 24,
+              hum: soil?.humidity || 60,
+              vwc: soil?.vwc || 45,
+              soilData: soil // Include full soil data
           };
 
           const res = await fetch(`${API_BASE_URL}/api/chat`, {

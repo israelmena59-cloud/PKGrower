@@ -123,6 +123,29 @@ const PumpDeck = ({
             </Button>
         </Box>
 
+        {/* Volume Quick Adjust - Uses shotVolume and setShotVolume props */}
+        <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography variant="caption" color="text.secondary">Shot:</Typography>
+            {[50, 100, 150, 200].map(vol => (
+                <Button
+                    key={vol}
+                    size="small"
+                    variant={shotVolume === vol ? 'contained' : 'outlined'}
+                    onClick={() => setShotVolume(vol)}
+                    sx={{
+                        minWidth: 50,
+                        py: 0.25,
+                        fontSize: '0.7rem',
+                        borderRadius: '8px',
+                        bgcolor: shotVolume === vol ? 'rgba(34, 197, 94, 0.9)' : 'transparent',
+                        borderColor: 'rgba(34, 197, 94, 0.4)'
+                    }}
+                >
+                    {vol}ml
+                </Button>
+            ))}
+        </Box>
+
         {active && (
             <Box sx={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '4px', bgcolor: '#22c55e', animation: 'pulse 1.5s infinite' }} />
         )}
