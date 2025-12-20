@@ -6,6 +6,7 @@ import './styles/fluidGlass.css'
 import { ThemeProvider, createTheme } from '@mui/material/styles'
 import CssBaseline from '@mui/material/CssBaseline'
 import { initGlobalLogger } from './utils/debugLogger'
+import { FeedbackProvider } from './components/common/ActionFeedback'
 
 // Initialize critical error monitoring immediately
 initGlobalLogger();
@@ -196,7 +197,10 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <App />
+      <FeedbackProvider>
+        <App />
+      </FeedbackProvider>
     </ThemeProvider>
   </React.StrictMode>,
 )
+
