@@ -3,11 +3,11 @@
 
 // API Base URL Configuration:
 // - Development: localhost:3000
-// - Production: Render backend (pkgrower.onrender.com)
+// - Production: Google Cloud VM
 // - Override: Set VITE_API_URL environment variable
-const RENDER_BACKEND = 'https://pkgrower.onrender.com';
+const GCP_BACKEND = 'http://34.67.217.13:3000';
 export const API_BASE_URL = (import.meta as any).env.VITE_API_URL ||
-  ((import.meta as any).env.PROD ? RENDER_BACKEND : 'http://localhost:3000');
+  ((import.meta as any).env.PROD ? GCP_BACKEND : 'http://localhost:3000');
 
 export interface SensorData {
   timestamp: string
