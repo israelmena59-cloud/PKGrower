@@ -119,13 +119,30 @@ const StageDashboard: React.FC = () => {
       const stagesData = await stagesRes.json();
 
       if (statusData.success) {
-        setData(statusData);
-        setSelectedStage(statusData.stage.id);
+        // Create default values for missing data
+        const safeData = {
+          ...statusData,
+          stage: statusData.stage || { id: 'unknown', name: 'Cargando...', daysInStage: 0 },
+          current: statusData.current || { temperature: 0, humidity: 0, vpd: 0, vwc: 0, dli: 0 },
+          targets: statusData.targets || {
+            temperature: { day: 25, night: 20 },
+            humidity: { day: 60, night: 70 },
+            vpd: { min: 0.8, max: 1.2, target: 1.0 },
+            vwc: { min: 40, target: 55, max: 70 },
+            dryback: { min: 5, max: 15 },
+            ec: { input: 1.5, substrate: 1.8 },
+            light: { ppfd: 600, dli: 35, hours: 12 }
+          },
+          status: statusData.status || { vpdStatus: 'warning', tempStatus: 'warning', vwcStatus: 'warning' }
+        };
+        setData(safeData);
+        setSelectedStage(safeData.stage?.id || 'unknown');
       }
-      if (recoData.success) setRecommendation(recoData.recommendation);
-      if (stagesData.success) setStages(stagesData.stages);
+      if (recoData.success && recoData.recommendation) setRecommendation(recoData.recommendation);
+      if (stagesData.success && stagesData.stages) setStages(stagesData.stages);
     } catch (e) {
       console.error('Error fetching crop steering data:', e);
+      setLoading(false);
     } finally {
       setLoading(false);
     }
