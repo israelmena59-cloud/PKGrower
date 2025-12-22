@@ -104,7 +104,7 @@ const StageDashboard: React.FC = () => {
   const [selectedStage, setSelectedStage] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const API_URL = (import.meta as any).env?.VITE_API_URL || 'https://pkgrower.onrender.com';
+  const API_URL = (import.meta as any).env?.VITE_API_URL || 'http://34.67.217.13:3000';
 
   const fetchData = async () => {
     try {
@@ -192,7 +192,7 @@ const StageDashboard: React.FC = () => {
         <Box>
           <Typography variant="h6" fontWeight={600}>Centro de Control</Typography>
           <Typography variant="body2" color="text.secondary">
-            Día {data.stage.daysInStage} en {data.stage.name}
+            Día {data?.stage?.daysInStage || 0} en {data?.stage?.name || 'Cargando...'}
           </Typography>
         </Box>
 
