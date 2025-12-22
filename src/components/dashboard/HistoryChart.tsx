@@ -135,7 +135,7 @@ const HistoryChart: React.FC<HistoryChartProps> = ({ type, title, targets, data:
     const fetchIrrigationEvents = async () => {
       try {
         const today = new Date().toISOString().split('T')[0];
-        const response = await fetch(`${import.meta.env.VITE_API_URL || 'https://pkgrower.onrender.com'}/api/irrigation/events?date=${today}`);
+        const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://34.67.217.13:3000'}/api/irrigation/events?date=${today}`);
         const data = await response.json();
         if (data.success && data.events) {
           setFetchedEvents(data.events.map((e: any) => ({
