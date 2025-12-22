@@ -353,8 +353,11 @@ export const CropSteeringProvider: React.FC<CropSteeringProviderProps> = ({ chil
 
   const saveSettings = useCallback(async () => {
     try {
+      // Import API_BASE_URL dynamically
+      const { API_BASE_URL } = await import('../api/client');
+
       // Save to backend with room ID
-      const response = await fetch(`/api/settings/${activeRoomId}`, {
+      const response = await fetch(`${API_BASE_URL}/api/settings/${activeRoomId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ cropSteering: settings })
@@ -366,13 +369,16 @@ export const CropSteeringProvider: React.FC<CropSteeringProviderProps> = ({ chil
       localStorage.setItem(key, JSON.stringify(settings));
     } catch (e) {
       console.error('Error saving crop steering settings:', e);
-      // throw e; // Don't throw to prevent UI crashes, just log
+      // Don't throw to prevent UI crashes, just log
     }
   }, [settings, activeRoomId]);
 
   const loadSettings = useCallback(async () => {
     try {
-      const response = await fetch('/api/settings');
+      // Import API_BASE_URL dynamically
+      const { API_BASE_URL } = await import('../api/client');
+
+      const response = await fetch(`${API_BASE_URL}/api/settings`);
       if (response.ok) {
         const data = await response.json();
         if (data.cropSteering) {
