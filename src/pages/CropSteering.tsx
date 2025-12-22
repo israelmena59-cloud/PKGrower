@@ -39,6 +39,10 @@ const CropSteering: React.FC = () => {
   } = useCropSteering();
 
   const [activeTab, setActiveTab] = useState(0);
+  const [irrigationEvents, setIrrigationEvents] = useState<any[]>([]);
+  const [automationRules, setAutomationRules] = useState<any[]>([]);
+  const [devices, setDevices] = useState<any>({});
+  const [pulsing, setPulsing] = useState(false);
 
   // Fetch sensor data and update conditions
   useEffect(() => {
