@@ -109,7 +109,7 @@ const StageDashboard: React.FC = () => {
   const fetchData = async () => {
     try {
       const [statusRes, recoRes, stagesRes] = await Promise.all([
-        fetch(`${API_URL}/api/crop-steering/status`),
+        fetch(`${API_URL}/api/crop-steering/full-status`),
         fetch(`${API_URL}/api/crop-steering/recommendation`),
         fetch(`${API_URL}/api/crop-steering/stages`)
       ]);

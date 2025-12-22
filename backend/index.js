@@ -4559,6 +4559,134 @@ app.post('/api/crop-steering/manual-irrigation', async (req, res) => {
     }
 });
 
+// Get available stages
+app.get('/api/crop-steering/stages', (req, res) => {
+    const stages = [
+        { id: 'veg_early', name: 'Vegetativo Temprano', durationDays: 14 },
+        { id: 'veg_late', name: 'Vegetativo Tardío', durationDays: 14 },
+        { id: 'transition', name: 'Transición', durationDays: 7 },
+        { id: 'flower_early', name: 'Floración Temprana', durationDays: 21 },
+        { id: 'flower_mid', name: 'Floración Media', durationDays: 21 },
+        { id: 'flower_late', name: 'Floración Tardía', durationDays: 14 },
+        { id: 'ripening', name: 'Maduración', durationDays: 14 }
+    ];
+    res.json({ success: true, stages });
+});
+
+// Get irrigation recommendation
+app.get('/api/crop-steering/recommendation', (req, res) => {
+    try {
+        const latest = sensorHistory[sensorHistory.length - 1];
+        const vwc = latest?.substrateHumidity || 0;
+        const profile = cropSteeringEngine.getProfile(appSettings.cropSteering.direction);
+        const phaseInfo = cropSteeringEngine.getCurrentPhase(appSettings.lighting, appSettings.cropSteering.direction);
+
+        let shouldIrrigate = false;
+        let reason = 'Esperando datos...';
+        let suggestedPercentage = profile.eventSizeDefault;
+
+        if (phaseInfo.phase === 'night') {
+            reason = 'Período nocturno - No irrigar';
+        } else if (vwc === 0) {
+            reason = 'Sin datos de VWC disponibles';
+        } else if (vwc < profile.fieldCapacityTarget - 10) {
+            shouldIrrigate = true;
+            reason = `VWC bajo (${vwc}%) - Riego recomendado`;
+            suggestedPercentage = Math.min(profile.eventSizeMax, profile.eventSizeDefault * 1.5);
+        } else if (vwc < profile.fieldCapacityTarget) {
+            shouldIrrigate = true;
+            reason = `VWC en rango bajo (${vwc}%) - Riego sugerido`;
+        } else {
+            reason = `VWC óptimo (${vwc}%) - Mantener observación`;
+        }
+
+        res.json({
+            success: true,
+            recommendation: {
+                shouldIrrigate,
+                phase: phaseInfo.phase,
+                reason,
+                suggestedPercentage,
+                nextIrrigationIn: phaseInfo.minutesUntilP1 || null,
+                currentVWC: vwc,
+                targetVWC: profile.fieldCapacityTarget
+            }
+        });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Set current stage
+app.post('/api/crop-steering/stage', async (req, res) => {
+    try {
+        const { stage } = req.body;
+        if (!stage) {
+            return res.status(400).json({ error: 'Stage is required' });
+        }
+
+        appSettings.cropSteering.stage = stage;
+        await firestore.saveGlobalSettings(appSettings);
+
+        console.log(`[CROP-STEERING] Stage changed to: ${stage}`);
+        res.json({ success: true, stage });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Enhanced status endpoint with full data for StageDashboard
+app.get('/api/crop-steering/full-status', (req, res) => {
+    try {
+        const latest = sensorHistory[sensorHistory.length - 1];
+        const profile = cropSteeringEngine.getProfile(appSettings.cropSteering.direction);
+        const phaseInfo = cropSteeringEngine.getCurrentPhase(appSettings.lighting, appSettings.cropSteering.direction);
+
+        // Calculate days in stage
+        const stageStartDate = appSettings.cropSteering.flipDate ? new Date(appSettings.cropSteering.flipDate) : new Date();
+        const daysInStage = Math.floor((Date.now() - stageStartDate.getTime()) / (1000 * 60 * 60 * 24));
+
+        res.json({
+            success: true,
+            stage: {
+                id: appSettings.cropSteering.stage || 'veg_early',
+                name: profile.name,
+                startDate: appSettings.cropSteering.flipDate,
+                daysInStage: Math.max(0, daysInStage)
+            },
+            current: {
+                temperature: latest?.temperature || 0,
+                humidity: latest?.humidity || 0,
+                vpd: latest?.vpd || 0,
+                vwc: latest?.substrateHumidity || 0,
+                dli: 0 // TODO: Calculate from light data
+            },
+            targets: {
+                temperature: { day: 26, night: 22 },
+                humidity: { day: 55, night: 65 },
+                vpd: { min: profile.vpdMin, max: profile.vpdMax, target: (profile.vpdMin + profile.vpdMax) / 2 },
+                vwc: {
+                    min: profile.fieldCapacityTarget - 15,
+                    target: profile.fieldCapacityTarget,
+                    max: profile.fieldCapacityTarget + 10
+                },
+                dryback: { min: profile.drybackP3Min, max: profile.drybackP3Max },
+                ec: { input: 1.8, substrate: 2.2 },
+                light: { ppfd: 800, dli: 45, hours: appSettings.lighting?.hoursOn || 12 }
+            },
+            status: {
+                vpdStatus: latest?.vpd >= profile.vpdMin && latest?.vpd <= profile.vpdMax ? 'optimal' : 'warning',
+                tempStatus: latest?.temperature >= 22 && latest?.temperature <= 28 ? 'optimal' : 'warning',
+                vwcStatus: (latest?.substrateHumidity || 0) >= profile.fieldCapacityTarget - 15 ? 'optimal' : 'warning'
+            },
+            phase: phaseInfo.phase,
+            phaseMessage: phaseInfo.message
+        });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // =========================================
 // GEMINI AI CHAT ENDPOINT
 // =========================================
