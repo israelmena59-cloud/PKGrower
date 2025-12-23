@@ -5155,21 +5155,36 @@ app.use((err, req, res, next) => {
 });
 
 // --- SERVER INITIALIZATION ---
-// Load all saved configurations from Firestore before starting server
-(async () => {
-    try {
-        console.log('[STARTUP] Loading saved configuration from Firestore...');
-        await loadSettings();
-        await loadCustomDevices();
-        console.log('[STARTUP] Configuration loaded. Starting server...');
-    } catch (e) {
-        console.warn('[STARTUP] Config load error (using defaults):', e.message);
-    }
+// CRITICAL: Start server FIRST to respond to health checks (required for Cloud Run)
+// Then load configurations in background
 
-    // Start Server
-    app.listen(PORT, () => {
-        console.log(`✓ Dispositivos Tuya registrados: ${Object.keys(tuyaDevices).length}`);
-        console.log(`\n📡 PKGrower Server Ready on port ${PORT}`);
-        console.log(`📗 All configuration modules loaded from Firestore`);
-    });
-})();
+const server = app.listen(PORT, () => {
+    console.log(`✓ PKGrower Server LISTENING on port ${PORT}`);
+    console.log(`📡 Server Ready - Loading configuration in background...`);
+
+    // Load configurations asynchronously AFTER server is listening
+    (async () => {
+        try {
+            console.log('[STARTUP] Loading saved configuration from Firestore...');
+            await loadSettings();
+            await loadCustomDevices();
+            console.log('[STARTUP] Configuration loaded successfully');
+            console.log(`✓ Dispositivos Tuya registrados: ${Object.keys(tuyaDevices).length}`);
+            console.log(`📗 All configuration modules loaded from Firestore`);
+        } catch (e) {
+            console.warn('[STARTUP] Config load error (using defaults):', e.message);
+            // Don't crash - continue with defaults
+        }
+    })();
+});
+
+// Handle uncaught errors gracefully
+process.on('uncaughtException', (err) => {
+    console.error('[FATAL] Uncaught Exception:', err.message);
+    // Don't exit - try to keep running
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('[FATAL] Unhandled Rejection at:', promise, 'reason:', reason);
+    // Don't exit - try to keep running
+});
