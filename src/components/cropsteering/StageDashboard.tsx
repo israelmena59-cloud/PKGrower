@@ -109,7 +109,7 @@ const StageDashboard: React.FC = () => {
   const fetchData = async () => {
     try {
       const [statusRes, recoRes, stagesRes] = await Promise.all([
-        fetch(`${API_URL}/api/crop-steering/full-status`),
+        fetch(`${API_URL}/api/crop-steering/status`),
         fetch(`${API_URL}/api/crop-steering/recommendation`),
         fetch(`${API_URL}/api/crop-steering/stages`)
       ]);
@@ -119,24 +119,42 @@ const StageDashboard: React.FC = () => {
       const stagesData = await stagesRes.json();
 
       if (statusData.success) {
-        // Create default values for missing data
+        // Transform /status response into UI format
+        // Fetch latest sensor data for current values
+        const sensorRes = await fetch(`${API_URL}/api/sensors/latest`);
+        const sensorData = await sensorRes.json();
+
         const safeData = {
           ...statusData,
-          stage: statusData.stage || { id: 'unknown', name: 'Cargando...', daysInStage: 0 },
-          current: statusData.current || { temperature: 0, humidity: 0, vpd: 0, vwc: 0, dli: 0 },
-          targets: statusData.targets || {
-            temperature: { day: 25, night: 20 },
-            humidity: { day: 60, night: 70 },
-            vpd: { min: 0.8, max: 1.2, target: 1.0 },
-            vwc: { min: 40, target: 55, max: 70 },
-            dryback: { min: 5, max: 15 },
-            ec: { input: 1.5, substrate: 1.8 },
-            light: { ppfd: 600, dli: 35, hours: 12 }
+          stage: {
+            id: statusData.direction === 'Vegetativo' ? 'veg_early' : 'flower_early',
+            name: statusData.direction || 'Vegetativo',
+            daysInStage: 0
           },
-          status: statusData.status || { vpdStatus: 'warning', tempStatus: 'warning', vwcStatus: 'warning' }
+          current: {
+            temperature: sensorData.temperature || 0,
+            humidity: sensorData.humidity || 0,
+            vpd: sensorData.vpd || 0,
+            vwc: statusData.currentVWC || sensorData.substrateHumidity || 0,
+            dli: 0
+          },
+          targets: {
+            temperature: { day: 26, night: 22 },
+            humidity: { day: 55, night: 65 },
+            vpd: { min: 0.8, max: 1.2, target: 1.0 },
+            vwc: { min: 40, target: statusData.targetVWC || 55, max: 70 },
+            dryback: { min: 5, max: 15 },
+            ec: { input: 1.8, substrate: 2.2 },
+            light: { ppfd: 800, dli: 45, hours: 12 }
+          },
+          status: {
+            vpdStatus: (sensorData.vpd >= 0.8 && sensorData.vpd <= 1.2) ? 'optimal' : 'warning',
+            tempStatus: (sensorData.temperature >= 22 && sensorData.temperature <= 28) ? 'optimal' : 'warning',
+            vwcStatus: ((statusData.currentVWC || 0) >= 40) ? 'optimal' : 'warning'
+          }
         };
         setData(safeData);
-        setSelectedStage(safeData.stage?.id || 'unknown');
+        setSelectedStage(safeData.stage?.id || 'veg_early');
       }
       if (recoData.success && recoData.recommendation) setRecommendation(recoData.recommendation);
       if (stagesData.success && stagesData.stages) setStages(stagesData.stages);
