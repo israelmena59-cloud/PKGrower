@@ -2054,42 +2054,77 @@ app.get('/api/devices/tuya/raw/:deviceId', async (req, res) => {
     return res.status(503).json({ error: 'Tuya not connected' });
   }
 
+  const results = {
+    success: true,
+    deviceId,
+    errors: []
+  };
+
   try {
     // Get device info
     const deviceRes = await tuyaClient.request({
       method: 'GET',
       path: `/v1.0/devices/${deviceId}`
     });
+    results.device = deviceRes?.data?.result || deviceRes?.result || deviceRes;
+    results.rawDevice = deviceRes;
+  } catch (e) {
+    results.errors.push({ endpoint: 'device', error: e.message });
+  }
 
-    // Get device status
+  try {
+    // Get device status (current values)
     const statusRes = await tuyaClient.request({
       method: 'GET',
       path: `/v1.0/devices/${deviceId}/status`
     });
+    results.status = statusRes?.data?.result || statusRes?.result || statusRes;
+    results.rawStatus = statusRes;
+  } catch (e) {
+    results.errors.push({ endpoint: 'status', error: e.message });
+  }
 
+  try {
     // Get device specifications (data points definition)
     const specsRes = await tuyaClient.request({
       method: 'GET',
       path: `/v1.0/devices/${deviceId}/specifications`
     });
-
-    res.json({
-      success: true,
-      deviceId,
-      device: deviceRes?.data?.result || deviceRes?.result || deviceRes,
-      status: statusRes?.data?.result || statusRes?.result || statusRes,
-      specifications: specsRes?.data?.result || specsRes?.result || specsRes,
-      rawDevice: deviceRes,
-      rawStatus: statusRes,
-      rawSpecs: specsRes
-    });
-  } catch (error) {
-    console.error(`[DEBUG] Error fetching raw device ${deviceId}:`, error.message);
-    res.status(500).json({
-      error: error.message,
-      deviceId
-    });
+    results.specifications = specsRes?.data?.result || specsRes?.result || specsRes;
+  } catch (e) {
+    results.errors.push({ endpoint: 'specifications', error: e.message });
   }
+
+  try {
+    // Get device functions (available commands)
+    const funcsRes = await tuyaClient.request({
+      method: 'GET',
+      path: `/v1.0/devices/${deviceId}/functions`
+    });
+    results.functions = funcsRes?.data?.result || funcsRes?.result || funcsRes;
+  } catch (e) {
+    results.errors.push({ endpoint: 'functions', error: e.message });
+  }
+
+  try {
+    // Get device logs (recent data points)
+    const logsRes = await tuyaClient.request({
+      method: 'GET',
+      path: `/v1.0/devices/${deviceId}/logs`,
+      query: { type: '7', size: 20 } // type 7 = all logs
+    });
+    results.logs = logsRes?.data?.result || logsRes?.result || logsRes;
+  } catch (e) {
+    results.errors.push({ endpoint: 'logs', error: e.message });
+  }
+
+  // Also get from our internal cache
+  const internalDevice = Object.values(tuyaDevices).find(d => d.id === deviceId || d.cloudDevice?.id === deviceId);
+  if (internalDevice) {
+    results.internalCache = internalDevice;
+  }
+
+  res.json(results);
 });
 
 // NUEVO: Obtener dispositivos Meross
