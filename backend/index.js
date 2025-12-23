@@ -2046,6 +2046,52 @@ app.get('/api/devices/tuya', async (req, res) => {
   }
 });
 
+// DEBUG: Obtener datos RAW de un dispositivo Tuya específico
+app.get('/api/devices/tuya/raw/:deviceId', async (req, res) => {
+  const { deviceId } = req.params;
+
+  if (!tuyaClient || !tuyaConnected) {
+    return res.status(503).json({ error: 'Tuya not connected' });
+  }
+
+  try {
+    // Get device info
+    const deviceRes = await tuyaClient.request({
+      method: 'GET',
+      path: `/v1.0/devices/${deviceId}`
+    });
+
+    // Get device status
+    const statusRes = await tuyaClient.request({
+      method: 'GET',
+      path: `/v1.0/devices/${deviceId}/status`
+    });
+
+    // Get device specifications (data points definition)
+    const specsRes = await tuyaClient.request({
+      method: 'GET',
+      path: `/v1.0/devices/${deviceId}/specifications`
+    });
+
+    res.json({
+      success: true,
+      deviceId,
+      device: deviceRes?.data?.result || deviceRes?.result || deviceRes,
+      status: statusRes?.data?.result || statusRes?.result || statusRes,
+      specifications: specsRes?.data?.result || specsRes?.result || specsRes,
+      rawDevice: deviceRes,
+      rawStatus: statusRes,
+      rawSpecs: specsRes
+    });
+  } catch (error) {
+    console.error(`[DEBUG] Error fetching raw device ${deviceId}:`, error.message);
+    res.status(500).json({
+      error: error.message,
+      deviceId
+    });
+  }
+});
+
 // NUEVO: Obtener dispositivos Meross
 app.get('/api/devices/meross', async (req, res) => {
     try {
