@@ -2124,6 +2124,30 @@ app.get('/api/devices/tuya/raw/:deviceId', async (req, res) => {
     results.internalCache = internalDevice;
   }
 
+  // Try to get product schema (all DPs for this product type)
+  const productId = results.device?.product_id || internalDevice?.cloudDevice?.product_id;
+  if (productId) {
+    try {
+      const productRes = await tuyaClient.request({
+        method: 'GET',
+        path: `/v1.0/products/${productId}`
+      });
+      results.product = productRes?.data?.result || productRes?.result || productRes;
+    } catch (e) {
+      results.errors.push({ endpoint: 'product', error: e.message });
+    }
+
+    try {
+      const schemaRes = await tuyaClient.request({
+        method: 'GET',
+        path: `/v1.0/products/${productId}/functions`
+      });
+      results.productFunctions = schemaRes?.data?.result || schemaRes?.result || schemaRes;
+    } catch (e) {
+      results.errors.push({ endpoint: 'productFunctions', error: e.message });
+    }
+  }
+
   res.json(results);
 });
 
