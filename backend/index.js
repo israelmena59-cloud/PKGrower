@@ -4445,9 +4445,19 @@ setInterval(async () => {
 app.get('/api/crop-steering/status', (req, res) => {
     try {
         const status = cropSteeringEngine.getStatusSummary(appSettings, sensorHistory, pumpState);
+
+        // Calculate days since start
+        const startDate = appSettings.cropSteering?.flipDate || appSettings.cropSteering?.startDate;
+        let daysInCycle = 0;
+        if (startDate) {
+            daysInCycle = Math.floor((Date.now() - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24));
+        }
+
         res.json({
             success: true,
-            enabled: appSettings.cropSteering.enabled,
+            enabled: appSettings.cropSteering?.enabled || false,
+            stage: appSettings.cropSteering?.stage || 'veg_early',
+            daysInCycle,
             ...status,
             irrigationCountToday: cropSteeringState.irrigationCountToday,
             lastIrrigationTime: cropSteeringState.lastIrrigationTime
@@ -4625,10 +4635,17 @@ app.post('/api/crop-steering/stage', async (req, res) => {
             return res.status(400).json({ error: 'Stage is required' });
         }
 
+        // Save to memory (always works)
         appSettings.cropSteering.stage = stage;
-        await firestore.saveGlobalSettings(appSettings);
 
-        console.log(`[CROP-STEERING] Stage changed to: ${stage}`);
+        // Try to persist to Firestore (may fail but that's OK)
+        try {
+            await firestore.saveGlobalSettings(appSettings);
+            console.log(`[CROP-STEERING] Stage changed and saved to Firestore: ${stage}`);
+        } catch (fsErr) {
+            console.warn(`[CROP-STEERING] Stage changed in memory but Firestore save failed: ${stage}`);
+        }
+
         res.json({ success: true, stage });
     } catch (e) {
         res.status(500).json({ error: e.message });

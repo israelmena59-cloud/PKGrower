@@ -124,12 +124,23 @@ const StageDashboard: React.FC = () => {
         const sensorRes = await fetch(`${API_URL}/api/sensors/latest`);
         const sensorData = await sensorRes.json();
 
+        // Map stage ID to display name
+        const stageNames: Record<string, string> = {
+          'veg_early': 'Vegetativo Temprano',
+          'veg_late': 'Vegetativo Tardío',
+          'transition': 'Transición',
+          'flower_early': 'Floración Temprana',
+          'flower_mid': 'Floración Media',
+          'flower_late': 'Floración Tardía',
+          'ripening': 'Maduración'
+        };
+
         const safeData = {
           ...statusData,
           stage: {
-            id: statusData.direction === 'Vegetativo' ? 'veg_early' : 'flower_early',
-            name: statusData.direction || 'Vegetativo',
-            daysInStage: 0
+            id: statusData.stage || 'veg_early',
+            name: stageNames[statusData.stage] || statusData.direction || 'Vegetativo',
+            daysInStage: statusData.daysInCycle || 0
           },
           current: {
             temperature: sensorData.temperature || 0,
@@ -154,7 +165,7 @@ const StageDashboard: React.FC = () => {
           }
         };
         setData(safeData);
-        setSelectedStage(safeData.stage?.id || 'veg_early');
+        setSelectedStage(statusData.stage || 'veg_early');
       }
       if (recoData.success && recoData.recommendation) setRecommendation(recoData.recommendation);
       if (stagesData.success && stagesData.stages) setStages(stagesData.stages);
