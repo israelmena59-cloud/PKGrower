@@ -184,6 +184,8 @@ const StageDashboard: React.FC = () => {
   }, []);
 
   const handleStageChange = async (newStage: string) => {
+    console.log('[StageDashboard] Changing stage to:', newStage);
+    console.log('[StageDashboard] API URL:', API_URL);
     setSaving(true);
     try {
       const res = await fetch(`${API_URL}/api/crop-steering/stage`, {
@@ -191,12 +193,17 @@ const StageDashboard: React.FC = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ stage: newStage })
       });
-      if (res.ok) {
+      console.log('[StageDashboard] Response status:', res.status);
+      const data = await res.json();
+      console.log('[StageDashboard] Response data:', data);
+      if (res.ok && data.success) {
         setSelectedStage(newStage);
         await fetchData();
+      } else {
+        console.error('[StageDashboard] Stage change failed:', data);
       }
     } catch (e) {
-      console.error('Error setting stage:', e);
+      console.error('[StageDashboard] Error setting stage:', e);
     } finally {
       setSaving(false);
     }
