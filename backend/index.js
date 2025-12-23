@@ -2051,7 +2051,7 @@ app.get('/api/devices/tuya/raw/:deviceId', async (req, res) => {
   const { deviceId } = req.params;
 
   if (!tuyaClient || !tuyaConnected) {
-    return res.status(503).json({ error: 'Tuya not connected' });
+    return res.status(503).json({ error: 'Tuya not connected', tuyaConnected });
   }
 
   const results = {
@@ -2061,90 +2061,47 @@ app.get('/api/devices/tuya/raw/:deviceId', async (req, res) => {
   };
 
   try {
-    // Get device info
-    const deviceRes = await tuyaClient.request({
-      method: 'GET',
-      path: `/v1.0/devices/${deviceId}`
-    });
+    const deviceRes = await tuyaClient.request({ method: 'GET', path: `/v1.0/devices/${deviceId}` });
     results.device = deviceRes?.data?.result || deviceRes?.result || deviceRes;
-    results.rawDevice = deviceRes;
   } catch (e) {
     results.errors.push({ endpoint: 'device', error: e.message });
   }
 
   try {
-    // Get device status (current values)
-    const statusRes = await tuyaClient.request({
-      method: 'GET',
-      path: `/v1.0/devices/${deviceId}/status`
-    });
+    const statusRes = await tuyaClient.request({ method: 'GET', path: `/v1.0/devices/${deviceId}/status` });
     results.status = statusRes?.data?.result || statusRes?.result || statusRes;
-    results.rawStatus = statusRes;
   } catch (e) {
     results.errors.push({ endpoint: 'status', error: e.message });
   }
 
   try {
-    // Get device specifications (data points definition)
-    const specsRes = await tuyaClient.request({
-      method: 'GET',
-      path: `/v1.0/devices/${deviceId}/specifications`
-    });
+    const specsRes = await tuyaClient.request({ method: 'GET', path: `/v1.0/devices/${deviceId}/specifications` });
     results.specifications = specsRes?.data?.result || specsRes?.result || specsRes;
   } catch (e) {
     results.errors.push({ endpoint: 'specifications', error: e.message });
   }
 
   try {
-    // Get device functions (available commands)
-    const funcsRes = await tuyaClient.request({
-      method: 'GET',
-      path: `/v1.0/devices/${deviceId}/functions`
-    });
+    const funcsRes = await tuyaClient.request({ method: 'GET', path: `/v1.0/devices/${deviceId}/functions` });
     results.functions = funcsRes?.data?.result || funcsRes?.result || funcsRes;
   } catch (e) {
     results.errors.push({ endpoint: 'functions', error: e.message });
   }
 
-  try {
-    // Get device logs (recent data points)
-    const logsRes = await tuyaClient.request({
-      method: 'GET',
-      path: `/v1.0/devices/${deviceId}/logs`,
-      query: { type: '7', size: 20 } // type 7 = all logs
-    });
-    results.logs = logsRes?.data?.result || logsRes?.result || logsRes;
-  } catch (e) {
-    results.errors.push({ endpoint: 'logs', error: e.message });
-  }
-
-  // Also get from our internal cache
+  // Get from internal cache
   const internalDevice = Object.values(tuyaDevices).find(d => d.id === deviceId || d.cloudDevice?.id === deviceId);
   if (internalDevice) {
     results.internalCache = internalDevice;
-  }
 
-  // Try to get product schema (all DPs for this product type)
-  const productId = results.device?.product_id || internalDevice?.cloudDevice?.product_id;
-  if (productId) {
-    try {
-      const productRes = await tuyaClient.request({
-        method: 'GET',
-        path: `/v1.0/products/${productId}`
-      });
-      results.product = productRes?.data?.result || productRes?.result || productRes;
-    } catch (e) {
-      results.errors.push({ endpoint: 'product', error: e.message });
-    }
-
-    try {
-      const schemaRes = await tuyaClient.request({
-        method: 'GET',
-        path: `/v1.0/products/${productId}/functions`
-      });
-      results.productFunctions = schemaRes?.data?.result || schemaRes?.result || schemaRes;
-    } catch (e) {
-      results.errors.push({ endpoint: 'productFunctions', error: e.message });
+    // Try to get product schema
+    const productId = internalDevice.cloudDevice?.product_id;
+    if (productId) {
+      try {
+        const prodRes = await tuyaClient.request({ method: 'GET', path: `/v1.0/products/${productId}` });
+        results.product = prodRes?.data?.result || prodRes?.result || prodRes;
+      } catch (e) {
+        results.errors.push({ endpoint: 'product', error: e.message });
+      }
     }
   }
 
