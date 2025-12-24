@@ -198,6 +198,57 @@ app.get('/health', (req, res) => {
     res.status(200).send('OK');
 });
 
+// --- HELPER: Unified Device Control ---
+async function setDeviceState(deviceId, state) {
+    if (MODO_SIMULACION) {
+        deviceStates[deviceId] = state;
+        return;
+    }
+
+    // 1. Tuya
+    const tDev = tuyaDevices[deviceId] || Object.values(tuyaDevices).find(d => d.id === deviceId);
+    if (tDev) {
+        const code = tDev.switchCode || 'switch_1';
+        try {
+            await tuyaClient.request({
+                method: 'POST',
+                path: `/v1.0/iot-03/devices/${tDev.id}/commands`,
+                body: { commands: [{ code: code, value: state }] }
+            });
+            tDev.on = state;
+            return;
+        } catch(e) {
+            console.error(`[CONTROL] Tuya Error (${deviceId}):`, e.message);
+        }
+    }
+
+    // 2. Xiaomi
+    const deviceConfig = DEVICE_MAP[deviceId];
+    if ((deviceConfig && deviceConfig.platform === 'xiaomi') || xiaomiClients[deviceId]) {
+        const client = xiaomiClients[deviceId];
+        if (client) {
+            try {
+                if (client.setPower) await client.setPower(state);
+                else await client.call('set_power', [state ? 'on' : 'off']);
+            } catch(e) {
+                console.error(`[CONTROL] Xiaomi Error (${deviceId}):`, e.message);
+            }
+        }
+    }
+
+    // 3. Meross
+    if (merossDevices[deviceId]) {
+         try {
+             const mDev = merossDevices[deviceId].deviceInstance || merossDevices[deviceId];
+             if (mDev && mDev.controlToggleX) {
+                 mDev.controlToggleX(0, state, () => {});
+             }
+         } catch(e) {
+            console.error(`[CONTROL] Meross Error (${deviceId}):`, e.message);
+         }
+    }
+}
+
 // --- CLOUD SCHEDULER KEEP-ALIVE ENDPOINT ---
 // This endpoint should be called by Cloud Scheduler every 5 minutes
 // to keep the instance alive and run background tasks
