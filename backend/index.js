@@ -876,6 +876,33 @@ app.use('/api', (req, res, next) => {
     next();
 });
 
+// --- API IRRIGATION EVENTS (GET) ---
+app.get('/api/irrigation/events', async (req, res) => {
+    try {
+        const { date } = req.query;
+        const targetDate = date || new Date().toISOString().split('T')[0];
+
+        // Try to get irrigation events from Firestore
+        let events = [];
+        try {
+            if (firestore && firestore.getIrrigationEvents) {
+                events = await firestore.getIrrigationEvents(targetDate);
+            }
+        } catch (e) {
+            console.log('[IRRIGATION] No events found or Firestore error:', e.message);
+        }
+
+        res.json({
+            success: true,
+            date: targetDate,
+            events: events || []
+        });
+    } catch (error) {
+        console.error('[IRRIGATION] Error getting events:', error);
+        res.json({ success: true, date: req.query.date, events: [] });
+    }
+});
+
 // --- API RIEGO (SHOTS) ---
 app.post('/api/irrigation/shot', async (req, res) => {
     try {
