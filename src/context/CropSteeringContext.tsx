@@ -356,8 +356,8 @@ export const CropSteeringProvider: React.FC<CropSteeringProviderProps> = ({ chil
       // Import API_BASE_URL dynamically
       const { API_BASE_URL } = await import('../api/client');
 
-      // Save to backend with room ID
-      const response = await fetch(`${API_BASE_URL}/api/settings/${activeRoomId}`, {
+      // Save to backend (Global settings for now, room support to be added properly later)
+      const response = await fetch(`${API_BASE_URL}/api/settings`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ cropSteering: settings })
