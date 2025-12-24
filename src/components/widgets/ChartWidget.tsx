@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Box, Typography, IconButton, Menu, MenuItem, ListItemIcon, ListItemText, Divider } from '@mui/material';
 import { ResponsiveContainer, AreaChart, Area, LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, ReferenceArea, Legend } from 'recharts';
 import { Settings, TrendingUp, Activity, Sprout, Flower, Leaf } from 'lucide-react';
@@ -86,6 +86,21 @@ export const ChartWidget: React.FC<ChartWidgetProps & { lightSchedule?: { on: st
     const handleCloseSettings = () => setAnchorEl(null);
     const handleChartTypeChange = (type: ChartType) => { setChartType(type); handleCloseSettings(); };
     const handleStageChange = (stage: GrowthStage) => { setGrowthStage(stage); handleCloseSettings(); };
+
+    // Sanitize data: convert 0 values to null to prevent chart drops to zero
+    const sanitizedData = useMemo(() => {
+        if (!data || !Array.isArray(data)) return [];
+        return data.map((d: any) => ({
+            ...d,
+            temperature: d.temperature > 0 ? d.temperature : null,
+            humidity: d.humidity > 0 ? d.humidity : null,
+            vpd: d.vpd > 0 ? d.vpd : null,
+            substrateHumidity: d.substrateHumidity > 0 ? d.substrateHumidity : null,
+            sh1: d.sh1 > 0 ? d.sh1 : null,
+            sh2: d.sh2 > 0 ? d.sh2 : null,
+            sh3: d.sh3 > 0 ? d.sh3 : null,
+        }));
+    }, [data]);
 
     const renderReferenceZones = () => {
         if (growthStage === 'none') return null;
@@ -224,7 +239,7 @@ export const ChartWidget: React.FC<ChartWidgetProps & { lightSchedule?: { on: st
 
     const renderChart = () => {
         const commonProps = {
-            data: data,
+            data: sanitizedData,
             margin: { top: 20, right: 10, left: 0, bottom: 5 }
         };
 
@@ -364,7 +379,7 @@ export const ChartWidget: React.FC<ChartWidgetProps & { lightSchedule?: { on: st
         }
     };
 
-    if (!data || data.length === 0) {
+    if (!sanitizedData || sanitizedData.length === 0) {
         return (
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'text.disabled', flexDirection: 'column', gap: 1 }}>
                 <Typography variant="body2">No Data ({timeRange})</Typography>

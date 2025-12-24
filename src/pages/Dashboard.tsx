@@ -8,8 +8,10 @@ import RulesModal from '../components/dashboard/RulesModal';
 import HistoryChart from '../components/dashboard/HistoryChart';
 import CropSteeringWidget from '../components/dashboard/CropSteeringWidget';
 import QuickActionsWidget from '../components/dashboard/QuickActionsWidget';
-import { Thermometer, Droplet, Wind, Droplets, Lightbulb, RefreshCw, Settings, Plus, X, Zap } from 'lucide-react';
-import { Box, Paper, Typography, IconButton, CircularProgress, Button, Tabs, Tab, TextField, Dialog, DialogTitle, DialogContent, DialogActions, Tooltip, Grid } from '@mui/material';
+import AIInsightsWidget from '../components/dashboard/AIInsightsWidget';
+import SmartNotifications from '../components/ai/SmartNotifications';
+import { Thermometer, Droplet, Wind, Droplets, Lightbulb, RefreshCw, Settings, Plus, X, Zap, Sparkles } from 'lucide-react';
+import { Box, Paper, Typography, IconButton, CircularProgress, Button, Tabs, Tab, TextField, Dialog, DialogTitle, DialogContent, DialogActions, Tooltip, Grid, Collapse } from '@mui/material';
 import _ from 'lodash';
 
 // Initial default layout for a fresh start
@@ -352,24 +354,19 @@ const Dashboard: React.FC = () => {
             <RulesModal open={isRulesOpen} onClose={() => setIsRulesOpen(false)} />
 
             {/* STATIC CHARTS SECTION */}
-            {/* Crop Steering Widgets Row */}
+            {/* Crop Steering Widgets Row + AI Notifications */}
             <Grid container spacing={2} sx={{ mb: 3 }}>
-                <Grid item xs={12} md={4}>
+                <Grid item xs={12} md={3}>
                     <CropSteeringWidget />
                 </Grid>
-                <Grid item xs={12} md={4}>
+                <Grid item xs={12} md={3}>
                     <QuickActionsWidget />
                 </Grid>
-                <Grid item xs={12} md={4}>
-                    <HistoryChart
-                        type="substrate"
-                        title="VWC Rápido"
-                        data={sensorHistory}
-                        targets={{
-                            vwc: settings?.cropSteering?.targetVWC || 50,
-                            dryback: settings?.cropSteering?.targetDryback || 15
-                        }}
-                    />
+                <Grid item xs={12} md={3}>
+                    <AIInsightsWidget autoRefresh={true} />
+                </Grid>
+                <Grid item xs={12} md={3}>
+                    <SmartNotifications maxVisible={3} autoRefresh={true} refreshInterval={30000} />
                 </Grid>
             </Grid>
 

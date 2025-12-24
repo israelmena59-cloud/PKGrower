@@ -1,7 +1,7 @@
 ﻿const express = require('express');
 const compression = require('compression');
 const cors = require('cors');
-// DEBUG: Check file system in Render
+// DEBUG: Check file system in Cloud Run
 const fs = require('fs');
 const path = require('path');
 const distPath = path.join(__dirname, '../dist');
@@ -642,14 +642,208 @@ app.get('/api/xiaomi/auth/status/:sessionId', (req, res) => {
 // ... (loadSettings/saveSettings stay same)
 
 // --- HEALTH CHECK (PUBLIC) ---
-// Must be defined BEFORE Security Middleware to allow Render/Uptime checks
+// Must be defined BEFORE Security Middleware to allow Cloud Run/Uptime checks
 app.get('/health', (req, res) => {
     res.status(200).send('OK');
 });
 
+// --- CLOUD SCHEDULER KEEP-ALIVE ENDPOINT ---
+// This endpoint should be called by Cloud Scheduler every 5 minutes
+// to keep the instance alive and run background tasks
+app.post('/api/tick', async (req, res) => {
+    const tickStart = Date.now();
+    console.log('[TICK] ⏰ Cloud Scheduler heartbeat received');
+
+    const results = {
+        timestamp: new Date().toISOString(),
+        tasks: {},
+        errors: []
+    };
+
+    try {
+        // 1. Refresh Tuya devices (if not in simulation mode)
+        if (!MODO_SIMULACION && tuyaConnected && tuyaClient) {
+            try {
+                console.log('[TICK] Refreshing Tuya devices...');
+                await initTuyaDevices();
+                results.tasks.tuya = 'refreshed';
+            } catch (e) {
+                console.error('[TICK] Tuya refresh error:', e.message);
+                results.errors.push({ task: 'tuya', error: e.message });
+            }
+        }
+
+        // 2. Run scheduler logic (lighting)
+        try {
+            runSchedulerTick();
+            results.tasks.scheduler = 'executed';
+        } catch (e) {
+            console.error('[TICK] Scheduler error:', e.message);
+            results.errors.push({ task: 'scheduler', error: e.message });
+        }
+
+        // 3. Run automation rules
+        try {
+            await runAutomationRulesTick();
+            results.tasks.automation = 'executed';
+        } catch (e) {
+            console.error('[TICK] Automation error:', e.message);
+            results.errors.push({ task: 'automation', error: e.message });
+        }
+
+        // 4. Save sensor data snapshot (if real mode)
+        if (!MODO_SIMULACION) {
+            try {
+                await saveSensorSnapshot();
+                results.tasks.sensors = 'saved';
+            } catch (e) {
+                console.error('[TICK] Sensor save error:', e.message);
+                results.errors.push({ task: 'sensors', error: e.message });
+            }
+        }
+
+        results.duration = Date.now() - tickStart;
+        console.log(`[TICK] ✅ Completed in ${results.duration}ms`);
+        res.json({ success: true, ...results });
+
+    } catch (e) {
+        console.error('[TICK] Critical error:', e.message);
+        res.status(500).json({ success: false, error: e.message, ...results });
+    }
+});
+
+// --- SCHEDULER TICK FUNCTION (Extracted from setInterval) ---
+function runSchedulerTick() {
+    const now = new Date();
+    const currentTime = now.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', hour12: false });
+
+    // --- LIGHTING ---
+    const lighting = appSettings.lighting;
+    if (lighting && lighting.enabled && lighting.mode === 'schedule') {
+        const { onTime, offTime, devices } = lighting;
+
+        // Check if we should be ON or OFF based on current time
+        // This handles recovery from cold starts (not just exact trigger)
+        const shouldBeOn = isTimeBetween(currentTime, onTime, offTime);
+
+        console.log(`[SCHEDULER-TICK] Time: ${currentTime}, OnTime: ${onTime}, OffTime: ${offTime}, ShouldBeOn: ${shouldBeOn}`);
+
+        // Set all light devices to the correct state
+        if (devices && devices.length > 0) {
+            devices.forEach(devKey => {
+                setDeviceState(devKey, shouldBeOn).catch(e =>
+                    console.error(`[SCHEDULER-TICK] Error setting ${devKey} to ${shouldBeOn}:`, e.message)
+                );
+            });
+        }
+    }
+}
+
+// Helper: Check if current time is between start and end times (handles overnight)
+function isTimeBetween(current, start, end) {
+    // Convert "HH:MM" to minutes since midnight
+    const toMinutes = (t) => {
+        if (!t || typeof t !== 'string') return 0;
+        const [h, m] = t.split(':').map(Number);
+        return h * 60 + (m || 0);
+    };
+
+    const curr = toMinutes(current);
+    const s = toMinutes(start);
+    const e = toMinutes(end);
+
+    // Handle overnight (e.g., start=18:00, end=06:00)
+    if (s > e) {
+        return curr >= s || curr < e;
+    }
+    return curr >= s && curr < e;
+}
+
+// --- AUTOMATION RULES TICK FUNCTION ---
+async function runAutomationRulesTick() {
+    if (!automationRules || automationRules.length === 0) return;
+
+    const latest = sensorHistory && sensorHistory.length > 0
+        ? sensorHistory[sensorHistory.length - 1]
+        : null;
+    if (!latest) return;
+
+    for (const rule of automationRules) {
+        if (!rule.enabled) continue;
+
+        try {
+            let val = latest[rule.sensor];
+            if (val === undefined || val === null) continue;
+            val = Number(val);
+
+            let triggered = false;
+            const threshold = Number(rule.value);
+
+            if (rule.operator === '>' && val > threshold) triggered = true;
+            if (rule.operator === '<' && val < threshold) triggered = true;
+            if (rule.operator === '=' && val === threshold) triggered = true;
+
+            if (triggered) {
+                const targetState = rule.action === 'on';
+                console.log(`[RULES-TICK] Triggered: ${rule.name}. Setting ${rule.deviceId} to ${rule.action}`);
+
+                await setDeviceState(rule.deviceId, targetState);
+            }
+        } catch (e) {
+            console.error(`[RULES-TICK] Error processing rule ${rule.name}:`, e.message);
+        }
+    }
+}
+
+// --- SENSOR SNAPSHOT FUNCTION ---
+async function saveSensorSnapshot() {
+    if (MODO_SIMULACION) return;
+
+    // Aggregate sensor data from tuyaDevices cache
+    let avgTemp = 0, avgHum = 0, avgSubstrate = 0;
+    let countTemp = 0, countHum = 0, countSubstrate = 0;
+
+    // Environment sensor
+    if (tuyaDevices['sensorAmbiente']) {
+        if (tuyaDevices['sensorAmbiente'].temperature) {
+            avgTemp = tuyaDevices['sensorAmbiente'].temperature;
+            countTemp = 1;
+        }
+        if (tuyaDevices['sensorAmbiente'].humidity) {
+            avgHum = tuyaDevices['sensorAmbiente'].humidity;
+            countHum = 1;
+        }
+    }
+
+    // Substrate sensors
+    ['sensorSustrato1', 'sensorSustrato2', 'sensorSustrato3'].forEach(key => {
+        if (tuyaDevices[key]?.humidity) {
+            avgSubstrate += tuyaDevices[key].humidity;
+            countSubstrate++;
+        }
+    });
+
+    const newRecord = {
+        timestamp: new Date().toISOString(),
+        temperature: countTemp > 0 ? parseFloat(avgTemp.toFixed(1)) : null,
+        humidity: countHum > 0 ? parseFloat((avgHum).toFixed(0)) : null,
+        substrateHumidity: countSubstrate > 0 ? parseFloat((avgSubstrate / countSubstrate).toFixed(0)) : null
+    };
+
+    // Only save if we have at least one valid reading
+    if (newRecord.temperature !== null || newRecord.humidity !== null) {
+        sensorHistory.push(newRecord);
+        if (sensorHistory.length > MAX_HISTORY_LENGTH) sensorHistory.shift();
+
+        await firestore.saveSensorRecord(newRecord);
+        console.log('[TICK] Sensor snapshot saved:', newRecord);
+    }
+}
+
 // --- SECURITY MIDDLEWARE ---
 // Protect all routes with API Key
 const API_KEY = process.env.API_KEY;
+
 
 app.use('/api', (req, res, next) => {
     // Exempt CORS preflight (OPTIONS)
@@ -1780,7 +1974,236 @@ app.post('/api/chat', async (req, res) => {
   }
 });
 
-// Endpoint de diagnÃ³stico (para verificar estado de dispositivos)
+// ============================================================================
+// ENHANCED AI ENDPOINTS WITH FUNCTION CALLING & STREAMING
+// ============================================================================
+
+const { AIService } = require('./services/ai-service');
+let aiService = null;
+
+// Initialize AI Service with dependencies
+function getAIService() {
+  const apiKey = appSettings.ai?.apiKey || process.env.GEMINI_API_KEY;
+  if (!apiKey) return null;
+
+  if (!aiService) {
+    aiService = new AIService(apiKey, {
+      deviceController: {
+        control: async (deviceId, action) => {
+          // Reuse existing control logic
+          const targetState = action === 'on';
+
+          // Try Tuya first
+          const config = DEVICE_MAP[deviceId];
+          if (config && config.platform === 'tuya' && tuyaConnected) {
+            const tuyaId = config.id;
+            const switchCode = config.switchCode || 'switch_1';
+            await tuyaClient.request({
+              method: 'POST',
+              path: `/v1.0/iot-03/devices/${tuyaId}/commands`,
+              body: { commands: [{ code: switchCode, value: targetState }] }
+            });
+            if (tuyaDevices[deviceId]) tuyaDevices[deviceId].on = targetState;
+            return { success: true, state: targetState };
+          }
+
+          // Try Xiaomi
+          if (config && config.platform === 'xiaomi' && xiaomiClients[deviceId]) {
+            const dev = xiaomiClients[deviceId];
+            if (dev.setPower) await dev.setPower(targetState);
+            return { success: true, state: targetState };
+          }
+
+          // Simulation
+          if (MODO_SIMULACION) {
+            deviceStates[deviceId] = targetState;
+            return { success: true, state: targetState };
+          }
+
+          throw new Error(`Device ${deviceId} not found`);
+        },
+        getStates: async () => {
+          const states = {};
+          for (const [key, dev] of Object.entries(tuyaDevices)) {
+            states[key] = dev.on;
+          }
+          return states;
+        }
+      },
+      sensorReader: {
+        getLatest: async () => {
+          // Reuse sensor logic
+          let temp = 0, hum = 0, vpd = 0, subHum = 0;
+
+          if (MODO_SIMULACION) {
+            temp = 24.5; hum = 60; subHum = 45; vpd = 1.1;
+          } else if (tuyaDevices.sensorAmbiente) {
+            temp = tuyaDevices.sensorAmbiente.temperature || 0;
+            hum = tuyaDevices.sensorAmbiente.humidity || 0;
+            if (temp > 0 && hum > 0) {
+              const svp = 0.61078 * Math.exp((17.27 * temp) / (temp + 237.3));
+              vpd = parseFloat((svp * (1 - hum / 100)).toFixed(2));
+            }
+
+            let subHums = [];
+            ['sensorSustrato1', 'sensorSustrato2', 'sensorSustrato3'].forEach(k => {
+              if (tuyaDevices[k]?.humidity !== undefined) subHums.push(tuyaDevices[k].humidity);
+            });
+            subHum = subHums.length > 0 ? subHums.reduce((a, b) => a + b, 0) / subHums.length : 0;
+          }
+
+          return { temperature: temp, humidity: hum, vpd, substrateHumidity: parseFloat(subHum.toFixed(1)) };
+        }
+      },
+      irrigationController: {
+        startIrrigation: async (durationSeconds, volumeMl) => {
+          console.log(`[AI] Starting irrigation: ${durationSeconds}s, ${volumeMl}ml`);
+          // Would trigger actual irrigation here
+          return { success: true, duration: durationSeconds, volume: volumeMl };
+        }
+      }
+    });
+  }
+
+  return aiService;
+}
+
+/**
+ * Enhanced Chat with Function Calling
+ * POST /api/chat/v2
+ */
+app.post('/api/chat/v2', async (req, res) => {
+  try {
+    const { message, sessionId = 'default' } = req.body;
+    const service = getAIService();
+
+    if (!service) {
+      return res.status(400).json({
+        error: 'API Key no configurada',
+        reply: '⚠️ No tengo una API Key configurada. Ve a Configuración para añadirla.'
+      });
+    }
+
+    // Gather context
+    const sensors = await service.sensorReader?.getLatest();
+    const devices = await service.deviceController?.getStates();
+    let lastIrrigation = null;
+    try {
+      lastIrrigation = await firestore.getLastIrrigationLog();
+    } catch (e) { /* ignore */ }
+
+    const result = await service.chat(message, sessionId, { sensors, devices, lastIrrigation });
+
+    res.json(result);
+
+  } catch (error) {
+    console.error('[AI V2] Error:', error);
+    res.status(500).json({ error: error.message, reply: 'Error procesando tu mensaje. ' + error.message });
+  }
+});
+
+/**
+ * Streaming Chat with SSE
+ * POST /api/chat/stream
+ */
+app.post('/api/chat/stream', async (req, res) => {
+  try {
+    const { message, sessionId = 'default' } = req.body;
+    const service = getAIService();
+
+    if (!service) {
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.write(`data: ${JSON.stringify({ error: 'API Key no configurada' })}\n\n`);
+      res.end();
+      return;
+    }
+
+    // SSE headers
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+
+    // Gather context
+    const sensors = await service.sensorReader?.getLatest();
+
+    // Stream response
+    for await (const chunk of service.chatStream(message, sessionId, { sensors })) {
+      if (chunk.done) {
+        res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+      } else {
+        res.write(`data: ${JSON.stringify({ text: chunk.text })}\n\n`);
+      }
+    }
+
+    res.end();
+
+  } catch (error) {
+    console.error('[AI Stream] Error:', error);
+    res.write(`data: ${JSON.stringify({ error: error.message })}\n\n`);
+    res.end();
+  }
+});
+
+/**
+ * Generate AI Insights
+ * GET /api/ai/insights
+ */
+app.get('/api/ai/insights', async (req, res) => {
+  try {
+    const service = getAIService();
+
+    if (!service) {
+      return res.json({ insights: [{ type: 'warning', message: 'API Key no configurada', action: null }] });
+    }
+
+    const sensors = await service.sensorReader?.getLatest();
+    const devices = await service.deviceController?.getStates();
+
+    const result = await service.generateInsights(sensors, devices);
+
+    res.json(result);
+
+  } catch (error) {
+    console.error('[AI Insights] Error:', error);
+    res.json({ insights: [{ type: 'warning', message: 'Error generando insights', action: null }] });
+  }
+});
+
+/**
+ * Analyze Image with Vision
+ * POST /api/ai/analyze-image
+ */
+const multer = require('multer');
+const aiUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+
+app.post('/api/ai/analyze-image', aiUpload.single('image'), async (req, res) => {
+  try {
+    const service = getAIService();
+
+    if (!service) {
+      return res.status(400).json({ error: 'API Key no configurada' });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ error: 'No se proporcionó imagen' });
+    }
+
+    const result = await service.analyzeImage(
+      req.file.buffer,
+      req.file.mimetype,
+      req.body.prompt
+    );
+
+    res.json(result);
+
+  } catch (error) {
+    console.error('[AI Vision] Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Endpoint de diagnóstico (para verificar estado de dispositivos)
 app.get('/api/devices/diagnostics', async (req, res) => {
   try {
     const diagnostics = {
@@ -1934,10 +2357,10 @@ app.get('/api/sensors/latest', async (req, res) => {
      }
 
      res.json({
-        temperature: temp,
-        humidity: hum,
-        vpd: vpd,
-        substrateHumidity: parseFloat(avgSubHum.toFixed(1)),
+        temperature: temp > 0 ? temp : null,
+        humidity: hum > 0 ? hum : null,
+        vpd: vpd > 0 ? vpd : null,
+        substrateHumidity: avgSubHum > 0 ? parseFloat(avgSubHum.toFixed(1)) : null,
         isEstimate: isEstimate,
         timestamp: new Date().toISOString()
      });
@@ -3563,13 +3986,13 @@ app.post('/api/settings/verify-2fa', async (req, res) => {
 
         const newRecord = {
             timestamp,
-            temperature: countTemp > 0 ? parseFloat((countTemp === 1 ? avgTemp : avgTemp / countTemp).toFixed(1)) : 0,
-            humidity: avgHum, // Now using Real Ambient Humidity
-            substrateHumidity: countSubstrate > 0 ? parseFloat((avgSubstrate / countSubstrate).toFixed(0)) : 0,
-            // Individual values for chart (Ensure they are numbers)
-            sh1: typeof sh1 === 'number' ? sh1 : 0,
-            sh2: typeof sh2 === 'number' ? sh2 : 0,
-            sh3: typeof sh3 === 'number' ? sh3 : 0
+            temperature: countTemp > 0 ? parseFloat((countTemp === 1 ? avgTemp : avgTemp / countTemp).toFixed(1)) : null,
+            humidity: avgHum > 0 ? avgHum : null, // Now using Real Ambient Humidity
+            substrateHumidity: countSubstrate > 0 ? parseFloat((avgSubstrate / countSubstrate).toFixed(0)) : null,
+            // Individual values for chart (Use null instead of 0 to prevent chart drops)
+            sh1: sh1 > 0 ? sh1 : null,
+            sh2: sh2 > 0 ? sh2 : null,
+            sh3: sh3 > 0 ? sh3 : null
         };
 
         sensorHistory.push(newRecord);
