@@ -8,10 +8,11 @@
  * - Intelligent context injection
  */
 
-const { GoogleGenerativeAI, FunctionDeclarationSchemaType } = require("@google/generative-ai");
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 // ============================================================================
 // FUNCTION DECLARATIONS FOR DEVICE CONTROL
+// Note: Using string types instead of FunctionDeclarationSchemaType for compatibility
 // ============================================================================
 
 const deviceFunctions = [
@@ -19,14 +20,14 @@ const deviceFunctions = [
     name: "toggle_device",
     description: "Enciende o apaga un dispositivo del cultivo como luces, humidificador, bomba de agua, extractores, etc.",
     parameters: {
-      type: FunctionDeclarationSchemaType.OBJECT,
+      type: "object",
       properties: {
         deviceId: {
-          type: FunctionDeclarationSchemaType.STRING,
+          type: "string",
           description: "ID del dispositivo. Ejemplos: luzPanel1, luzPanel2, luzPanel3, luzPanel4, humidifier, bombaControlador, extractorControlador, deshumidificador"
         },
         action: {
-          type: FunctionDeclarationSchemaType.STRING,
+          type: "string",
           enum: ["on", "off"],
           description: "Acción a realizar: 'on' para encender, 'off' para apagar"
         }
@@ -38,7 +39,7 @@ const deviceFunctions = [
     name: "get_sensor_data",
     description: "Obtiene los datos actuales de todos los sensores del cultivo incluyendo temperatura, humedad, VPD y humedad del sustrato.",
     parameters: {
-      type: FunctionDeclarationSchemaType.OBJECT,
+      type: "object",
       properties: {}
     }
   },
@@ -46,14 +47,14 @@ const deviceFunctions = [
     name: "set_irrigation",
     description: "Programa o ejecuta un riego con los parámetros especificados.",
     parameters: {
-      type: FunctionDeclarationSchemaType.OBJECT,
+      type: "object",
       properties: {
         durationSeconds: {
-          type: FunctionDeclarationSchemaType.NUMBER,
+          type: "number",
           description: "Duración del riego en segundos"
         },
         volumeMl: {
-          type: FunctionDeclarationSchemaType.NUMBER,
+          type: "number",
           description: "Volumen objetivo en mililitros (opcional, usa la bomba calibrada)"
         }
       },
@@ -64,7 +65,7 @@ const deviceFunctions = [
     name: "get_device_states",
     description: "Obtiene el estado actual (encendido/apagado) de todos los dispositivos conectados.",
     parameters: {
-      type: FunctionDeclarationSchemaType.OBJECT,
+      type: "object",
       properties: {}
     }
   },
@@ -72,10 +73,10 @@ const deviceFunctions = [
     name: "search_growing_info",
     description: "Busca información actualizada sobre cultivo, cannabis, hidroponía, nutrición de plantas, problemas comunes, etc.",
     parameters: {
-      type: FunctionDeclarationSchemaType.OBJECT,
+      type: "object",
       properties: {
         query: {
-          type: FunctionDeclarationSchemaType.STRING,
+          type: "string",
           description: "Consulta de búsqueda sobre cultivo"
         }
       },
