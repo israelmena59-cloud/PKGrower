@@ -3604,8 +3604,8 @@ setInterval(() => {
 }, 60000); // Check every 60 seconds
 
 // --- AI VISION (Gemini Pro Vision) ---
-const multer = require('multer');
-const upload = multer({ storage: multer.memoryStorage() });
+// Note: multer is already declared above (line ~2177), reusing 'aiUpload'
+const upload = aiUpload; // Reuse the multer instance from AI service
 
 app.post('/api/ai/analyze-image', upload.single('image'), async (req, res) => {
     try {
