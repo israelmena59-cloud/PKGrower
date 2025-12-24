@@ -4105,13 +4105,23 @@ setInterval(async () => {
     }
 }, 10000);
 
-// --- SERVE FRONTEND STATIC FILES ---
-app.use(express.static(path.join(__dirname, '../dist')));
+// --- SERVE FRONTEND STATIC FILES (Only in local development) ---
+const distDir = path.join(__dirname, '../dist');
+if (fs.existsSync(distDir)) {
+    console.log('[SERVER] Serving static files from dist folder');
+    app.use(express.static(distDir));
 
-// The "catchall" handler: matches any request not handled by API
-app.get(/(.*)/, (req, res) => {
-    res.sendFile(path.join(__dirname, '../dist/index.html'));
-});
+    // The "catchall" handler: matches any request not handled by API
+    app.get(/(.*)/, (req, res) => {
+        res.sendFile(path.join(distDir, 'index.html'));
+    });
+} else {
+    console.log('[SERVER] No dist folder found - frontend served from Firebase Hosting');
+    // Health check / root endpoint for Cloud Run
+    app.get('/', (req, res) => {
+        res.json({ status: 'ok', message: 'PKGrower API Backend', timestamp: new Date().toISOString() });
+    });
+}
 
 // --- GLOBAL ERROR HANDLER ---
 app.use((err, req, res, next) => {
