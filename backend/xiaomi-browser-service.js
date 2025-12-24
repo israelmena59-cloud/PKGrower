@@ -12,7 +12,7 @@ class XiaomiBrowserService {
 
         // Launch a new browser for this session
         const browser = await puppeteer.launch({
-            headless: process.env.NODE_ENV === 'production' || process.env.RENDER ? true : false,
+            headless: process.env.NODE_ENV === 'production' || process.env.K_SERVICE ? true : false,
             args: [
                 '--no-sandbox',
                 '--disable-setuid-sandbox',

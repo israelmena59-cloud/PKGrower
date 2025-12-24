@@ -1,76 +1,64 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Box, Typography, CardContent, CardHeader, Grid, TextField, Button, Avatar, List, ListItem, ListItemAvatar, ListItemText, Paper, Divider, CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions, Chip, IconButton } from '@mui/material';
-import { Bot, Send, Sparkles, CheckCircle, Key, AlertTriangle, Thermometer, Droplet, Wind, Droplets, Zap, RefreshCw, Lightbulb, Clock } from 'lucide-react';
-import { apiClient, API_BASE_URL, SensorData } from '../api/client';
-import { useCropSteering } from '../context/CropSteeringContext';
+import { Box, Typography, Card, CardContent, CardHeader, Grid, TextField, Button, Avatar, List, ListItem, ListItemAvatar, ListItemText, Paper, Divider, CircularProgress, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, Chip, Tooltip, Switch, FormControlLabel } from '@mui/material';
+import { Bot, Send, Sparkles, CheckCircle, Key, AlertTriangle, Zap, Cpu, Upload, Image as ImageIcon } from 'lucide-react';
+import { apiClient, API_BASE_URL } from '../api/client';
 
 interface Message {
     id: number;
     sender: 'user' | 'ai';
     text: string;
-    suggestions?: string[];
-    actions?: { label: string; action: string }[];
+    functionsExecuted?: Array<{ name: string; args: any; result: any }>;
+    isStreaming?: boolean;
 }
 
-// Quick suggestion chips
-const QUICK_SUGGESTIONS = [
-    { label: '¿Debo regar ahora?', icon: <Droplets size={14} /> },
-    { label: '¿Cómo está el VPD?', icon: <Wind size={14} /> },
-    { label: 'Analiza mis sensores', icon: <Sparkles size={14} /> },
-    { label: '¿Qué fase de riego?', icon: <Clock size={14} /> },
-];
+interface AIInsight {
+    type: 'success' | 'warning' | 'critical';
+    message: string;
+    action: string | null;
+}
 
 const AIAssistant: React.FC = () => {
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { currentStage, settings, daysVeg, daysFlower } = useCropSteering();
-
   const [messages, setMessages] = useState<Message[]>([
-      {
-        id: 1,
-        sender: 'ai',
-        text: '¡Hola! Soy tu Copiloto de Cultivo con Gemini AI. Puedo analizar tus sensores, darte recomendaciones de riego, y ayudarte a optimizar tu cultivo. ¿En qué te ayudo hoy?',
-        suggestions: ['Analiza mis sensores', '¿Debo regar ahora?', '¿Cómo optimizo el VPD?']
-      }
+      { id: 1, sender: 'ai', text: '🌱 Hola, soy tu Asistente de Cultivo con Gemini AI. Puedo controlar dispositivos, analizar sensores y darte recomendaciones. ¿En qué te ayudo?' }
   ]);
   const [input, setInput] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [insights, setInsights] = useState<AIInsight[]>([]);
+  const [loading, setLoading] = useState(false);
   const [thinking, setThinking] = useState(false);
-
-  // Live sensor data
-  const [sensorData, setSensorData] = useState<any>(null);
+  const [useStreaming, setUseStreaming] = useState(true);
+  const [useFunctionCalling, setUseFunctionCalling] = useState(true);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Settings/Key State
   const [openSettings, setOpenSettings] = useState(false);
   const [apiKey, setApiKey] = useState('');
   const [appSettings, setAppSettings] = useState<any>(null);
 
-  // Auto-scroll to bottom
+  // Image upload
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Scroll to bottom on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Load data on mount and poll
+  // Load settings and insights on mount
   useEffect(() => {
-      const fetchData = async () => {
+      const init = async () => {
+          setLoading(true);
           try {
-              const [settingsRes, sensorsRes] = await Promise.all([
-                  fetch(`${API_BASE_URL}/api/settings`),
-                  apiClient.getLatestSensors()
-              ]);
+              const settings = await apiClient.getSettings();
+              setAppSettings(settings);
+              if (settings.ai?.apiKey) setApiKey(settings.ai.apiKey);
 
-              const settingsData = await settingsRes.json();
-              setAppSettings(settingsData);
-              if (settingsData.ai?.apiKey) setApiKey(settingsData.ai.apiKey);
-              setSensorData(sensorsRes);
-
-          } catch (e) { console.error(e); }
-          finally { setLoading(false); }
+              // Load AI Insights
+              const insightsData = await apiClient.getAIInsights();
+              setInsights(insightsData.insights || []);
+          } catch (e) { console.error(e); } finally { setLoading(false); }
       };
-
-      fetchData();
-      const interval = setInterval(fetchData, 10000);
-      return () => clearInterval(interval);
+      init();
   }, []);
 
   const saveKey = async () => {
@@ -81,242 +69,176 @@ const AIAssistant: React.FC = () => {
               body: JSON.stringify({ ai: newAiSettings })
           });
           setOpenSettings(false);
-          setMessages(prev => [...prev, { id: Date.now(), sender: 'ai', text: '✓ API Key guardada. Gemini AI activado y listo para ayudarte.', suggestions: ['Analiza mis sensores', '¿Qué debo hacer ahora?'] }]);
+          setMessages(prev => [...prev, { id: Date.now(), sender: 'ai', text: '✅ API Key guardada. Ahora tengo acceso completo a Gemini con Function Calling.' }]);
       } catch (e) { console.error(e); }
   };
 
-  const handleSend = async (customMessage?: string) => {
-      const messageText = customMessage || input;
-      if (!messageText.trim()) return;
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setImageFile(e.target.files[0]);
+    }
+  };
 
-      const userMsg: Message = { id: Date.now(), sender: 'user', text: messageText };
+  const analyzeImage = async () => {
+    if (!imageFile) return;
+
+    setThinking(true);
+    setMessages(prev => [...prev, { id: Date.now(), sender: 'user', text: `📷 Analizando imagen: ${imageFile.name}` }]);
+
+    try {
+      const result = await apiClient.analyzeImage(imageFile);
+      setMessages(prev => [...prev, { id: Date.now()+1, sender: 'ai', text: result.analysis }]);
+      setImageFile(null);
+    } catch (e: any) {
+      setMessages(prev => [...prev, { id: Date.now()+1, sender: 'ai', text: '❌ Error analizando imagen: ' + e.message }]);
+    } finally {
+      setThinking(false);
+    }
+  };
+
+  const handleSend = async () => {
+      if (!input.trim()) return;
+
+      const userMsg: Message = { id: Date.now(), sender: 'user', text: input };
       setMessages(prev => [...prev, userMsg]);
       setInput('');
       setThinking(true);
 
       try {
-          const isFlower = !!settings.flipDate;
-          const context = {
-              phase: isFlower ? 'Floración' : 'Vegetativo',
-              dayCount: isFlower ? daysFlower : daysVeg,
-              lightStatus: 'active',
-              irrigationMode: appSettings?.irrigation?.mode,
-              vpd: sensorData?.vpd || 1.0,
-              temp: sensorData?.temperature || 24,
-              hum: sensorData?.humidity || 60,
-              vwc: sensorData?.substrateHumidity || 45,
-              stage: currentStage
+        if (useStreaming && !useFunctionCalling) {
+          // Streaming mode (no function calling)
+          const aiMsgId = Date.now() + 1;
+          setMessages(prev => [...prev, { id: aiMsgId, sender: 'ai', text: '', isStreaming: true }]);
+
+          let fullText = '';
+          for await (const chunk of apiClient.streamChatMessage(userMsg.text)) {
+            if (chunk.text) {
+              fullText += chunk.text;
+              setMessages(prev =>
+                prev.map(m => m.id === aiMsgId ? { ...m, text: fullText } : m)
+              );
+            }
+            if (chunk.done) {
+              setMessages(prev =>
+                prev.map(m => m.id === aiMsgId ? { ...m, isStreaming: false } : m)
+              );
+            }
+          }
+        } else if (useFunctionCalling) {
+          // Function Calling mode (V2 API)
+          const result = await apiClient.sendChatMessageV2(userMsg.text);
+
+          const aiMsg: Message = {
+            id: Date.now() + 1,
+            sender: 'ai',
+            text: result.reply,
+            functionsExecuted: result.functionsExecuted
           };
+          setMessages(prev => [...prev, aiMsg]);
 
-          const res = await fetch(`${API_BASE_URL}/api/chat`, {
-              method: 'POST', headers: {'Content-Type': 'application/json'},
-              body: JSON.stringify({ message: messageText, context })
-          });
-
-          const data = await res.json();
-          const replyText = data.reply || data.error || 'No se recibió respuesta del servidor.';
-
-          // Parse response for action suggestions
-          const aiResponse: Message = {
-              id: Date.now()+1,
-              sender: 'ai',
-              text: replyText,
-              suggestions: extractSuggestions(replyText)
-          };
-
-          setMessages(prev => [...prev, aiResponse]);
-
-      } catch (e) {
-          setMessages(prev => [...prev, { id: Date.now()+1, sender: 'ai', text: '❌ Error de conexión con el servidor. Verifica que el backend esté corriendo.' }]);
+          // Refresh insights after function execution
+          if (result.functionsExecuted && result.functionsExecuted.length > 0) {
+            const insightsData = await apiClient.getAIInsights();
+            setInsights(insightsData.insights || []);
+          }
+        } else {
+          // Legacy mode
+          const result = await apiClient.sendChatMessage(userMsg.text);
+          setMessages(prev => [...prev, { id: Date.now()+1, sender: 'ai', text: result.reply }]);
+        }
+      } catch (e: any) {
+          setMessages(prev => [...prev, { id: Date.now()+1, sender: 'ai', text: '❌ Error de conexión: ' + e.message }]);
       } finally {
           setThinking(false);
       }
   };
 
-  // Extract follow-up suggestions from AI response
-  const extractSuggestions = (text: string): string[] => {
-      const suggestions: string[] = [];
-      if (text.toLowerCase().includes('riego') || text.toLowerCase().includes('vwc')) {
-          suggestions.push('¿Cuánto debo regar?');
-      }
-      if (text.toLowerCase().includes('vpd') || text.toLowerCase().includes('humedad')) {
-          suggestions.push('¿Cómo ajusto el VPD?');
-      }
-      if (text.toLowerCase().includes('temperatura')) {
-          suggestions.push('¿Qué temperatura es óptima?');
-      }
-      if (suggestions.length === 0) {
-          suggestions.push('Dime más detalles', '¿Qué más puedo hacer?');
-      }
-      return suggestions.slice(0, 3);
-  };
-
-  // Sensor status indicator
-  const getSensorStatus = (value: number, type: 'vpd' | 'vwc' | 'temp' | 'hum') => {
-      const isFlower = !!settings.flipDate;
-      const ranges = {
-          vpd: isFlower ? [0.8, 1.4] : [0.4, 1.0],
-          vwc: isFlower ? [35, 55] : [40, 60],
-          temp: [20, 28],
-          hum: isFlower ? [40, 60] : [55, 75]
-      };
-      const [min, max] = ranges[type];
-      if (value >= min && value <= max) return 'green';
-      if (value >= min - (max - min) * 0.15 && value <= max + (max - min) * 0.15) return 'yellow';
-      return 'red';
+  const getInsightColor = (type: string) => {
+    switch (type) {
+      case 'critical': return '#ef4444';
+      case 'warning': return '#f59e0b';
+      case 'success': return '#22c55e';
+      default: return '#6b7280';
+    }
   };
 
   return (
     <Box sx={{ p: 2, height: '85vh', display: 'flex', flexDirection: 'column' }}>
-      {/* Header */}
-      <Box className="glass-panel" sx={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        mb: 3,
-        p: 2,
-        borderRadius: '16px'
-      }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 2 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Box sx={{
-            p: 1.5,
-            borderRadius: '12px',
-            background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.3), rgba(168, 85, 247, 0.2))',
-            color: '#a78bfa',
-            animation: thinking ? 'pulse 1s infinite' : 'none'
-          }}>
-            <Bot size={28} />
-          </Box>
-          <Box>
-            <Typography variant="h5" fontWeight="bold" sx={{
-              background: 'linear-gradient(90deg, #a78bfa, #c084fc)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent'
-            }}>
-              Copiloto Gemini AI
-            </Typography>
-            <Typography variant="caption" color="text.secondary">
-              {thinking ? 'Analizando...' : 'Listo para ayudarte'}
-            </Typography>
-          </Box>
+          <Typography variant="h4" fontWeight="bold">Asistente Gemini AI</Typography>
+          <Chip
+            icon={<Cpu size={14} />}
+            label="Function Calling"
+            size="small"
+            color={useFunctionCalling ? "primary" : "default"}
+            onClick={() => setUseFunctionCalling(!useFunctionCalling)}
+          />
         </Box>
         <Box sx={{ display: 'flex', gap: 1 }}>
-            <IconButton onClick={() => window.location.reload()} sx={{ color: 'text.secondary' }}>
-                <RefreshCw size={18} />
-            </IconButton>
-            <Button
-              variant="outlined"
-              size="small"
-              startIcon={<Key size={16} />}
-              onClick={() => setOpenSettings(true)}
-              sx={{
-                borderRadius: '12px',
-                borderColor: 'rgba(139, 92, 246, 0.5)',
-                color: '#a78bfa',
-                '&:hover': { borderColor: '#a78bfa', bgcolor: 'rgba(139, 92, 246, 0.1)' }
-              }}
-            >
-              API Key
-            </Button>
+          <FormControlLabel
+            control={<Switch checked={useStreaming && !useFunctionCalling} onChange={(e) => { setUseStreaming(e.target.checked); if(e.target.checked) setUseFunctionCalling(false); }} size="small" />}
+            label="Streaming"
+          />
+          <Button variant="outlined" startIcon={<Key size={16} />} onClick={() => setOpenSettings(true)} size="small">API Key</Button>
         </Box>
       </Box>
 
-      <Grid container spacing={3} sx={{ flex: 1, minHeight: 0 }}>
-          {/* LEFT: Live Sensors Panel */}
+      <Grid container spacing={3} sx={{ flex: 1, overflow: 'hidden' }}>
+          {/* LEFT: Live Insights */}
           <Grid item xs={12} md={4}>
               <Box className="glass-panel" sx={{
                   height: '100%',
-                  display: 'flex',
-                  flexDirection: 'column',
                   borderRadius: 'var(--squircle-radius)',
-                  overflow: 'hidden'
+                  bgcolor: 'var(--glass-bg)',
+                  backdropFilter: 'var(--backdrop-blur)',
+                  border: 'var(--glass-border)',
+                  boxShadow: 'var(--glass-shadow)',
+                  overflow: 'auto'
               }}>
                   <CardHeader
-                    title="Sensores en Vivo"
+                    title="AI Insights en Tiempo Real"
                     avatar={<Sparkles className="animate-pulse" color="#a5f3fc" />}
-                    titleTypographyProps={{ fontWeight: 'bold', color: 'white' }}
-                    action={
-                        <Chip
-                            label={settings.flipDate ? `Día ${daysFlower} Flor` : `Día ${daysVeg} Veg`}
-                            size="small"
-                            sx={{ bgcolor: settings.flipDate ? 'rgba(168, 85, 247, 0.2)' : 'rgba(34, 197, 94, 0.2)', color: settings.flipDate ? '#a855f7' : '#22c55e' }}
-                        />
-                    }
+                    titleTypographyProps={{ fontWeight: 'bold', color: 'white', fontSize: '1rem' }}
                   />
                   <Divider sx={{ borderColor: 'rgba(255,255,255,0.1)' }} />
-
-                  <CardContent sx={{ flex: 1 }}>
-                      {loading ? <CircularProgress sx={{ color: 'white' }} /> : sensorData ? (
-                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                              {/* VPD */}
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 1.5, borderRadius: '12px', bgcolor: 'rgba(255,255,255,0.03)' }}>
-                                  <Wind size={20} color="#8b5cf6" />
-                                  <Box sx={{ flex: 1 }}>
-                                      <Typography variant="caption" color="text.secondary">VPD</Typography>
-                                      <Typography variant="h6" fontWeight="bold">{sensorData.vpd?.toFixed(2) || '--'} kPa</Typography>
-                                  </Box>
-                                  <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: getSensorStatus(sensorData.vpd || 0, 'vpd') }} />
-                              </Box>
-
-                              {/* VWC */}
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 1.5, borderRadius: '12px', bgcolor: 'rgba(255,255,255,0.03)' }}>
-                                  <Droplets size={20} color="#f59e0b" />
-                                  <Box sx={{ flex: 1 }}>
-                                      <Typography variant="caption" color="text.secondary">VWC Sustrato</Typography>
-                                      <Typography variant="h6" fontWeight="bold">{sensorData.substrateHumidity?.toFixed(0) || '--'}%</Typography>
-                                  </Box>
-                                  <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: getSensorStatus(sensorData.substrateHumidity || 0, 'vwc') }} />
-                              </Box>
-
-                              {/* Temperature */}
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 1.5, borderRadius: '12px', bgcolor: 'rgba(255,255,255,0.03)' }}>
-                                  <Thermometer size={20} color="#ef4444" />
-                                  <Box sx={{ flex: 1 }}>
-                                      <Typography variant="caption" color="text.secondary">Temperatura</Typography>
-                                      <Typography variant="h6" fontWeight="bold">{sensorData.temperature?.toFixed(1) || '--'}°C</Typography>
-                                  </Box>
-                                  <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: getSensorStatus(sensorData.temperature || 0, 'temp') }} />
-                              </Box>
-
-                              {/* Humidity */}
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 1.5, borderRadius: '12px', bgcolor: 'rgba(255,255,255,0.03)' }}>
-                                  <Droplet size={20} color="#3b82f6" />
-                                  <Box sx={{ flex: 1 }}>
-                                      <Typography variant="caption" color="text.secondary">Humedad Aire</Typography>
-                                      <Typography variant="h6" fontWeight="bold">{sensorData.humidity?.toFixed(0) || '--'}%</Typography>
-                                  </Box>
-                                  <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: getSensorStatus(sensorData.humidity || 0, 'hum') }} />
-                              </Box>
-                          </Box>
-                      ) : (
-                          <Typography color="text.secondary">Sin datos de sensores</Typography>
+                  <CardContent>
+                      {loading ? <CircularProgress sx={{ color: 'white' }} size={24} /> : (
+                          <List dense>
+                              {insights.length === 0 && (
+                                <ListItem>
+                                  <ListItemText primary="Sin insights disponibles" primaryTypographyProps={{ color: 'rgba(255,255,255,0.5)' }} />
+                                </ListItem>
+                              )}
+                              {insights.map((item, idx) => (
+                                  <ListItem key={idx} sx={{ mb: 1 }}>
+                                      <ListItemAvatar>
+                                          <Avatar sx={{
+                                            bgcolor: `${getInsightColor(item.type)}20`,
+                                            color: getInsightColor(item.type),
+                                            width: 32, height: 32
+                                          }}>
+                                              {item.type === 'warning' || item.type === 'critical' ? <AlertTriangle size={16} /> : <CheckCircle size={16} />}
+                                          </Avatar>
+                                      </ListItemAvatar>
+                                      <Box>
+                                        <ListItemText
+                                          primary={item.message}
+                                          primaryTypographyProps={{ color: 'rgba(255,255,255,0.9)', fontSize: '0.85rem' }}
+                                        />
+                                        {item.action && (
+                                          <Chip
+                                            label={item.action}
+                                            size="small"
+                                            sx={{ mt: 0.5, fontSize: '0.7rem', bgcolor: 'rgba(255,255,255,0.1)', color: 'white' }}
+                                          />
+                                        )}
+                                      </Box>
+                                  </ListItem>
+                              ))}
+                          </List>
                       )}
                   </CardContent>
-
-                  {/* Quick Suggestions */}
-                  <Box sx={{ p: 2, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                      <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
-                          Preguntas rápidas:
-                      </Typography>
-                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                          {QUICK_SUGGESTIONS.map((q, i) => (
-                              <Chip
-                                  key={i}
-                                  label={q.label}
-                                  icon={q.icon}
-                                  size="small"
-                                  onClick={() => handleSend(q.label)}
-                                  sx={{
-                                      bgcolor: 'rgba(139, 92, 246, 0.1)',
-                                      color: '#a78bfa',
-                                      border: '1px solid rgba(139, 92, 246, 0.3)',
-                                      cursor: 'pointer',
-                                      '&:hover': { bgcolor: 'rgba(139, 92, 246, 0.2)' }
-                                  }}
-                              />
-                          ))}
-                      </Box>
-                  </Box>
               </Box>
           </Grid>
 
@@ -327,108 +249,98 @@ const AIAssistant: React.FC = () => {
                   display: 'flex',
                   flexDirection: 'column',
                   borderRadius: 'var(--squircle-radius)',
+                  bgcolor: 'var(--glass-bg)',
+                  backdropFilter: 'var(--backdrop-blur)',
+                  border: 'var(--glass-border)',
+                  boxShadow: 'var(--glass-shadow)',
                   overflow: 'hidden'
               }}>
-                  {/* Messages */}
                   <CardContent sx={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2, p: 3 }}>
                       {messages.map((msg) => (
                           <Box key={msg.id} sx={{ alignSelf: msg.sender === 'user' ? 'flex-end' : 'flex-start', maxWidth: '85%' }}>
                               <Paper sx={{
                                   p: 2,
-                                  bgcolor: msg.sender === 'user' ? '#2563eb' : 'rgba(255,255,255,0.08)',
+                                  bgcolor: msg.sender === 'user' ? '#2563eb' : 'rgba(255,255,255,0.1)',
                                   color: 'white',
                                   borderRadius: msg.sender === 'user' ? '20px 20px 0 20px' : '20px 20px 20px 0',
+                                  backdropFilter: 'blur(10)',
                                   boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
                               }}>
-                                  <Typography variant="body1" sx={{ lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{msg.text}</Typography>
-                              </Paper>
-
-                              {/* Follow-up suggestions for AI messages */}
-                              {msg.sender === 'ai' && msg.suggestions && (
-                                  <Box sx={{ display: 'flex', gap: 1, mt: 1.5, flexWrap: 'wrap' }}>
-                                      {msg.suggestions.map((s, i) => (
-                                          <Chip
-                                              key={i}
-                                              label={s}
-                                              size="small"
-                                              onClick={() => handleSend(s)}
-                                              sx={{
-                                                  bgcolor: 'rgba(59, 130, 246, 0.1)',
-                                                  color: '#60a5fa',
-                                                  border: '1px solid rgba(59, 130, 246, 0.3)',
-                                                  cursor: 'pointer',
-                                                  '&:hover': { bgcolor: 'rgba(59, 130, 246, 0.2)' }
-                                              }}
-                                          />
+                                  <Typography variant="body1" sx={{ lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                                    {msg.text}
+                                    {msg.isStreaming && <span className="animate-pulse">▊</span>}
+                                  </Typography>
+                                  {msg.functionsExecuted && msg.functionsExecuted.length > 0 && (
+                                    <Box sx={{ mt: 2, pt: 1, borderTop: '1px solid rgba(255,255,255,0.2)' }}>
+                                      <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)' }}>
+                                        <Zap size={12} style={{ marginRight: 4 }} />
+                                        Acciones ejecutadas:
+                                      </Typography>
+                                      {msg.functionsExecuted.map((func, i) => (
+                                        <Chip
+                                          key={i}
+                                          label={`${func.name}(${Object.values(func.args).join(', ')})`}
+                                          size="small"
+                                          sx={{ ml: 1, mt: 0.5, bgcolor: 'rgba(34, 197, 94, 0.3)', color: '#4ade80', fontSize: '0.7rem' }}
+                                        />
                                       ))}
-                                  </Box>
-                              )}
+                                    </Box>
+                                  )}
+                              </Paper>
                           </Box>
                       ))}
-
-                      {thinking && (
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                              <CircularProgress size={16} sx={{ color: '#a78bfa' }} />
-                              <Typography variant="caption" sx={{ fontStyle: 'italic', color: 'rgba(255,255,255,0.5)' }}>
-                                  Gemini está analizando...
-                              </Typography>
-                          </Box>
-                      )}
+                      {thinking && <Typography variant="caption" sx={{ fontStyle: 'italic', color: 'rgba(255,255,255,0.5)', ml: 2 }}>Gemini está pensando...</Typography>}
                       <div ref={messagesEndRef} />
                   </CardContent>
-
                   <Divider sx={{ borderColor: 'rgba(255,255,255,0.1)' }} />
 
-                  {/* Input */}
+                  {/* Image Preview */}
+                  {imageFile && (
+                    <Box sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2, bgcolor: 'rgba(0,0,0,0.2)' }}>
+                      <ImageIcon size={20} color="#a5f3fc" />
+                      <Typography variant="body2" sx={{ color: 'white', flex: 1 }}>{imageFile.name}</Typography>
+                      <Button size="small" variant="contained" onClick={analyzeImage} disabled={thinking}>Analizar</Button>
+                      <Button size="small" onClick={() => setImageFile(null)}>✕</Button>
+                    </Box>
+                  )}
+
                   <Box sx={{ p: 2, display: 'flex', gap: 1 }}>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        ref={fileInputRef}
+                        style={{ display: 'none' }}
+                        onChange={handleImageUpload}
+                      />
+                      <Tooltip title="Subir imagen para análisis">
+                        <IconButton onClick={() => fileInputRef.current?.click()} sx={{ color: 'white' }}>
+                          <Upload size={20} />
+                        </IconButton>
+                      </Tooltip>
                       <TextField
                         fullWidth
-                        placeholder="Pregúntale a Gemini sobre tu cultivo..."
+                        placeholder={useFunctionCalling ? "Ej: Enciende la luz del panel 1..." : "Pregúntale a Gemini..."}
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
                         onKeyPress={(e) => e.key === 'Enter' && handleSend()}
                         disabled={thinking}
                         variant="outlined"
-                        sx={{
-                            input: { color: 'white' },
-                            '& .MuiOutlinedInput-root': {
-                                bgcolor: 'rgba(0,0,0,0.2)',
-                                borderRadius: '12px',
-                                '& fieldset': { borderColor: 'rgba(255,255,255,0.1)' },
-                                '&:hover fieldset': { borderColor: 'rgba(255,255,255,0.3)' },
-                                '&.Mui-focused fieldset': { borderColor: '#8b5cf6' }
-                            }
-                        }}
+                        sx={{ input: { color: 'white' }, '& .MuiOutlinedInput-root': { bgcolor: 'rgba(0,0,0,0.2)', '& fieldset': { borderColor: 'rgba(255,255,255,0.1)' }, '&:hover fieldset': { borderColor: 'rgba(255,255,255,0.3)' } } }}
                       />
-                      <Button
-                        variant="contained"
-                        onClick={() => handleSend()}
-                        disabled={thinking || !input.trim()}
-                        endIcon={<Send size={18} />}
-                        sx={{
-                            borderRadius: '12px',
-                            bgcolor: '#8b5cf6',
-                            '&:hover': { bgcolor: '#7c3aed' },
-                            minWidth: 120
-                        }}
-                      >
-                        Enviar
-                      </Button>
+                      <Button variant="contained" onClick={handleSend} disabled={thinking} endIcon={<Send size={16} />} sx={{ borderRadius: 2, bgcolor: '#2563eb' }}>Enviar</Button>
                   </Box>
               </Box>
           </Grid>
       </Grid>
 
       {/* API Key Modal */}
-      <Dialog open={openSettings} onClose={() => setOpenSettings(false)} PaperProps={{ sx: { borderRadius: '16px', bgcolor: '#1e293b' } }}>
-          <DialogTitle sx={{ color: 'white' }}>Configurar Gemini AI</DialogTitle>
+      <Dialog open={openSettings} onClose={() => setOpenSettings(false)}>
+          <DialogTitle>Configurar Gemini AI</DialogTitle>
           <DialogContent>
-              <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
-                  Ingresa tu API Key de Google Gemini para habilitar la inteligencia artificial.
+              <Typography variant="body2" sx={{ mb: 2 }}>
+                  Ingresa tu API Key de Google Gemini para habilitar Function Calling y análisis de imágenes.
                   <br />
-                  <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" style={{ color: '#8b5cf6' }}>
-                      → Obtener API Key gratis
-                  </a>
+                  <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer">Obtener API Key</a>
               </Typography>
               <TextField
                 label="Gemini API Key"
@@ -436,16 +348,11 @@ const AIAssistant: React.FC = () => {
                 type="password"
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
-                sx={{
-                    input: { color: 'white' },
-                    '& .MuiOutlinedInput-root': { '& fieldset': { borderColor: 'rgba(255,255,255,0.2)' } },
-                    '& .MuiInputLabel-root': { color: 'text.secondary' }
-                }}
               />
           </DialogContent>
-          <DialogActions sx={{ p: 2 }}>
-              <Button onClick={() => setOpenSettings(false)} sx={{ color: 'text.secondary' }}>Cancelar</Button>
-              <Button onClick={saveKey} variant="contained" sx={{ bgcolor: '#8b5cf6' }}>Guardar</Button>
+          <DialogActions>
+              <Button onClick={() => setOpenSettings(false)}>Cancelar</Button>
+              <Button onClick={saveKey} variant="contained">Guardar</Button>
           </DialogActions>
       </Dialog>
     </Box>

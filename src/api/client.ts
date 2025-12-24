@@ -1,13 +1,9 @@
 // src/api/client.ts
 // Centralized API client for backend calls
 
-// API Base URL Configuration:
-// - Development: localhost:3000
-// - Production: Google Cloud VM
-// - Override: Set VITE_API_URL environment variable
-const GCP_BACKEND = 'http://34.67.217.13:3000';
-export const API_BASE_URL = (import.meta as any).env.VITE_API_URL ||
-  ((import.meta as any).env.PROD ? GCP_BACKEND : 'http://localhost:3000');
+// Read API base URL from environment (Vite/Firebase) or use default (Localhost)
+// NOTE: We prefer VITE_API_URL to allow switching between Local and Cloud Run.
+export const API_BASE_URL = (import.meta as any).env.VITE_API_URL || ((import.meta as any).env.PROD ? '' : 'http://localhost:3000');
 
 export interface SensorData {
   timestamp: string
@@ -89,18 +85,14 @@ class APIClient {
     }
 
     const contentType = response.headers.get('content-type');
-    if (contentType && contentType.includes('application/json')) {
-        return response.json();
+    if (!contentType || !contentType.includes('application/json')) {
+        // If we get HTML (e.g. 404 page or index.html fallback), throw generic error
+        const text = await response.text();
+        console.warn(`API Expected JSON but got ${contentType}:`, text.substring(0, 100)); // Log for debug
+        throw new Error(`API returned non-JSON response (${response.status})`);
     }
 
-    // If not JSON but OK, return success (prevents crashes on simple OK responses)
-    if (response.ok) {
-        return { success: true, message: 'Operation completed (No JSON response)' } as any;
-    }
-
-    const text = await response.text();
-    console.warn(`API Expected JSON but got ${contentType}:`, text.substring(0, 100));
-    throw new Error(`API returned non-JSON response (${response.status})`);
+    return response.json();
   }
 
   // Sensors
@@ -205,6 +197,91 @@ class APIClient {
     })
   }
 
+  // Enhanced AI Chat with Function Calling
+  async sendChatMessageV2(
+    message: string,
+    sessionId: string = 'default'
+  ): Promise<{ reply: string; functionsExecuted?: Array<{ name: string; args: any; result: any }> }> {
+    return this.request('/api/chat/v2', {
+      method: 'POST',
+      body: JSON.stringify({ message, sessionId }),
+    })
+  }
+
+  // Streaming Chat with SSE
+  async *streamChatMessage(
+    message: string,
+    sessionId: string = 'default'
+  ): AsyncGenerator<{ text?: string; done?: boolean; error?: string }> {
+    const response = await fetch(`${this.baseUrl}/api/chat/stream`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_API_KEY) || '3ea88c89-43e8-495b-be3c-56b541a8cc49',
+      },
+      body: JSON.stringify({ message, sessionId }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Stream error: ${response.status}`);
+    }
+
+    const reader = response.body?.getReader();
+    if (!reader) throw new Error('No reader available');
+
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          try {
+            const data = JSON.parse(line.slice(6));
+            yield data;
+            if (data.done) return;
+          } catch (e) {
+            // Skip invalid JSON
+          }
+        }
+      }
+    }
+  }
+
+  // Get AI Insights
+  async getAIInsights(): Promise<{ insights: Array<{ type: 'success' | 'warning' | 'critical'; message: string; action: string | null }> }> {
+    return this.request('/api/ai/insights', {
+      method: 'GET',
+    })
+  }
+
+  // Analyze Image with Vision
+  async analyzeImage(imageFile: File, prompt?: string): Promise<{ analysis: string; timestamp: string }> {
+    const formData = new FormData();
+    formData.append('image', imageFile);
+    if (prompt) formData.append('prompt', prompt);
+
+    const response = await fetch(`${this.baseUrl}/api/ai/analyze-image`, {
+      method: 'POST',
+      headers: {
+        'x-api-key': (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_API_KEY) || '3ea88c89-43e8-495b-be3c-56b541a8cc49',
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status} ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
   // Calendar Events
   async getCalendarEvents(): Promise<any[]> {
     return this.request('/api/calendar/events', {
@@ -227,7 +304,7 @@ class APIClient {
 
   // Devices - Get all
   async getAllDevices(): Promise<any[]> {
-    return this.request('/api/devices/list', {
+    return this.request('/api/devices/all', {
       method: 'GET',
     })
   }
@@ -293,96 +370,7 @@ class APIClient {
       body: JSON.stringify(data)
     });
   }
-
-  // ==========================================
-  // CROP STEERING API
-  // ==========================================
-
-  async getCropSteeringStatus(): Promise<{
-    success: boolean;
-    enabled: boolean;
-    direction: string;
-    phase: string;
-    phaseMessage: string;
-    isInWindow: boolean;
-    lightsOn: boolean;
-    currentVWC: number;
-    targetVWC: number;
-    action: string;
-    reasoning: string;
-    nextAction: string;
-    irrigationCountToday: number;
-    lastIrrigationTime: string | null;
-    timing: {
-      minutesSinceLightsOn: number | null;
-      minutesUntilP1: number | null;
-      minutesUntilP2End: number | null;
-    };
-  }> {
-    return this.request('/api/crop-steering/status');
-  }
-
-  async getCropSteeringSchedule(): Promise<{
-    success: boolean;
-    direction: string;
-    lightsOn: string;
-    lightsOff: string;
-    dayLengthHours: number;
-    p1Start: string;
-    p2End: string;
-    irrigationWindowHours: number;
-    profile: {
-      eventSize: string;
-      maxEvents: number;
-      minInterval: string;
-      drybackP3: string;
-      vpdTarget: string;
-    };
-  }> {
-    return this.request('/api/crop-steering/schedule');
-  }
-
-  async getCropSteeringProfiles(): Promise<{
-    success: boolean;
-    profiles: Record<string, any>;
-  }> {
-    return this.request('/api/crop-steering/profiles');
-  }
-
-  async setCropSteeringDirection(direction: 'vegetative' | 'generative' | 'balanced' | 'ripening'): Promise<{
-    success: boolean;
-    direction: string;
-  }> {
-    return this.request('/api/crop-steering/direction', {
-      method: 'POST',
-      body: JSON.stringify({ direction })
-    });
-  }
-
-  async toggleCropSteeringAutomation(enabled: boolean): Promise<{
-    success: boolean;
-    enabled: boolean;
-  }> {
-    return this.request('/api/crop-steering/toggle', {
-      method: 'POST',
-      body: JSON.stringify({ enabled })
-    });
-  }
-
-  async triggerManualIrrigation(eventSize?: number, force?: boolean): Promise<{
-    success: boolean;
-    message: string;
-    eventSize: number;
-    volumeMl: number;
-    durationMs: number;
-  }> {
-    return this.request('/api/crop-steering/manual-irrigation', {
-      method: 'POST',
-      body: JSON.stringify({ eventSize, force })
-    });
-  }
 }
 
 // Export singleton instance
 export const apiClient = new APIClient(API_BASE_URL)
-

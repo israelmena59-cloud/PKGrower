@@ -1,7 +1,9 @@
-# Use official Node.js LTS image
+# PKGrower Backend - Cloud Run Dockerfile
+# Optimized for Node.js with Puppeteer support
+
 FROM node:20-slim
 
-# Install Chrome dependencies for Puppeteer
+# Install Chromium and dependencies for Puppeteer
 RUN apt-get update && apt-get install -y \
     chromium \
     fonts-liberation \
@@ -25,28 +27,25 @@ RUN apt-get update && apt-get install -y \
     --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
-# Set Puppeteer to skip downloading Chrome (we use system Chromium)
+# Puppeteer config - use system Chromium
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
-# Create app directory
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
+# Copy backend package files
+COPY backend/package*.json ./
 
-# Install dependencies
-RUN npm ci --only=production
+# Install production dependencies only
+RUN npm ci --omit=dev
 
-# Copy app source
-COPY . .
+# Copy backend source code
+COPY backend/ .
 
-# Expose port
-EXPOSE 8080
-
-# Set environment variable for Cloud Run
+# Cloud Run uses PORT env variable
 ENV PORT=8080
 ENV NODE_ENV=production
 
-# Start the server
+EXPOSE 8080
+
 CMD ["node", "index.js"]

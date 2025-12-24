@@ -1,0 +1,19 @@
+# Ignore frontend and unnecessary files
+node_modules
+npm-debug.log
+.env
+.env.local
+.env.production
+*.log
+.git
+.gitignore
+.firebase
+dist
+src
+public
+*.md
+*.ps1
+*.py
+*.txt
+components
+docs

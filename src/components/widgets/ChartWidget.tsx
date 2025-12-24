@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Box, Typography, IconButton, Menu, MenuItem, ListItemIcon, ListItemText, Divider } from '@mui/material';
 import { ResponsiveContainer, AreaChart, Area, LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, ReferenceArea, Legend } from 'recharts';
 import { Settings, TrendingUp, Activity, Sprout, Flower, Leaf } from 'lucide-react';
@@ -82,62 +82,25 @@ export const ChartWidget: React.FC<ChartWidgetProps & { lightSchedule?: { on: st
     const [growthStage, setGrowthStage] = useState<GrowthStage>('none');
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
-    // Process and validate data - more flexible filtering
-    const processedData = React.useMemo(() => {
-        if (!data || !Array.isArray(data)) {
-            console.log('[ChartWidget] No data or invalid data:', data);
-            return [];
-        }
-        // Accept entries with any sensor values
-        const valid = data.filter(d => {
-            if (!d) return false;
-            const hasSensorValue = typeof d.temperature === 'number' ||
-                                   typeof d.humidity === 'number' ||
-                                   typeof d.vpd === 'number' ||
-                                   typeof d.substrateHumidity === 'number' ||
-                                   typeof d.value === 'number';
-            return hasSensorValue;
-        }).map((d, idx) => {
-            // Format time for display on X axis
-            let displayTime = `#${idx}`;
-            if (d.time) displayTime = d.time;
-            else if (d.timeStr) displayTime = d.timeStr;
-            else if (d.timestamp) {
-                try {
-                    const date = new Date(d.timestamp);
-                    displayTime = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                } catch { displayTime = String(d.timestamp); }
-            }
-
-            // Robust data parsing with VPD calculation fallback
-            const temp = Number(d.temperature);
-            const hum = Number(d.humidity);
-            let vpd = Number(d.vpd);
-
-            // Calculate VPD if missing/invalid but Temp/Hum are available
-            if ((isNaN(vpd) || vpd <= 0) && !isNaN(temp) && !isNaN(hum)) {
-                const svp = 0.61078 * Math.exp((17.27 * temp) / (temp + 237.3));
-                vpd = svp * (1 - hum / 100);
-            }
-
-            return {
-                ...d,
-                time: displayTime, // For X axis display
-                timestamp: d.timestamp || new Date().toISOString(), // Preserve for night zones
-                temperature: !isNaN(temp) ? temp : null,
-                humidity: !isNaN(hum) ? hum : null,
-                vpd: !isNaN(vpd) ? vpd : null,
-                substrateHumidity: typeof d.substrateHumidity === 'number' ? d.substrateHumidity : null
-            };
-        });
-        console.log('[ChartWidget] Processed data count:', valid.length, 'from', data.length, 'sample:', valid[0]);
-        return valid;
-    }, [data]);
-
     const handleOpenSettings = (event: React.MouseEvent<HTMLElement>) => setAnchorEl(event.currentTarget);
     const handleCloseSettings = () => setAnchorEl(null);
     const handleChartTypeChange = (type: ChartType) => { setChartType(type); handleCloseSettings(); };
     const handleStageChange = (stage: GrowthStage) => { setGrowthStage(stage); handleCloseSettings(); };
+
+    // Sanitize data: convert 0 values to null to prevent chart drops to zero
+    const sanitizedData = useMemo(() => {
+        if (!data || !Array.isArray(data)) return [];
+        return data.map((d: any) => ({
+            ...d,
+            temperature: d.temperature > 0 ? d.temperature : null,
+            humidity: d.humidity > 0 ? d.humidity : null,
+            vpd: d.vpd > 0 ? d.vpd : null,
+            substrateHumidity: d.substrateHumidity > 0 ? d.substrateHumidity : null,
+            sh1: d.sh1 > 0 ? d.sh1 : null,
+            sh2: d.sh2 > 0 ? d.sh2 : null,
+            sh3: d.sh3 > 0 ? d.sh3 : null,
+        }));
+    }, [data]);
 
     const renderReferenceZones = () => {
         if (growthStage === 'none') return null;
@@ -165,7 +128,7 @@ export const ChartWidget: React.FC<ChartWidgetProps & { lightSchedule?: { on: st
         );
     };
 
-    const renderLightZones = () => {
+    const renderNightZones = () => {
         if (!data || !Array.isArray(data) || data.length === 0) return null;
         if (!lightSchedule || !lightSchedule.on || !lightSchedule.off) return null;
 
@@ -177,26 +140,28 @@ export const ChartWidget: React.FC<ChartWidgetProps & { lightSchedule?: { on: st
             const onMinutes = onH * 60 + onM;
             const offMinutes = offH * 60 + offM;
 
-            const isDay = (dateStr: string | undefined) => {
+            const isNight = (dateStr: string | undefined) => {
                 if (!dateStr) return false;
                 const d = new Date(dateStr);
                 if (isNaN(d.getTime())) return false;
                 const minutes = d.getHours() * 60 + d.getMinutes();
                 if (onMinutes < offMinutes) {
-                    return minutes >= onMinutes && minutes < offMinutes;
+                    return minutes < onMinutes || minutes >= offMinutes;
                 } else {
-                    return minutes >= onMinutes || minutes < offMinutes;
+                    return minutes >= offMinutes && minutes < onMinutes;
                 }
             };
 
-            const dayBlocks: { start: string, end: string }[] = [];
+            const nightBlocks: { start: string, end: string }[] = [];
             let currentBlock: { start: string, end: string } | null = null;
 
             for (let i = 0; i < data.length; i++) {
                 const point = data[i];
                 if (!point || !point.timestamp) continue;
 
-                if (isDay(point.timestamp)) {
+                const night = isNight(point.timestamp);
+
+                if (night) {
                     if (!currentBlock) {
                         currentBlock = { start: point.timestamp, end: point.timestamp };
                     } else {
@@ -204,26 +169,26 @@ export const ChartWidget: React.FC<ChartWidgetProps & { lightSchedule?: { on: st
                     }
                 } else {
                     if (currentBlock) {
-                        dayBlocks.push(currentBlock);
+                        nightBlocks.push(currentBlock);
                         currentBlock = null;
                     }
                 }
             }
-            if (currentBlock) dayBlocks.push(currentBlock);
+            if (currentBlock) nightBlocks.push(currentBlock);
 
-            return dayBlocks.map((block, i) => (
+            return nightBlocks.map((block, i) => (
                  <ReferenceArea
-                    key={`day-${i}`}
+                    key={`night-${i}`}
                     x1={block.start}
                     x2={block.end}
-                    fill="#F59E0B"
+                    fill="#5856D6"
                     fillOpacity={0.15}
                     ifOverflow="extendDomain"
-                    strokeOpacity={0}
+                    style={{ pointerEvents: 'none' }}
                 />
             ));
         } catch (e) {
-            console.warn("Error rendering light zones:", e);
+            console.warn("Error rendering night zones:", e);
             return null;
         }
     };
@@ -274,13 +239,13 @@ export const ChartWidget: React.FC<ChartWidgetProps & { lightSchedule?: { on: st
 
     const renderChart = () => {
         const commonProps = {
-            data: processedData,
+            data: sanitizedData,
             margin: { top: 20, right: 10, left: 0, bottom: 5 }
         };
 
-        const grid = <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.15} stroke={isDark ? '#888' : '#bbb'} />;
-        const xaxis = <XAxis dataKey="time" tick={{ fontSize: 10, fill: isDark ? '#888' : '#666' }} tickLine={false} axisLine={false} interval="preserveStartEnd" minTickGap={30} />;
-        const lightZones = renderLightZones();
+        const grid = <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.1} />;
+        const xaxis = <XAxis dataKey="timestamp" hide />;
+        const nightZones = renderNightZones();
 
         // Multi-series mode: show temp, humidity, VPD together
         if (multiSeries) {
@@ -301,26 +266,10 @@ export const ChartWidget: React.FC<ChartWidgetProps & { lightSchedule?: { on: st
                         </linearGradient>
                     </defs>
                     {grid}
-                    {lightZones}
+                    {nightZones}
                     {xaxis}
-                    <YAxis
-                        yAxisId="left"
-                        orientation="left"
-                        domain={[0, 100]} // Fixed range for Temp/Hum
-                        tick={{ fontSize: 10, fill: isDark ? '#888' : '#666' }}
-                        tickLine={false}
-                        axisLine={false}
-                        width={30}
-                    />
-                    <YAxis
-                        yAxisId="right"
-                        orientation="right"
-                        domain={[0, 3]} // Fixed range for VPD
-                        tick={{ fontSize: 10, fill: SERIES_COLORS.vpd }}
-                        tickLine={false}
-                        axisLine={false}
-                        width={30}
-                    />
+                    <YAxis yAxisId="left" domain={['auto', 'auto']} hide />
+                    <YAxis yAxisId="right" orientation="right" domain={['auto', 'auto']} hide />
                     <Tooltip content={<MultiSeriesTooltip />} />
                     <Legend
                         verticalAlign="top"
@@ -394,7 +343,7 @@ export const ChartWidget: React.FC<ChartWidgetProps & { lightSchedule?: { on: st
                 return (
                     <LineChart {...commonProps}>
                         {grid}
-                        {lightZones}
+                        {nightZones}
                         {refZones}
                         {xaxis}
                         {yaxis}
@@ -430,42 +379,11 @@ export const ChartWidget: React.FC<ChartWidgetProps & { lightSchedule?: { on: st
         }
     };
 
-    if (!processedData || processedData.length === 0) {
+    if (!sanitizedData || sanitizedData.length === 0) {
         return (
-            <Box sx={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                height: '100%',
-                flexDirection: 'column',
-                gap: 2,
-                p: 3
-            }}>
-                {/* Shimmer placeholder */}
-                <Box className="loading-shimmer" sx={{
-                    width: '100%',
-                    height: 120,
-                    borderRadius: '16px',
-                    opacity: 0.5
-                }} />
-                <Box sx={{ textAlign: 'center' }}>
-                    <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500 }}>
-                        Sin datos disponibles
-                    </Typography>
-                    <Typography variant="caption" sx={{ color: 'text.disabled' }}>
-                        ({timeRange})
-                    </Typography>
-                </Box>
-                <IconButton
-                    size="small"
-                    onClick={handleOpenSettings}
-                    sx={{
-                        opacity: 0.6,
-                        '&:hover': { opacity: 1, bgcolor: 'rgba(255,255,255,0.1)' }
-                    }}
-                >
-                    <Settings size={16} />
-                </IconButton>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'text.disabled', flexDirection: 'column', gap: 1 }}>
+                <Typography variant="body2">No Data ({timeRange})</Typography>
+                <IconButton size="small" onClick={handleOpenSettings}><Settings size={16} /></IconButton>
             </Box>
         );
     }
@@ -473,70 +391,16 @@ export const ChartWidget: React.FC<ChartWidgetProps & { lightSchedule?: { on: st
     return (
         <Box sx={{ width: '100%', height: '100%', position: 'relative' }}>
              {/* Header with title and Stage Label */}
-            {/* Header with title and Value */}
-            <Box sx={{ position: 'absolute', top: 10, left: 16, right: 10, zIndex: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', pointerEvents: 'none' }}>
-                <Box>
-                    {chartTitle && (
-                        <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                            {chartTitle}
-                        </Typography>
-                    )}
-                    {/* Live Value Display */}
-                    {!multiSeries && processedData.length > 0 && (
-                        <Typography variant="h4" className="ai-gradient-text" sx={{ fontWeight: 700, lineHeight: 1.2, mt: 0.5, fontSize: '1.75rem' }}>
-                            {(() => {
-                                const last = processedData[processedData.length - 1];
-                                const val = last ? last[dataKey] : null;
-                                return typeof val === 'number' ? val.toFixed(1) : '--';
-                            })()}
-                            <Typography component="span" variant="caption" sx={{ fontSize: '0.9rem', color: 'text.secondary', ml: 0.5, fontWeight: 500 }}>
-                                {unit}
-                            </Typography>
-                        </Typography>
-                    )}
-
-                    {/* Multi-series Live Summary - Horizontal */}
-                    {multiSeries && processedData.length > 0 && (() => {
-                         const last = processedData[processedData.length - 1];
-                         if (!last) return null;
-                         return (
-                             <Box sx={{ mt: 0.5, display: 'flex', gap: 2 }} >
-                                {typeof last.temperature === 'number' && (
-                                    <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                            <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: SERIES_COLORS.temperature }} />
-                                            <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.65rem' }}>Temp</Typography>
-                                        </Box>
-                                        <Typography variant="body2" fontWeight="bold" sx={{ color: 'text.primary', lineHeight: 1 }}>{last.temperature.toFixed(1)}°</Typography>
-                                    </Box>
-                                )}
-                                {typeof last.humidity === 'number' && (
-                                    <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                            <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: SERIES_COLORS.humidity }} />
-                                            <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.65rem' }}>Hum</Typography>
-                                        </Box>
-                                        <Typography variant="body2" fontWeight="bold" sx={{ color: 'text.primary', lineHeight: 1 }}>{last.humidity.toFixed(0)}%</Typography>
-                                    </Box>
-                                )}
-                                {typeof last.vpd === 'number' && (
-                                    <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                            <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: SERIES_COLORS.vpd }} />
-                                            <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.65rem' }}>VPD</Typography>
-                                        </Box>
-                                        <Typography variant="body2" fontWeight="bold" sx={{ color: 'text.primary', lineHeight: 1 }}>{last.vpd.toFixed(2)}</Typography>
-                                    </Box>
-                                )}
-                             </Box>
-                         );
-                    })()}
-                </Box>
-
-                <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', pointerEvents: 'auto' }}>
+            <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center', px: 1 }}>
+                {chartTitle && (
+                    <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600, fontSize: '0.7rem' }}>
+                        {chartTitle}
+                    </Typography>
+                )}
+                <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
                     {growthStage !== 'none' && (
-                         <Box sx={{ bgcolor: 'rgba(52, 199, 89, 0.1)', px: 1, py: 0.3, borderRadius: '6px', backdropFilter: 'blur(4px)', border: '1px solid rgba(52, 199, 89, 0.2)' }}>
-                            <Typography variant="caption" sx={{ color: '#34C759', fontWeight: 700, fontSize: '0.65rem' }}>
+                         <Box sx={{ bgcolor: 'rgba(52, 199, 89, 0.15)', px: 1, py: 0.3, borderRadius: '8px', display: 'flex', alignItems: 'center', backdropFilter: 'blur(4px)' }}>
+                            <Typography variant="caption" sx={{ color: '#34C759', fontWeight: 700, fontSize: '0.6rem' }}>
                                 {STAGE_LABELS[growthStage]}
                             </Typography>
                          </Box>
@@ -547,8 +411,8 @@ export const ChartWidget: React.FC<ChartWidgetProps & { lightSchedule?: { on: st
                 </Box>
             </Box>
 
-            <div style={{ width: '100%', height: '100%', minHeight: 200, minWidth: 200, position: 'relative', paddingTop: 40 }}>
-                <ResponsiveContainer width="100%" height="100%" minWidth={200} minHeight={160}>
+            <div style={{ width: '100%', height: '100%', minHeight: 200, minWidth: 200, position: 'relative' }}>
+                <ResponsiveContainer width="100%" height="100%" minWidth={200} minHeight={200}>
                     {renderChart()}
                 </ResponsiveContainer>
             </div>

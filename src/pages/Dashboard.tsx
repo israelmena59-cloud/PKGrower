@@ -8,12 +8,11 @@ import RulesModal from '../components/dashboard/RulesModal';
 import HistoryChart from '../components/dashboard/HistoryChart';
 import CropSteeringWidget from '../components/dashboard/CropSteeringWidget';
 import QuickActionsWidget from '../components/dashboard/QuickActionsWidget';
-import AIStatusBanner from '../components/dashboard/AIStatusBanner';
-import QuickInsightsPanel from '../components/dashboard/QuickInsightsPanel';
-import { Thermometer, Droplet, Wind, Droplets, Lightbulb, RefreshCw, Settings, Plus, X, Zap } from 'lucide-react';
-import { Box, Paper, Typography, IconButton, CircularProgress, Button, Tabs, Tab, TextField, Dialog, DialogTitle, DialogContent, DialogActions, Tooltip, Grid, Chip } from '@mui/material';
+import AIInsightsWidget from '../components/dashboard/AIInsightsWidget';
+import SmartNotifications from '../components/ai/SmartNotifications';
+import { Thermometer, Droplet, Wind, Droplets, Lightbulb, RefreshCw, Settings, Plus, X, Zap, Sparkles } from 'lucide-react';
+import { Box, Paper, Typography, IconButton, CircularProgress, Button, Tabs, Tab, TextField, Dialog, DialogTitle, DialogContent, DialogActions, Tooltip, Grid, Collapse } from '@mui/material';
 import _ from 'lodash';
-import { useCropSteering } from '../context/CropSteeringContext';
 
 // Initial default layout for a fresh start
 // Default widgets (no charts - they are now static)
@@ -48,33 +47,6 @@ class DashboardErrorBoundary extends React.Component<{ children: React.ReactNode
     }
 }
 
-const DayCounterDisplay = () => {
-    const { daysVeg, daysFlower, settings } = useCropSteering();
-    const isFlower = !!settings.flipDate;
-
-    return (
-        <Paper
-            elevation={0}
-            sx={{
-                px: 2, py: 1,
-                borderRadius: '12px',
-                bgcolor: isFlower ? 'rgba(168, 85, 247, 0.1)' : 'rgba(34, 197, 94, 0.1)',
-                border: isFlower ? '1px solid rgba(168, 85, 247, 0.2)' : '1px solid rgba(34, 197, 94, 0.2)',
-                display: 'flex', alignItems: 'center', gap: 2
-            }}
-        >
-            <Box>
-                <Typography variant="caption" sx={{ color: isFlower ? '#a855f7' : '#15803d', fontWeight: 'bold', display: 'block', lineHeight: 1 }}>
-                    {isFlower ? 'FLORACIÓN' : 'VEGETATIVO'}
-                </Typography>
-                <Typography variant="h6" fontWeight="bold" sx={{ color: isFlower ? '#9333ea' : '#16a34a', lineHeight: 1 }}>
-                    Día {isFlower ? daysFlower : daysVeg}
-                </Typography>
-            </Box>
-        </Paper>
-    );
-};
-
 const Dashboard: React.FC = () => {
     // DATA STATE
     const [latestSensors, setLatestSensors] = useState<SensorData | null>(null);
@@ -100,19 +72,16 @@ const Dashboard: React.FC = () => {
     });
     const [isAddPageOpen, setIsAddPageOpen] = useState(false);
     const [newPageName, setNewPageName] = useState('');
-    const [irrigationEvents, setIrrigationEvents] = useState<any[]>([]);
 
     // --- DATA FETCHING ---
     const fetchData = async () => {
         try {
-            const today = new Date().toISOString().split('T')[0];
-            const [sensors, history, devs, meta, globalSettings, irrEvents] = await Promise.allSettled([
+            const [sensors, history, devs, meta, globalSettings] = await Promise.allSettled([
                 apiClient.getLatestSensors(),
                 apiClient.getSensorHistory(),
                 apiClient.getDeviceStates(),
                 apiClient.request<any[]>('/api/devices/list'),
-                apiClient.getSettings(),
-                apiClient.request<any>(`/api/irrigation/events?date=${today}`)
+                apiClient.getSettings()
             ]);
 
             if (sensors.status === 'fulfilled') setLatestSensors(sensors.value);
@@ -120,9 +89,6 @@ const Dashboard: React.FC = () => {
             if (devs.status === 'fulfilled') setDevices(devs.value);
             if (meta.status === 'fulfilled' && Array.isArray(meta.value)) setDeviceMeta(meta.value);
             if (globalSettings.status === 'fulfilled') setSettings(globalSettings.value);
-            if (irrEvents.status === 'fulfilled' && irrEvents.value?.events) {
-                setIrrigationEvents(irrEvents.value.events);
-            }
 
             setLoading(false);
         } catch (e) {
@@ -195,26 +161,17 @@ const Dashboard: React.FC = () => {
                  };
             }
 
-            // Fallback: Chart widgets without specific mapping → use general sensor history
-            if (w.type === 'chart' && !['chart_vpd', 'chart_soil'].includes(w.id)) {
+            // Dynamic Sensor Mapping
+            if (w.type === 'sensor' && !['temp', 'hum', 'vpd', 'sub'].includes(w.id)) {
+                const val = latestSensors?.[w.id as keyof SensorData];
+                const meta = deviceMeta.find(d => d.id === w.id);
                 props = {
-                    ...w.props, // Keep any existing props
-                    data: sensorHistory,
-                    dataKey: w.props?.dataKey || 'temperature',
-                    color: w.props?.color || '#ef4444',
-                    unit: w.props?.unit || '°C',
-                    lightSchedule,
-                    multiSeries: true, // Show all sensors
-                    chartTitle: w.title
-                };
-            }
-
-            // Device type widgets - ensure they get proper props including sensorHistory
-            if (w.type === 'device') {
-                props = {
-                    ...w.props,
-                    // Add general sensor history if not fetching device-specific data
-                    generalHistory: sensorHistory
+                    icon: <RefreshCw/>, // Default icon
+                    name: meta?.name || w.title || w.id,
+                    value: typeof val === 'number' ? val.toFixed(1) : (val ?? '--'),
+                    unit: '', // Unknown unit
+                    color: '#64748b',
+                    onRename: handleRename
                 };
             }
 
@@ -321,12 +278,43 @@ const Dashboard: React.FC = () => {
 
         <Box sx={{ maxWidth: 1800, mx: 'auto', p: 2 }}>
              {/* HEADER */}
-             <Paper elevation={0} sx={{ p: 2, mb: 3, borderRadius: 'var(--squircle-radius)', background: 'var(--glass-bg)', backdropFilter: 'var(--backdrop-blur)', border: 'var(--glass-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
-                <Typography variant="h5" fontWeight="bold" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    🌱 Panel de Control
-                </Typography>
+             <Paper elevation={0} sx={{ p: 3, mb: 3, borderRadius: 'var(--squircle-radius)', background: 'var(--glass-bg)', backdropFilter: 'var(--backdrop-blur)', border: 'var(--glass-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
+                <Box>
+                    <Typography variant="overline" sx={{ opacity: 0.7 }}>SISTEMA ONLINE</Typography>
+                    <Typography variant="h4" fontWeight="900" sx={{ background: 'linear-gradient(45deg, #fff, #a5f3fc)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                        PKGrower OS
+                    </Typography>
+                </Box>
 
-                <DayCounterDisplay />
+                {/* TABS */}
+                <Box sx={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
+                     <Tabs
+                        value={activePage}
+                        onChange={(_, val) => setActivePage(val)}
+                        textColor="inherit"
+                        indicatorColor="secondary"
+                        variant="scrollable"
+                        scrollButtons="auto"
+                     >
+                        {Object.keys(pages).map(page => (
+                            <Tab
+                                key={page}
+                                value={page}
+                                label={
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                        {page}
+                                        {page !== 'General' && (
+                                            <X size={14} onClick={(e) => handleDeletePage(e, page)} style={{ opacity: 0.6, cursor: 'pointer' }} />
+                                        )}
+                                    </Box>
+                                }
+                            />
+                        ))}
+                     </Tabs>
+                     <IconButton size="small" onClick={() => setIsAddPageOpen(true)} sx={{ ml: 1, bgcolor: 'rgba(255,255,255,0.05)' }}>
+                        <Plus size={16} />
+                     </IconButton>
+                </Box>
 
                 <Box sx={{ display: 'flex', gap: 1 }}>
                      <Button
@@ -337,66 +325,69 @@ const Dashboard: React.FC = () => {
                     >
                         Refrescar
                     </Button>
-                    <Tooltip title="Motor de Automatización">
-                        <IconButton onClick={() => setIsRulesOpen(true)} sx={{ color: '#fbbf24', bgcolor: 'rgba(251, 191, 36, 0.1)' }}>
-                            <Zap />
-                        </IconButton>
+                    <Tooltip title="Restablecer Diseño (Si hay errores)">
+                         <Button
+                            onClick={() => {
+                                if (confirm('¿Restablecer todo el diseño? Se perderán las personalizaciones.')) {
+                                    localStorage.removeItem('dashboard_pages');
+                                    localStorage.removeItem('dashboard_layouts');
+                                    localStorage.removeItem('known_devices');
+                                    window.location.reload();
+                                }
+                            }}
+                            sx={{ color: 'white', borderColor: 'rgba(255,0,0,0.5)', '&:hover': { borderColor: 'red', bgcolor: 'rgba(255,0,0,0.1)' } }}
+                            variant="outlined"
+                        >
+                            Reset
+                        </Button>
                     </Tooltip>
+                    <IconButton onClick={() => setIsConfigOpen(true)} sx={{ color: 'white', bgcolor: 'rgba(255,255,255,0.1)' }}>
+                        <Settings />
+                    </IconButton>
+                    <IconButton onClick={() => setIsRulesOpen(true)} sx={{ color: '#fbbf24', bgcolor: 'rgba(251, 191, 36, 0.1)' }}>
+                        <Zap />
+                    </IconButton>
                 </Box>
             </Paper>
 
             <ConfigModal open={isConfigOpen} onClose={() => setIsConfigOpen(false)} />
             <RulesModal open={isRulesOpen} onClose={() => setIsRulesOpen(false)} />
 
-            {/* AI STATUS BANNER - Natural Language Cultivation Status */}
-            <AIStatusBanner
-                temperature={latestSensors?.temperature || 0}
-                humidity={latestSensors?.humidity || 0}
-                vpd={latestSensors?.vpd || 0}
-                vwc={latestSensors?.substrateHumidity || 0}
-            />
+            {/* STATIC CHARTS SECTION */}
+            {/* Crop Steering Widgets Row + AI Notifications */}
+            <Grid container spacing={2} sx={{ mb: 3 }}>
+                <Grid item xs={12} md={3}>
+                    <CropSteeringWidget />
+                </Grid>
+                <Grid item xs={12} md={3}>
+                    <QuickActionsWidget />
+                </Grid>
+                <Grid item xs={12} md={3}>
+                    <AIInsightsWidget autoRefresh={true} />
+                </Grid>
+                <Grid item xs={12} md={3}>
+                    <SmartNotifications maxVisible={3} autoRefresh={true} refreshInterval={30000} />
+                </Grid>
+            </Grid>
 
-            {/* QUICK INSIGHTS + CHARTS ROW */}
-            <Grid container spacing={3} sx={{ mb: 3 }}>
-                {/* Quick Insights Panel */}
-                <Grid item xs={12} lg={4}>
-                    <QuickInsightsPanel
-                        temperature={latestSensors?.temperature || 0}
-                        humidity={latestSensors?.humidity || 0}
-                        vpd={latestSensors?.vpd || 0}
-                        vwc={latestSensors?.substrateHumidity || 0}
-                        onAction={(msg) => console.log('[ACTION]', msg)}
+            {/* Environment Charts Row */}
+            <Grid container spacing={2} sx={{ mb: 3 }}>
+                <Grid item xs={12} md={6}>
+                    <HistoryChart
+                        type="environment"
+                        title="Historial Ambiental"
+                        data={sensorHistory}
                     />
                 </Grid>
-
-                {/* VWC History Chart */}
-                <Grid item xs={12} lg={8}>
+                <Grid item xs={12} md={6}>
                     <HistoryChart
                         type="substrate"
-                        title="VWC Rápido (24h)"
+                        title="Historial de Sustrato"
                         data={sensorHistory}
                         targets={{
                             vwc: settings?.cropSteering?.targetVWC || 50,
                             dryback: settings?.cropSteering?.targetDryback || 15
                         }}
-                        irrigationEvents={irrigationEvents}
-                    />
-                </Grid>
-            </Grid>
-
-            {/* MAIN CHARTS ROW - Crop Steering + Environment */}
-            <Grid container spacing={2} sx={{ mb: 3 }}>
-                <Grid item xs={12} md={4}>
-                    <CropSteeringWidget />
-                </Grid>
-                <Grid item xs={12} md={4}>
-                    <QuickActionsWidget />
-                </Grid>
-                <Grid item xs={12} md={4}>
-                    <HistoryChart
-                        type="environment"
-                        title="Ambiente (T/H/VPD)"
-                        data={sensorHistory}
                     />
                 </Grid>
             </Grid>

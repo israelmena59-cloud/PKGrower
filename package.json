@@ -9,6 +9,10 @@
     "dev:backend": "npm run dev --prefix backend",
     "dev:all": "concurrently \"npm run dev:backend\" \"npm run dev\"",
     "build": "vite build",
+    "build:prod": "vite build --mode production",
+    "deploy:frontend": "npm run build:prod && firebase deploy --only hosting",
+    "deploy:backend": "gcloud run deploy pkgrower-backend --source ./backend --region us-central1 --allow-unauthenticated",
+    "deploy:all": "npm run deploy:backend && npm run deploy:frontend",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
     "postinstall": "npx puppeteer browsers install chrome"

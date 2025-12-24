@@ -1,7 +1,7 @@
 ﻿const express = require('express');
 const compression = require('compression');
 const cors = require('cors');
-// DEBUG: Check file system in Render
+// DEBUG: Check file system in Cloud Run
 const fs = require('fs');
 const path = require('path');
 const distPath = path.join(__dirname, '../dist');
@@ -62,8 +62,8 @@ const XIAOMI_DEVICES = {
 
 // --- CREDENCIALES TUYA (SOLO PARA MODO_SIMULACION = false) ---
 const TUYA_CONFIG = {
-  accessKey: process.env.TUYA_ACCESS_KEY || 'usjgs9jkqswu7de9rs3s',
-  secretKey: process.env.TUYA_SECRET_KEY || '09e33d1f55f4405a8af88fdf5dfcf14a',
+  accessKey: process.env.TUYA_ACCESS_KEY || 'dtpfhgrhn4evkpr4fmkv',
+  secretKey: process.env.TUYA_SECRET_KEY || '8f7a1dcbd60442ecbc314c842be7238b',
   apiHost: process.env.TUYA_API_HOST || 'https://openapi.tuyaus.com',
 };
 
@@ -287,99 +287,6 @@ let tuyaDevices = {}; // Cache de estado de dispositivos Tuya (Map: key -> statu
 let merossClient = null;
 let merossDevices = {}; // Cache de dispositivos Meross (Map: id -> device)
 const calendarEvents = [];
-
-// --- IRRIGATION EVENT AUTO-DETECTION ---
-let irrigationEvents = []; // Array of { timestamp, time, phase, vwcValue, percentage, duration }
-let pumpState = {
-    isOn: false,
-    lastOnTime: null,
-    lastOffTime: null,
-    lastVwcAtOn: 0
-};
-
-// Classify irrigation phase based on time after lights-on
-const classifyIrrigationPhase = () => {
-    const lighting = appSettings?.lighting || {};
-    const onTimeStr = lighting.onTime || '06:00';
-    const [onH, onM] = onTimeStr.split(':').map(Number);
-
-    const now = new Date();
-    const lightsOnToday = new Date(now);
-    lightsOnToday.setHours(onH, onM, 0, 0);
-
-    // If current time is before lights-on, use yesterday's lights-on
-    if (now < lightsOnToday) {
-        lightsOnToday.setDate(lightsOnToday.getDate() - 1);
-    }
-
-    const minutesSinceLightsOn = Math.floor((now - lightsOnToday) / 60000);
-    const stage = appSettings?.cropSteering?.stage || 'veg_early';
-
-    // P1: First irrigation 2-4 hours after lights on
-    // P2: Main irrigation period (middle of day)
-    // P3: Last irrigation 2-4 hours before lights off
-    if (minutesSinceLightsOn < 240) { // First 4 hours
-        return 'p1';
-    } else if (minutesSinceLightsOn > (12 * 60 - 180)) { // Last 3 hours (assuming 12h day)
-        return 'p3';
-    } else {
-        return 'p2';
-    }
-};
-
-// Check pump state and log irrigation events
-const checkPumpState = async () => {
-    try {
-        // Use cached tuyaDevices data instead of API call
-        const pumpDevice = tuyaDevices['bombaControlador'];
-        if (!pumpDevice || MODO_SIMULACION) return;
-
-        // Check the 'on' property from the cached device status
-        const isOn = pumpDevice.on === true;
-
-        const latestSensor = sensorHistory.length > 0 ? sensorHistory[sensorHistory.length - 1] : {};
-        const currentVWC = latestSensor.substrateHumidity || 0;
-
-        // Detect pump ON edge
-        if (isOn && !pumpState.isOn) {
-            console.log('[IRRIGATION] Pump turned ON - VWC:', currentVWC);
-            pumpState.isOn = true;
-            pumpState.lastOnTime = new Date();
-            pumpState.lastVwcAtOn = currentVWC;
-        }
-
-        // Detect pump OFF edge - log event
-        if (!isOn && pumpState.isOn) {
-            const now = new Date();
-            const duration = pumpState.lastOnTime ? Math.floor((now - pumpState.lastOnTime) / 1000) : 0;
-            const phase = classifyIrrigationPhase();
-
-            const event = {
-                timestamp: now.toISOString(),
-                time: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                phase: phase,
-                vwcValue: currentVWC,
-                vwcBefore: pumpState.lastVwcAtOn,
-                percentage: Math.round((currentVWC / 100) * 100),
-                duration: duration
-            };
-
-            irrigationEvents.push(event);
-            console.log('[IRRIGATION] Event logged:', event);
-
-            // Keep only last 100 events
-            if (irrigationEvents.length > 100) irrigationEvents.shift();
-
-            pumpState.isOn = false;
-            pumpState.lastOffTime = now;
-        }
-    } catch (e) {
-        console.error('[IRRIGATION] Error checking pump state:', e.message);
-    }
-};
-
-// Start pump monitoring (every 10 seconds)
-setInterval(checkPumpState, 10000);
 let appSettings = {
   app: {
     appName: 'PKGrower',
@@ -427,34 +334,9 @@ let appSettings = {
     drybackTarget: 20
   },
   cropSteering: {
-    enabled: false,              // Automation disabled by default
-    direction: 'vegetative',     // 'vegetative' | 'generative' | 'balanced' | 'ripening'
-    stage: 'veg_early',          // 'veg_early' | 'veg_late' | 'flower_early' | 'flower_mid' | 'flower_late' | 'ripening'
-    flipDate: null,              // Date of flip to flower (ISO string)
-
-    // Targets (can be overridden, otherwise use profile defaults)
-    targetVWC: 60,               // % VWC objetivo
-    targetDryback: 15,           // % dryback objetivo
-
-    // Manual overrides (null = use profile defaults)
-    overrides: {
-      p1StartOffset: null,       // minutos después de luces ON
-      p2EndOffset: null,         // minutos antes de luces OFF
-      eventSize: null,           // % del contenedor
-      minTimeBetweenEvents: null // minutos
-    },
-
-    // Runtime state (updated by automation)
-    state: {
-      currentPhase: 'unknown',
-      lastIrrigationTime: null,
-      irrigationCountToday: 0,
-      lastDecision: null
-    }
-  },
-  ai: {
-    apiKey: process.env.GEMINI_API_KEY || '',
-    model: 'gemini-1.5-flash'
+    stage: 'none', // 'veg', 'flower', 'none'
+    targetVWC: 50,
+    targetDryback: 15
   }
 };
 
@@ -633,70 +515,38 @@ app.delete('/api/devices/:id', async (req, res) => {
 });
 
 // 3. LIST: Retornar TODOS los dispositivos (Estáticos + Dinámicos + Custom) con metadatos completos
-// [ENHANCED] Now includes live values from device caches
 app.get('/api/devices/list', (req, res) => {
     try {
         const allDevices = [];
         const seenIds = new Set();
 
-        // Helper to get live values from caches
-        const getLiveValues = (deviceId, deviceKey) => {
-            // Check tuyaDevices cache for live values
-            const tuyaDev = tuyaDevices[deviceKey] || tuyaDevices[deviceId];
-            if (tuyaDev) {
-                return {
-                    temperature: tuyaDev.temperature || tuyaDev.temp_current,
-                    humidity: tuyaDev.humidity || tuyaDev.humidity_value,
-                    status: tuyaDev.status ?? tuyaDev.switch ?? tuyaDev.switch_1,
-                    online: tuyaDev.online ?? true,
-                    value: tuyaDev.value
-                };
-            }
-            // Check meross cache
-            const merossDev = merossDevices[deviceId];
-            if (merossDev) {
-                return {
-                    status: merossDev.onoff ?? merossDev.status,
-                    online: merossDev.online ?? true
-                };
-            }
-            return {};
-        };
-
-        // 1. Static Devices (DEVICE_MAP - now includes all Tuya and Xiaomi base devices)
+        // 1. Static Devices (DEVICE_MAP)
+        // Convert to array
         for (const [key, def] of Object.entries(DEVICE_MAP)) {
+            // Check override
             const custom = customDeviceConfigs[def.id] || customDeviceConfigs[key];
             const finalName = custom ? custom.name : def.name;
-            const liveVals = getLiveValues(def.id, key);
-
-            // Auto-detect capabilities based on device type
-            const capabilities = custom?.capabilities || detectCapabilities(def.deviceType, def.category, def.platform);
 
             allDevices.push({
-                id: def.id || key,
+                id: def.id || key, // Some rely on key as ID in simulation
                 key: key,
                 name: finalName,
                 type: def.deviceType,
                 platform: def.platform,
                 source: 'static',
-                configured: true,
-                capabilities: capabilities,
-                // Live values
-                temperature: liveVals.temperature,
-                humidity: liveVals.humidity,
-                status: liveVals.status,
-                online: liveVals.online ?? true,
-                value: liveVals.value
+                configured: true
             });
             seenIds.add(def.id || key);
         }
 
-        // 2. Tuya Dynamic devices (discovered but not in static map)
+        // 2. Tuya Dynamic
         for (const [key, tDev] of Object.entries(tuyaDevices)) {
+             // If key matches a static entry (e.g. luzPanel1), we already added it.
+             // But check ID.
              if (seenIds.has(tDev.id) || seenIds.has(key)) continue;
 
+             // Check custom config
              const custom = customDeviceConfigs[tDev.id];
-             const capabilities = custom?.capabilities || detectCapabilities(tDev.deviceType || 'switch', tDev.category, 'tuya');
 
              allDevices.push({
                  id: tDev.id,
@@ -706,51 +556,30 @@ app.get('/api/devices/list', (req, res) => {
                  platform: 'tuya',
                  source: 'dynamic',
                  configured: !!custom,
-                 category: tDev.category,
-                 capabilities: capabilities,
-                 // Live values
-                 temperature: tDev.temperature || tDev.temp_current,
-                 humidity: tDev.humidity || tDev.humidity_value,
-                 status: tDev.status ?? tDev.switch ?? tDev.switch_1,
-                 online: tDev.online ?? true,
-                 value: tDev.value
+                 category: tDev.category
              });
              seenIds.add(tDev.id);
         }
 
-        // 3. Meross Dynamic devices (including hub subdevices)
+        // 3. Meross Dynamic
         for (const [mId, mDev] of Object.entries(merossDevices)) {
              if (seenIds.has(mId)) continue;
 
              const custom = customDeviceConfigs[mId];
-             // Use device capabilities first (for subdevices), then custom, then default
-             const capabilities = mDev.capabilities || custom?.capabilities || ['switch'];
-             const isSubdevice = !!mDev.parentHub;
 
              allDevices.push({
                  id: mId,
                  name: custom ? custom.name : mDev.name,
                  type: custom ? custom.type : (mDev.type || 'switch'),
                  platform: 'meross',
-                 source: isSubdevice ? 'hub_subdevice' : 'dynamic',
-                 configured: !!custom,
-                 capabilities: capabilities,
-                 parentHub: mDev.parentHub || null,
-                 isHub: mDev.isHub || false,
-                 // Live values
-                 status: mDev.onoff ?? mDev.status,
-                 online: mDev.online ?? true,
-                 // For sensor subdevices
-                 temperature: mDev.lastTemp ?? null,
-                 humidity: mDev.lastHumidity ?? null
+                 source: 'dynamic',
+                 configured: !!custom
              });
              seenIds.add(mId);
         }
 
-        console.log(`[API] /devices/list returning ${allDevices.length} devices with live values`);
         res.json(allDevices);
     } catch (e) {
-        console.error('[API] /devices/list error:', e);
         res.status(500).json({ error: e.message });
     }
 });
@@ -813,14 +642,208 @@ app.get('/api/xiaomi/auth/status/:sessionId', (req, res) => {
 // ... (loadSettings/saveSettings stay same)
 
 // --- HEALTH CHECK (PUBLIC) ---
-// Must be defined BEFORE Security Middleware to allow Render/Uptime checks
+// Must be defined BEFORE Security Middleware to allow Cloud Run/Uptime checks
 app.get('/health', (req, res) => {
     res.status(200).send('OK');
 });
 
+// --- CLOUD SCHEDULER KEEP-ALIVE ENDPOINT ---
+// This endpoint should be called by Cloud Scheduler every 5 minutes
+// to keep the instance alive and run background tasks
+app.post('/api/tick', async (req, res) => {
+    const tickStart = Date.now();
+    console.log('[TICK] ⏰ Cloud Scheduler heartbeat received');
+
+    const results = {
+        timestamp: new Date().toISOString(),
+        tasks: {},
+        errors: []
+    };
+
+    try {
+        // 1. Refresh Tuya devices (if not in simulation mode)
+        if (!MODO_SIMULACION && tuyaConnected && tuyaClient) {
+            try {
+                console.log('[TICK] Refreshing Tuya devices...');
+                await initTuyaDevices();
+                results.tasks.tuya = 'refreshed';
+            } catch (e) {
+                console.error('[TICK] Tuya refresh error:', e.message);
+                results.errors.push({ task: 'tuya', error: e.message });
+            }
+        }
+
+        // 2. Run scheduler logic (lighting)
+        try {
+            runSchedulerTick();
+            results.tasks.scheduler = 'executed';
+        } catch (e) {
+            console.error('[TICK] Scheduler error:', e.message);
+            results.errors.push({ task: 'scheduler', error: e.message });
+        }
+
+        // 3. Run automation rules
+        try {
+            await runAutomationRulesTick();
+            results.tasks.automation = 'executed';
+        } catch (e) {
+            console.error('[TICK] Automation error:', e.message);
+            results.errors.push({ task: 'automation', error: e.message });
+        }
+
+        // 4. Save sensor data snapshot (if real mode)
+        if (!MODO_SIMULACION) {
+            try {
+                await saveSensorSnapshot();
+                results.tasks.sensors = 'saved';
+            } catch (e) {
+                console.error('[TICK] Sensor save error:', e.message);
+                results.errors.push({ task: 'sensors', error: e.message });
+            }
+        }
+
+        results.duration = Date.now() - tickStart;
+        console.log(`[TICK] ✅ Completed in ${results.duration}ms`);
+        res.json({ success: true, ...results });
+
+    } catch (e) {
+        console.error('[TICK] Critical error:', e.message);
+        res.status(500).json({ success: false, error: e.message, ...results });
+    }
+});
+
+// --- SCHEDULER TICK FUNCTION (Extracted from setInterval) ---
+function runSchedulerTick() {
+    const now = new Date();
+    const currentTime = now.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', hour12: false });
+
+    // --- LIGHTING ---
+    const lighting = appSettings.lighting;
+    if (lighting && lighting.enabled && lighting.mode === 'schedule') {
+        const { onTime, offTime, devices } = lighting;
+
+        // Check if we should be ON or OFF based on current time
+        // This handles recovery from cold starts (not just exact trigger)
+        const shouldBeOn = isTimeBetween(currentTime, onTime, offTime);
+
+        console.log(`[SCHEDULER-TICK] Time: ${currentTime}, OnTime: ${onTime}, OffTime: ${offTime}, ShouldBeOn: ${shouldBeOn}`);
+
+        // Set all light devices to the correct state
+        if (devices && devices.length > 0) {
+            devices.forEach(devKey => {
+                setDeviceState(devKey, shouldBeOn).catch(e =>
+                    console.error(`[SCHEDULER-TICK] Error setting ${devKey} to ${shouldBeOn}:`, e.message)
+                );
+            });
+        }
+    }
+}
+
+// Helper: Check if current time is between start and end times (handles overnight)
+function isTimeBetween(current, start, end) {
+    // Convert "HH:MM" to minutes since midnight
+    const toMinutes = (t) => {
+        if (!t || typeof t !== 'string') return 0;
+        const [h, m] = t.split(':').map(Number);
+        return h * 60 + (m || 0);
+    };
+
+    const curr = toMinutes(current);
+    const s = toMinutes(start);
+    const e = toMinutes(end);
+
+    // Handle overnight (e.g., start=18:00, end=06:00)
+    if (s > e) {
+        return curr >= s || curr < e;
+    }
+    return curr >= s && curr < e;
+}
+
+// --- AUTOMATION RULES TICK FUNCTION ---
+async function runAutomationRulesTick() {
+    if (!automationRules || automationRules.length === 0) return;
+
+    const latest = sensorHistory && sensorHistory.length > 0
+        ? sensorHistory[sensorHistory.length - 1]
+        : null;
+    if (!latest) return;
+
+    for (const rule of automationRules) {
+        if (!rule.enabled) continue;
+
+        try {
+            let val = latest[rule.sensor];
+            if (val === undefined || val === null) continue;
+            val = Number(val);
+
+            let triggered = false;
+            const threshold = Number(rule.value);
+
+            if (rule.operator === '>' && val > threshold) triggered = true;
+            if (rule.operator === '<' && val < threshold) triggered = true;
+            if (rule.operator === '=' && val === threshold) triggered = true;
+
+            if (triggered) {
+                const targetState = rule.action === 'on';
+                console.log(`[RULES-TICK] Triggered: ${rule.name}. Setting ${rule.deviceId} to ${rule.action}`);
+
+                await setDeviceState(rule.deviceId, targetState);
+            }
+        } catch (e) {
+            console.error(`[RULES-TICK] Error processing rule ${rule.name}:`, e.message);
+        }
+    }
+}
+
+// --- SENSOR SNAPSHOT FUNCTION ---
+async function saveSensorSnapshot() {
+    if (MODO_SIMULACION) return;
+
+    // Aggregate sensor data from tuyaDevices cache
+    let avgTemp = 0, avgHum = 0, avgSubstrate = 0;
+    let countTemp = 0, countHum = 0, countSubstrate = 0;
+
+    // Environment sensor
+    if (tuyaDevices['sensorAmbiente']) {
+        if (tuyaDevices['sensorAmbiente'].temperature) {
+            avgTemp = tuyaDevices['sensorAmbiente'].temperature;
+            countTemp = 1;
+        }
+        if (tuyaDevices['sensorAmbiente'].humidity) {
+            avgHum = tuyaDevices['sensorAmbiente'].humidity;
+            countHum = 1;
+        }
+    }
+
+    // Substrate sensors
+    ['sensorSustrato1', 'sensorSustrato2', 'sensorSustrato3'].forEach(key => {
+        if (tuyaDevices[key]?.humidity) {
+            avgSubstrate += tuyaDevices[key].humidity;
+            countSubstrate++;
+        }
+    });
+
+    const newRecord = {
+        timestamp: new Date().toISOString(),
+        temperature: countTemp > 0 ? parseFloat(avgTemp.toFixed(1)) : null,
+        humidity: countHum > 0 ? parseFloat((avgHum).toFixed(0)) : null,
+        substrateHumidity: countSubstrate > 0 ? parseFloat((avgSubstrate / countSubstrate).toFixed(0)) : null
+    };
+
+    // Only save if we have at least one valid reading
+    if (newRecord.temperature !== null || newRecord.humidity !== null) {
+        sensorHistory.push(newRecord);
+        if (sensorHistory.length > MAX_HISTORY_LENGTH) sensorHistory.shift();
+
+        await firestore.saveSensorRecord(newRecord);
+        console.log('[TICK] Sensor snapshot saved:', newRecord);
+    }
+}
+
 // --- SECURITY MIDDLEWARE ---
 // Protect all routes with API Key
 const API_KEY = process.env.API_KEY;
+
 
 app.use('/api', (req, res, next) => {
     // Exempt CORS preflight (OPTIONS)
@@ -832,24 +855,7 @@ app.use('/api', (req, res, next) => {
         req.path.startsWith('/sensors') ||
         req.path.startsWith('/devices') ||
         req.path.startsWith('/settings') ||
-        req.path.startsWith('/history') ||
-        req.path.startsWith('/meross') ||
-        req.path.startsWith('/crop-steering') ||
-        req.path.startsWith('/irrigation') ||
-        req.path.startsWith('/automation') ||
-        req.path.startsWith('/status') ||
-        req.path.startsWith('/calendar') ||
-        req.path.startsWith('/rules')
-    )) {
-        return next();
-    }
-
-    // EXEMPTIONS: Allow specific POST endpoints without API key (public endpoints)
-    if (req.method === 'POST' && (
-        req.path === '/chat' ||
-        req.path.startsWith('/meross') ||
-        req.path.startsWith('/crop-steering') ||
-        req.path.startsWith('/irrigation')
+        req.path.startsWith('/history')
     )) {
         return next();
     }
@@ -905,48 +911,51 @@ app.post('/api/irrigation/shot', async (req, res) => {
     }
 });
 
+/*
 async function loadSettings() {
     try {
         const remoteSettings = await firestore.getGlobalSettings();
         if (remoteSettings && Object.keys(remoteSettings).length > 0) {
-            console.log('[SETTINGS] Loading configuration from Firestore...');
-
-            // Deep merge each module to preserve defaults
+            appSettings = { ...appSettings, ...remoteSettings };
+            // Populate process.env overrides
+            if (appSettings.tuya.accessKey) process.env.TUYA_ACCESS_KEY = appSettings.tuya.accessKey;
+            if (appSettings.tuya.secretKey) process.env.TUYA_SECRET_KEY = appSettings.tuya.secretKey;
+            // Meross
+            if (appSettings.meross) {
+                if (appSettings.meross.email) process.env.MEROSS_EMAIL = appSettings.meross.email;
+                if (appSettings.meross.password) process.env.MEROSS_PASSWORD = appSettings.meross.password;
+            }
+            console.log('[SETTINGS] Loaded from Firestore.');
+        } else {
+            console.log('[SETTINGS] No remote settings found. Using defaults/env.');
+        }
+    } catch(e) {
+        console.warn('[SETTINGS] Load error:', e.message);
+    }
+}
+*/
+async function loadSettings() {
+    try {
+        const remoteSettings = await firestore.getGlobalSettings();
+        if (remoteSettings && Object.keys(remoteSettings).length > 0) {
+            // Deep merge to preserve defaults
             if (remoteSettings.app) Object.assign(appSettings.app, remoteSettings.app);
             if (remoteSettings.tuya) Object.assign(appSettings.tuya, remoteSettings.tuya);
             if (remoteSettings.xiaomi) Object.assign(appSettings.xiaomi, remoteSettings.xiaomi);
 
-            // CRITICAL: Load lighting configuration (prevents wrong device on/off)
-            if (remoteSettings.lighting) {
-                Object.assign(appSettings.lighting, remoteSettings.lighting);
-                console.log('[SETTINGS] Lighting config restored:',
-                    `enabled=${appSettings.lighting.enabled}, mode=${appSettings.lighting.mode}, onTime=${appSettings.lighting.onTime}, offTime=${appSettings.lighting.offTime}`);
+            // Meross Special Handling
+            if (remoteSettings.meross) {
+                 process.env.MEROSS_EMAIL = remoteSettings.meross.email;
+                 process.env.MEROSS_PASSWORD = remoteSettings.meross.password;
+                 console.log('[SETTINGS] Meross credentials restored from database.');
+                 appSettings.meross = remoteSettings.meross; // Ensure it's in appSettings structure if needed
             }
 
-            // CRITICAL: Load irrigation configuration
-            if (remoteSettings.irrigation) {
-                Object.assign(appSettings.irrigation, remoteSettings.irrigation);
-                console.log('[SETTINGS] Irrigation config restored:',
-                    `enabled=${appSettings.irrigation.enabled}, mode=${appSettings.irrigation.mode}`);
-            }
-
-            // CRITICAL: Load crop steering configuration
-            if (remoteSettings.cropSteering) {
-                Object.assign(appSettings.cropSteering, remoteSettings.cropSteering);
-                console.log('[SETTINGS] CropSteering config restored:',
-                    `stage=${appSettings.cropSteering.stage}`);
-            }
-
-            // Load AI configuration
-            if (remoteSettings.ai) {
-                Object.assign(appSettings.ai, remoteSettings.ai);
-            }
-
-            // Sync Process Env for Tuya
+            // Sync Process Env for Tuya/Xiaomi
             if (appSettings.tuya.accessKey) process.env.TUYA_ACCESS_KEY = appSettings.tuya.accessKey;
             if (appSettings.tuya.secretKey) process.env.TUYA_SECRET_KEY = appSettings.tuya.secretKey;
 
-            console.log('[SETTINGS] ✓ All configuration loaded from Firestore.');
+            console.log('[SETTINGS] Loaded from Firestore.');
         } else {
             console.log('[SETTINGS] No remote settings found. Using defaults/env.');
         }
@@ -957,21 +966,18 @@ async function loadSettings() {
 
 async function saveSettings() {
     try {
-         // Create a clean object to save ALL configuration modules
+         // Create a clean object to save (remove secrets from logs if we were logging)
          const toSave = {
              app: appSettings.app,
              tuya: appSettings.tuya,
              xiaomi: appSettings.xiaomi,
-             // Critical modules that control device behavior
-             lighting: appSettings.lighting,
-             irrigation: appSettings.irrigation,
-             cropSteering: appSettings.cropSteering,
-             // AI settings
-             ai: appSettings.ai
-             // Note: Meross credentials now saved separately via savePlatformCredentials
+             meross: {
+                 email: process.env.MEROSS_EMAIL,
+                 password: process.env.MEROSS_PASSWORD
+             }
          };
          await firestore.saveGlobalSettings(toSave);
-         console.log('[SETTINGS] Saved all configuration to Firestore.');
+         console.log('[SETTINGS] Saved to Firestore.');
     } catch (err) {
         console.error('[SETTINGS] Error saving settings:', err.message);
     }
@@ -1271,14 +1277,9 @@ async function initTuyaDevices() {
 
     // Check data.success, not response.success
     if (!data || !data.success || !data.result || !data.result.devices) {
-        // LOG THE ACTUAL ERROR FROM TUYA
-        console.error('[TUYA-ERROR] API returned error:');
-        console.error(`  Code: ${data?.code || 'unknown'}`);
-        console.error(`  Message: ${data?.msg || 'no message'}`);
-        console.error(`  Success: ${data?.success}`);
         console.log('[DEBUG-TUYA-FAIL] Invalid Data Structure:', Object.keys(data || {}));
 
-        console.warn('[WARN] Tuya no devolvió lista masiva. Iniciando Plan B...');
+        console.warn('[WARN] Tuya no devolviÃ³ lista masiva. Iniciando Plan B...');
         // ... Log logic ...
 
         await syncTuyaDevicesIndividual();
@@ -1352,13 +1353,8 @@ const syncTuyaDevicesIndividual = async () => {
     for (const [key, mapDef] of Object.entries(TUYA_DEVICES_MAP)) {
          if (!mapDef.id) continue;
          try {
-             console.log(`[Plan B] Consultando ${mapDef.name} (${mapDef.id})...`);
+             // console.log(`[Plan B] Consultando ${mapDef.name} (${mapDef.id})...`);
              const res = await tuyaClient.request({ method: 'GET', path: `/v1.0/devices/${mapDef.id}` });
-
-             // Log raw response for debugging
-             if (res.data && !res.data.success) {
-                 console.error(`[Plan B] Device ${key} error: Code=${res.data.code}, Msg=${res.data.msg}`);
-             }
 
              // Extract data from Axios response
              const devData = (res.data && res.data.result) ? res.data.result : null;
@@ -1368,10 +1364,13 @@ const syncTuyaDevicesIndividual = async () => {
                   if (devData.online === undefined) devData.online = true;
 
                   fallbackDevices.push(devData);
-                  console.log(`[Plan B] ✓ ${mapDef.name} recuperado OK`);
+                  // Log status for first device to debug mapping
+                  // if (fallbackDevices.length === 1) {
+                  //    console.log(`[DEBUG-TUYA-STATUS] Sample status for ${devData.name}:`, JSON.stringify(devData.status));
+                  // }
              }
          } catch(e) {
-            console.warn(`  ✗ Error consultando ${mapDef.name}: ${e.message}`);
+            console.warn(`  âœ— Error consultando ${mapDef.name}: ${e.message}`);
          }
     }
 
@@ -1411,21 +1410,6 @@ if (!MODO_SIMULACION) {
     });
   }, 1000);
 }
-
-// --- CORS Configuration ---
-// Allow requests from Firebase Hosting frontend
-const corsOptions = {
-  origin: [
-    'https://pk-grower.web.app',
-    'https://pk-grower.firebaseapp.com',
-    'http://localhost:5173',  // Vite dev
-    'http://localhost:3000'   // Local dev
-  ],
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key']
-};
-app.use(cors(corsOptions));
 
 app.use(express.json());
 
@@ -1990,7 +1974,236 @@ app.post('/api/chat', async (req, res) => {
   }
 });
 
-// Endpoint de diagnÃ³stico (para verificar estado de dispositivos)
+// ============================================================================
+// ENHANCED AI ENDPOINTS WITH FUNCTION CALLING & STREAMING
+// ============================================================================
+
+const { AIService } = require('./services/ai-service');
+let aiService = null;
+
+// Initialize AI Service with dependencies
+function getAIService() {
+  const apiKey = appSettings.ai?.apiKey || process.env.GEMINI_API_KEY;
+  if (!apiKey) return null;
+
+  if (!aiService) {
+    aiService = new AIService(apiKey, {
+      deviceController: {
+        control: async (deviceId, action) => {
+          // Reuse existing control logic
+          const targetState = action === 'on';
+
+          // Try Tuya first
+          const config = DEVICE_MAP[deviceId];
+          if (config && config.platform === 'tuya' && tuyaConnected) {
+            const tuyaId = config.id;
+            const switchCode = config.switchCode || 'switch_1';
+            await tuyaClient.request({
+              method: 'POST',
+              path: `/v1.0/iot-03/devices/${tuyaId}/commands`,
+              body: { commands: [{ code: switchCode, value: targetState }] }
+            });
+            if (tuyaDevices[deviceId]) tuyaDevices[deviceId].on = targetState;
+            return { success: true, state: targetState };
+          }
+
+          // Try Xiaomi
+          if (config && config.platform === 'xiaomi' && xiaomiClients[deviceId]) {
+            const dev = xiaomiClients[deviceId];
+            if (dev.setPower) await dev.setPower(targetState);
+            return { success: true, state: targetState };
+          }
+
+          // Simulation
+          if (MODO_SIMULACION) {
+            deviceStates[deviceId] = targetState;
+            return { success: true, state: targetState };
+          }
+
+          throw new Error(`Device ${deviceId} not found`);
+        },
+        getStates: async () => {
+          const states = {};
+          for (const [key, dev] of Object.entries(tuyaDevices)) {
+            states[key] = dev.on;
+          }
+          return states;
+        }
+      },
+      sensorReader: {
+        getLatest: async () => {
+          // Reuse sensor logic
+          let temp = 0, hum = 0, vpd = 0, subHum = 0;
+
+          if (MODO_SIMULACION) {
+            temp = 24.5; hum = 60; subHum = 45; vpd = 1.1;
+          } else if (tuyaDevices.sensorAmbiente) {
+            temp = tuyaDevices.sensorAmbiente.temperature || 0;
+            hum = tuyaDevices.sensorAmbiente.humidity || 0;
+            if (temp > 0 && hum > 0) {
+              const svp = 0.61078 * Math.exp((17.27 * temp) / (temp + 237.3));
+              vpd = parseFloat((svp * (1 - hum / 100)).toFixed(2));
+            }
+
+            let subHums = [];
+            ['sensorSustrato1', 'sensorSustrato2', 'sensorSustrato3'].forEach(k => {
+              if (tuyaDevices[k]?.humidity !== undefined) subHums.push(tuyaDevices[k].humidity);
+            });
+            subHum = subHums.length > 0 ? subHums.reduce((a, b) => a + b, 0) / subHums.length : 0;
+          }
+
+          return { temperature: temp, humidity: hum, vpd, substrateHumidity: parseFloat(subHum.toFixed(1)) };
+        }
+      },
+      irrigationController: {
+        startIrrigation: async (durationSeconds, volumeMl) => {
+          console.log(`[AI] Starting irrigation: ${durationSeconds}s, ${volumeMl}ml`);
+          // Would trigger actual irrigation here
+          return { success: true, duration: durationSeconds, volume: volumeMl };
+        }
+      }
+    });
+  }
+
+  return aiService;
+}
+
+/**
+ * Enhanced Chat with Function Calling
+ * POST /api/chat/v2
+ */
+app.post('/api/chat/v2', async (req, res) => {
+  try {
+    const { message, sessionId = 'default' } = req.body;
+    const service = getAIService();
+
+    if (!service) {
+      return res.status(400).json({
+        error: 'API Key no configurada',
+        reply: '⚠️ No tengo una API Key configurada. Ve a Configuración para añadirla.'
+      });
+    }
+
+    // Gather context
+    const sensors = await service.sensorReader?.getLatest();
+    const devices = await service.deviceController?.getStates();
+    let lastIrrigation = null;
+    try {
+      lastIrrigation = await firestore.getLastIrrigationLog();
+    } catch (e) { /* ignore */ }
+
+    const result = await service.chat(message, sessionId, { sensors, devices, lastIrrigation });
+
+    res.json(result);
+
+  } catch (error) {
+    console.error('[AI V2] Error:', error);
+    res.status(500).json({ error: error.message, reply: 'Error procesando tu mensaje. ' + error.message });
+  }
+});
+
+/**
+ * Streaming Chat with SSE
+ * POST /api/chat/stream
+ */
+app.post('/api/chat/stream', async (req, res) => {
+  try {
+    const { message, sessionId = 'default' } = req.body;
+    const service = getAIService();
+
+    if (!service) {
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.write(`data: ${JSON.stringify({ error: 'API Key no configurada' })}\n\n`);
+      res.end();
+      return;
+    }
+
+    // SSE headers
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+
+    // Gather context
+    const sensors = await service.sensorReader?.getLatest();
+
+    // Stream response
+    for await (const chunk of service.chatStream(message, sessionId, { sensors })) {
+      if (chunk.done) {
+        res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+      } else {
+        res.write(`data: ${JSON.stringify({ text: chunk.text })}\n\n`);
+      }
+    }
+
+    res.end();
+
+  } catch (error) {
+    console.error('[AI Stream] Error:', error);
+    res.write(`data: ${JSON.stringify({ error: error.message })}\n\n`);
+    res.end();
+  }
+});
+
+/**
+ * Generate AI Insights
+ * GET /api/ai/insights
+ */
+app.get('/api/ai/insights', async (req, res) => {
+  try {
+    const service = getAIService();
+
+    if (!service) {
+      return res.json({ insights: [{ type: 'warning', message: 'API Key no configurada', action: null }] });
+    }
+
+    const sensors = await service.sensorReader?.getLatest();
+    const devices = await service.deviceController?.getStates();
+
+    const result = await service.generateInsights(sensors, devices);
+
+    res.json(result);
+
+  } catch (error) {
+    console.error('[AI Insights] Error:', error);
+    res.json({ insights: [{ type: 'warning', message: 'Error generando insights', action: null }] });
+  }
+});
+
+/**
+ * Analyze Image with Vision
+ * POST /api/ai/analyze-image
+ */
+const multer = require('multer');
+const aiUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+
+app.post('/api/ai/analyze-image', aiUpload.single('image'), async (req, res) => {
+  try {
+    const service = getAIService();
+
+    if (!service) {
+      return res.status(400).json({ error: 'API Key no configurada' });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ error: 'No se proporcionó imagen' });
+    }
+
+    const result = await service.analyzeImage(
+      req.file.buffer,
+      req.file.mimetype,
+      req.body.prompt
+    );
+
+    res.json(result);
+
+  } catch (error) {
+    console.error('[AI Vision] Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Endpoint de diagnóstico (para verificar estado de dispositivos)
 app.get('/api/devices/diagnostics', async (req, res) => {
   try {
     const diagnostics = {
@@ -2044,68 +2257,6 @@ app.get('/api/devices/tuya', async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
-});
-
-// DEBUG: Obtener datos RAW de un dispositivo Tuya específico
-app.get('/api/devices/tuya/raw/:deviceId', async (req, res) => {
-  const { deviceId } = req.params;
-
-  if (!tuyaClient || !tuyaConnected) {
-    return res.status(503).json({ error: 'Tuya not connected', tuyaConnected });
-  }
-
-  const results = {
-    success: true,
-    deviceId,
-    errors: []
-  };
-
-  try {
-    const deviceRes = await tuyaClient.request({ method: 'GET', path: `/v1.0/devices/${deviceId}` });
-    results.device = deviceRes?.data?.result || deviceRes?.result || deviceRes;
-  } catch (e) {
-    results.errors.push({ endpoint: 'device', error: e.message });
-  }
-
-  try {
-    const statusRes = await tuyaClient.request({ method: 'GET', path: `/v1.0/devices/${deviceId}/status` });
-    results.status = statusRes?.data?.result || statusRes?.result || statusRes;
-  } catch (e) {
-    results.errors.push({ endpoint: 'status', error: e.message });
-  }
-
-  try {
-    const specsRes = await tuyaClient.request({ method: 'GET', path: `/v1.0/devices/${deviceId}/specifications` });
-    results.specifications = specsRes?.data?.result || specsRes?.result || specsRes;
-  } catch (e) {
-    results.errors.push({ endpoint: 'specifications', error: e.message });
-  }
-
-  try {
-    const funcsRes = await tuyaClient.request({ method: 'GET', path: `/v1.0/devices/${deviceId}/functions` });
-    results.functions = funcsRes?.data?.result || funcsRes?.result || funcsRes;
-  } catch (e) {
-    results.errors.push({ endpoint: 'functions', error: e.message });
-  }
-
-  // Get from internal cache
-  const internalDevice = Object.values(tuyaDevices).find(d => d.id === deviceId || d.cloudDevice?.id === deviceId);
-  if (internalDevice) {
-    results.internalCache = internalDevice;
-
-    // Try to get product schema
-    const productId = internalDevice.cloudDevice?.product_id;
-    if (productId) {
-      try {
-        const prodRes = await tuyaClient.request({ method: 'GET', path: `/v1.0/products/${productId}` });
-        results.product = prodRes?.data?.result || prodRes?.result || prodRes;
-      } catch (e) {
-        results.errors.push({ endpoint: 'product', error: e.message });
-      }
-    }
-  }
-
-  res.json(results);
 });
 
 // NUEVO: Obtener dispositivos Meross
@@ -2206,10 +2357,10 @@ app.get('/api/sensors/latest', async (req, res) => {
      }
 
      res.json({
-        temperature: temp,
-        humidity: hum,
-        vpd: vpd,
-        substrateHumidity: parseFloat(avgSubHum.toFixed(1)),
+        temperature: temp > 0 ? temp : null,
+        humidity: hum > 0 ? hum : null,
+        vpd: vpd > 0 ? vpd : null,
+        substrateHumidity: avgSubHum > 0 ? parseFloat(avgSubHum.toFixed(1)) : null,
         isEstimate: isEstimate,
         timestamp: new Date().toISOString()
      });
@@ -2653,22 +2804,6 @@ app.post('/api/device/:id/control', async (req, res) => {
              }
         }
 
-        // --- BACKEND FIX: Update Local Cache Immediately ---
-        // This prevents the "reverting" switch bug where the next polling cycle
-        // fetches old data from Tuya Cloud before their API confirms the change.
-        if (primarySuccess) {
-            tuyaDevices[id].on = (action === 'on');
-            // Also update the detailed status array effectively mocking the response
-            if (!tuyaDevices[id].status || typeof tuyaDevices[id].status === 'string') {
-                 tuyaDevices[id].status = [{ code: cmdCode, value: action === 'on' }];
-            } else if (Array.isArray(tuyaDevices[id].status)) {
-                 const sIdx = tuyaDevices[id].status.findIndex(s => s.code === cmdCode);
-                 if (sIdx !== -1) tuyaDevices[id].status[sIdx].value = (action === 'on');
-                 else tuyaDevices[id].status.push({ code: cmdCode, value: (action === 'on') });
-            }
-            console.log(`[CONTROL] Cache updated locally for ${id}: on=${tuyaDevices[id].on}`);
-        }
-
         res.json({
           success: primarySuccess,
           deviceId: id,
@@ -2698,118 +2833,6 @@ app.post('/api/device/:id/control', async (req, res) => {
       res.status(404).json({ error: 'Dispositivo no encontrado' });
     }
   } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// --- PULSE ENDPOINT (Timed Device Activation with Auto-Shutoff) ---
-app.post('/api/device/:id/pulse', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { duration } = req.body; // milliseconds
-
-    if (!duration || duration < 100 || duration > 300000) {
-      return res.status(400).json({ error: 'Invalid duration (100ms - 5min max)' });
-    }
-
-    console.log(`[PULSE] Request for ${id}: ${duration}ms`);
-
-    // Find device (Tuya, Xiaomi, or Meross)
-    const tuyaDevice = tuyaDevices[id];
-    const xiaomiDevice = xiaomiClients[id];
-    const merossDevice = merossDevices[id];
-
-    if (tuyaDevice) {
-      // TUYA PULSE
-      if (!tuyaConnected) {
-        return res.status(400).json({ error: 'Tuya not connected' });
-      }
-
-      const cmdCode = tuyaDevice.switchCode || 'switch';
-
-      // Turn ON
-      await tuyaClient.request({
-        method: 'POST',
-        path: `/v1.0/iot-03/devices/${tuyaDevice.id}/commands`,
-        body: { commands: [{ code: cmdCode, value: true }] },
-      });
-
-      // Update local cache
-      tuyaDevices[id].on = true;
-      console.log(`[PULSE] ${id} turned ON, auto-off in ${duration}ms`);
-
-      // Schedule AUTO-OFF
-      setTimeout(async () => {
-        try {
-          await tuyaClient.request({
-            method: 'POST',
-            path: `/v1.0/iot-03/devices/${tuyaDevice.id}/commands`,
-            body: { commands: [{ code: cmdCode, value: false }] },
-          });
-          tuyaDevices[id].on = false;
-          console.log(`[PULSE] ${id} auto-OFF executed`);
-        } catch (e) {
-          console.error(`[PULSE] Auto-OFF failed for ${id}:`, e.message);
-        }
-      }, duration);
-
-      return res.json({
-        success: true,
-        deviceId: id,
-        duration,
-        message: `Pulsing ${id} for ${(duration/1000).toFixed(1)}s`
-      });
-
-    } else if (xiaomiDevice) {
-      // XIAOMI PULSE
-      await xiaomiDevice.setPower(true);
-      console.log(`[PULSE] Xiaomi ${id} turned ON, auto-off in ${duration}ms`);
-
-      setTimeout(async () => {
-        try {
-          await xiaomiDevice.setPower(false);
-          console.log(`[PULSE] Xiaomi ${id} auto-OFF executed`);
-        } catch (e) {
-          console.error(`[PULSE] Xiaomi auto-OFF failed for ${id}:`, e.message);
-        }
-      }, duration);
-
-      return res.json({
-        success: true,
-        deviceId: id,
-        duration,
-        message: `Pulsing ${id} for ${(duration/1000).toFixed(1)}s`
-      });
-
-    } else if (merossDevice) {
-      // MEROSS PULSE
-      const turnOn = true;
-      await merossDevice.device.controlToggleX(0, turnOn);
-      merossDevices[id].onoff = turnOn;
-      console.log(`[PULSE] Meross ${id} turned ON, auto-off in ${duration}ms`);
-
-      setTimeout(async () => {
-        try {
-          await merossDevice.device.controlToggleX(0, false);
-          merossDevices[id].onoff = false;
-          console.log(`[PULSE] Meross ${id} auto-OFF executed`);
-        } catch (e) {
-          console.error(`[PULSE] Meross auto-OFF failed for ${id}:`, e.message);
-        }
-      }, duration);
-
-      return res.json({
-        success: true,
-        deviceId: id,
-        duration,
-        message: `Pulsing ${id} for ${(duration/1000).toFixed(1)}s`
-      });
-
-    } else {
-      return res.status(404).json({ error: 'Device not found' });
-    }
-  } catch (error) {
-    console.error('[PULSE] Error:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -2878,38 +2901,13 @@ async function initMerossDevices() {
         return;
     }
 
-    // Try to load credentials from Firestore first (persistent storage)
-    let email = null, password = null;
-    let credSource = 'none';
-
-    try {
-        const storedCreds = await firestore.getPlatformCredentials('meross');
-        if (storedCreds && storedCreds.email && storedCreds.password) {
-            email = storedCreds.email;
-            password = storedCreds.password;
-            credSource = 'firestore/local';
-            console.log('[MEROSS] Loaded credentials from Firestore/local backup.');
-        }
-    } catch (e) {
-        console.warn('[MEROSS] Could not load stored credentials:', e.message);
-    }
-
-    // Fallback to ENV or appSettings (set by /api/meross/connect)
-    if (!email || !password) {
-        email = process.env.MEROSS_EMAIL || appSettings.meross?.email;
-        password = process.env.MEROSS_PASSWORD || appSettings.meross?.password;
-        if (email && password) {
-            credSource = appSettings.meross?.email ? 'appSettings' : 'env';
-            console.log(`[MEROSS] Using credentials from ${credSource}`);
-        }
-    }
+    const email = process.env.MEROSS_EMAIL || appSettings.meross?.email;
+    const password = process.env.MEROSS_PASSWORD || appSettings.meross?.password;
 
     if (!email || !password) {
-        console.warn('[MEROSS] Meross credentials missing. Skipping. (checked: firestore, local, env, appSettings)');
+        console.warn('[MEROSS] Meross credentials missing. Skipping.');
         return;
     }
-
-    console.log(`[MEROSS] Using email: ${email} (source: ${credSource})`);
 
     try {
         console.log(`[MEROSS] Connecting as ${email}...`);
@@ -2920,182 +2918,30 @@ async function initMerossDevices() {
         });
 
         // Event Listeners
-        // The 'deviceInitialized' event listener is replaced by the logic within the connect callback.
-        // merossClient.on('deviceInitialized', (deviceId, deviceDef, device) => { ... });
+        merossClient.on('deviceInitialized', (deviceId, deviceDef, device) => {
+            console.log(`[MEROSS] New Device: ${deviceDef.name} (${deviceDef.type})`);
+            merossDevices[deviceId] = {
+                id: deviceId,
+                name: deviceDef.name,
+                type: deviceDef.type,
+                online: device.online,
+                device: device // Keep reference for control
+            };
+        });
 
         merossClient.on('data', (deviceId, namespace, payload) => {
              // console.log(`[MEROSS] Data from ${deviceId}:`, payload);
              // Update status if needed
         });
 
-        // Use callback-based connect to properly iterate devices after connection
-        merossClient.connect((err, deviceCount) => {
-            if (err) {
-                console.error('[MEROSS] Connection error:', err.message);
-                return;
-            }
-
-            console.log(`[MEROSS] Connected! Library reported ${deviceCount} devices.`);
-            console.log(`[MEROSS] merossClient.devices keys:`, Object.keys(merossClient.devices));
-
-            // Iterate all devices and register them, extracting subdevices from hubs
-            for (const [deviceId, deviceObj] of Object.entries(merossClient.devices)) {
-                console.log(`[MEROSS] Processing device: ${deviceId}`);
-                console.log(`[MEROSS] Device object keys:`, Object.keys(deviceObj));
-
-                // Get device definition from the object
-                const deviceName = deviceObj.dev?.devName || deviceObj.devName || 'Unknown';
-                const deviceType = deviceObj.dev?.deviceType || deviceObj.deviceType || 'unknown';
-
-                merossDevices[deviceId] = {
-                    id: deviceId,
-                    name: deviceName,
-                    type: deviceType,
-                    online: deviceObj.online !== false,
-                    device: deviceObj,
-                    isHub: deviceType?.startsWith('msh')
-                };
-                console.log(`[MEROSS] Registered device: ${deviceName} (${deviceType})`);
-
-                // Check for subdevices (hub-connected sensors like MS100)
-                if (deviceObj.subDeviceList && Array.isArray(deviceObj.subDeviceList)) {
-                    console.log(`[MEROSS] Hub has ${deviceObj.subDeviceList.length} subdevices:`, JSON.stringify(deviceObj.subDeviceList));
-
-                    deviceObj.subDeviceList.forEach((subDev, idx) => {
-                        console.log(`[MEROSS] Subdevice[${idx}]:`, JSON.stringify(subDev));
-                        const subId = subDev.subDeviceId || subDev.id;
-                        const subName = subDev.subDeviceName || subDev.name || `Sensor ${idx + 1}`;
-                        const subType = subDev.subDeviceType || subDev.type || 'ms100';
-
-                        merossDevices[subId] = {
-                            id: subId,
-                            name: subName,
-                            type: subType,
-                            online: subDev.status !== 0,
-                            parentHub: deviceId,
-                            device: deviceObj, // Use hub device for control
-                            capabilities: ['temperature', 'humidity'],
-                            lastTemp: subDev.temperature?.room || subDev.currentTemp || null,
-                            lastHumidity: subDev.humidity?.room || subDev.currentHumidity || null
-                        };
-                        console.log(`[MEROSS] Registered subdevice: ${subName} (${subType}) ID: ${subId}`);
-                    });
-                }
-            }
-
-            console.log(`[MEROSS] Total registered devices: ${Object.keys(merossDevices).length}`);
-        });
+        // Connect
+        await merossClient.connect();
+        console.log('[MEROSS] Successfully connected!');
 
     } catch (e) {
         console.error('[MEROSS] Connection failed:', e.message);
     }
 }
-
-// --- MEROSS API ENDPOINTS ---
-// POST /api/meross/connect - Connect/Reconnect to Meross Cloud
-app.post('/api/meross/connect', express.json(), async (req, res) => {
-    try {
-        const { email, password } = req.body;
-
-        // Store credentials in appSettings
-        if (!appSettings.meross) appSettings.meross = {};
-        if (email) appSettings.meross.email = email;
-        if (password) appSettings.meross.password = password;
-
-        // Disconnect existing client
-        if (merossClient) {
-            try {
-                await merossClient.disconnect();
-            } catch (e) {
-                console.warn('[MEROSS] Disconnect error:', e.message);
-            }
-        }
-
-        // Clear old devices
-        merossDevices = {};
-
-        // Reconnect with new/existing credentials
-        await initMerossDevices();
-
-        // Save credentials persistently to Firestore
-        if (email && password) {
-            await firestore.savePlatformCredentials('meross', { email, password });
-        }
-
-        res.json({
-            success: true,
-            message: 'Meross connected successfully',
-            deviceCount: Object.keys(merossDevices).length,
-            devices: Object.values(merossDevices).map(d => ({
-                id: d.id,
-                name: d.name,
-                type: d.type,
-                online: d.online
-            }))
-        });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
-});
-
-// GET /api/meross/devices - List all Meross devices
-app.get('/api/meross/devices', (req, res) => {
-    try {
-        const devices = Object.values(merossDevices).map(d => ({
-            id: d.id,
-            name: d.name,
-            type: d.type,
-            online: d.online,
-            platform: 'meross',
-            capabilities: ['switch']
-        }));
-
-        res.json({
-            success: true,
-            connected: merossClient !== null,
-            deviceCount: devices.length,
-            devices: devices
-        });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
-});
-
-// POST /api/meross/device/:id/control - Control a Meross device
-app.post('/api/meross/device/:id/control', express.json(), async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { action } = req.body; // 'on' or 'off'
-
-        const device = merossDevices[id];
-        if (!device || !device.device) {
-            return res.status(404).json({ error: 'Dispositivo Meross no encontrado' });
-        }
-
-        const turnOn = action === 'on';
-        await device.device.controlToggleX(0, turnOn);
-
-        // --- BACKEND FIX: Update Local Cache Immediately ---
-        if (merossDevices[id]) {
-            merossDevices[id].onoff = turnOn;
-            merossDevices[id].status = turnOn; // Ensure both properties are updated
-            console.log(`[MEROSS-CONTROL] Cache updated locally for ${id}: on=${turnOn}`);
-        }
-
-        res.json({
-            success: true,
-            deviceId: id,
-            action: action,
-            name: device.name
-        });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
-});
-
-// Initialize Meross on startup
-initMerossDevices().catch(e => console.error('[MEROSS] Startup init failed:', e.message));
-
 
 // ===== SOIL SENSORS ENDPOINT (Missing Fix) =====
 app.get('/api/sensors/soil', async (req, res) => {
@@ -3167,23 +3013,6 @@ app.get('/api/devices/all', async (req, res) => {
           description: 'CÃ¡mara Xiaomi MJSXG13',
           lastUpdate: new Date().toLocaleTimeString(),
           isCloudOnly: device.isCloudOnly || false,
-        });
-      }
-    }
-
-    // Agregar dispositivos Meross
-    for (const [mId, mDev] of Object.entries(merossDevices)) {
-      if (mDev && mDev.name) {
-        devices.push({
-          id: mId,
-          name: mDev.name,
-          type: mDev.type || 'switch',
-          status: mDev.onoff ?? mDev.status ?? false,
-          platform: 'meross',
-          value: mDev.power ?? null,
-          unit: mDev.power ? 'W' : '',
-          description: `Meross ${mDev.type || 'Switch'}`,
-          lastUpdate: new Date().toLocaleTimeString(),
         });
       }
     }
@@ -3553,101 +3382,6 @@ app.post('/api/settings', (req, res) => {
 
 app.get('/api/settings', (req, res) => {
     res.json(appSettings);
-});
-
-// --- AI COPILOT CHAT (Gemini) ---
-app.post('/api/chat', async (req, res) => {
-    try {
-        const { message, context } = req.body;
-
-        if (!message) {
-            return res.status(400).json({ error: 'Message is required' });
-        }
-
-        // Get API key (from env or saved in appSettings)
-        const apiKey = process.env.GEMINI_API_KEY || appSettings.ai?.apiKey;
-
-        if (!apiKey) {
-            return res.status(400).json({
-                error: 'API key not configured. Go to Settings to add your Gemini API key.',
-                reply: '⚠️ No hay API key de Gemini configurada. Ve a Configuración para añadirla.'
-            });
-        }
-
-        // Gather live sensor data
-        let sensorData = {};
-        try {
-            // Get from Tuya cache
-            const ambientSensor = tuyaDevices['sensorAmbiente'];
-            if (ambientSensor) {
-                sensorData.temperature = ambientSensor.temperature || context?.temp || 24;
-                sensorData.humidity = ambientSensor.humidity || context?.hum || 60;
-            }
-
-            // Soil sensors average
-            let soilHums = [];
-            ['sensorSustrato1', 'sensorSustrato2', 'sensorSustrato3'].forEach(k => {
-                if (tuyaDevices[k]?.humidity) soilHums.push(tuyaDevices[k].humidity);
-            });
-            sensorData.soilHumidity = soilHums.length > 0
-                ? Math.round(soilHums.reduce((a,b) => a+b, 0) / soilHums.length)
-                : context?.vwc || 45;
-
-            // Calculate VPD
-            const t = sensorData.temperature || 24;
-            const rh = sensorData.humidity || 60;
-            const svp = 0.6108 * Math.exp((17.27 * t) / (t + 237.3));
-            sensorData.vpd = Math.round((svp * (1 - rh/100)) * 100) / 100;
-        } catch (e) {
-            console.error('[AI] Error getting sensor data:', e);
-        }
-
-        // Build system prompt with crop steering context
-        const stage = appSettings.cropSteering?.stage || 'veg';
-        const systemPrompt = `Eres un asistente agrónomo experto en cultivo de cannabis con Crop Steering.
-
-DATOS EN TIEMPO REAL:
-- Temperatura: ${sensorData.temperature || 24}°C
-- Humedad Relativa: ${sensorData.humidity || 60}%
-- VPD: ${sensorData.vpd || 1.1} kPa
-- Humedad Sustrato (VWC): ${sensorData.soilHumidity || 45}%
-- Etapa: ${stage === 'veg' ? 'Vegetación' : stage === 'flower' ? 'Floración' : 'No definida'}
-
-CONOCIMIENTO (basado en Athena Agriculture & CCI):
-- VPD ideal Veg: 0.8-1.2 kPa | Flower: 1.2-1.6 kPa
-- Dryback ideal: Veg 10-15% | Flower 15-20%
-- Fases de riego: P0 (saturación), P1 (mantenimiento), P2 (ajuste), P3 (dryback nocturno)
-- Temperatura ideal: 22-28°C día, 18-22°C noche
-- Humedad ideal: Veg 60-70% | Flower 45-55%
-
-Responde en español, de forma concisa y práctica. Si detectas problemas, sugiere acciones específicas.`;
-
-        // Call Gemini
-        const { GoogleGenerativeAI } = require('@google/generative-ai');
-        const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-
-        const chat = model.startChat({
-            history: [
-                { role: 'user', parts: [{ text: systemPrompt }] },
-                { role: 'model', parts: [{ text: 'Entendido. Soy tu asistente de cultivo PKGrower. Analizando datos en tiempo real...' }] }
-            ],
-            generationConfig: { maxOutputTokens: 500 }
-        });
-
-        const result = await chat.sendMessage(message);
-        const reply = result.response.text();
-
-        console.log('[AI] Chat response generated successfully');
-        res.json({ reply, sensorData });
-
-    } catch (error) {
-        console.error('[AI] Chat error:', error);
-        res.status(500).json({
-            error: error.message,
-            reply: `❌ Error de conexión: ${error.message}. Verifica tu API key.`
-        });
-    }
 });
 
 // --- API CROP STEERING ---
@@ -4252,32 +3986,20 @@ app.post('/api/settings/verify-2fa', async (req, res) => {
 
         const newRecord = {
             timestamp,
-            // Use null for missing values to prevent chart drops (frontend filters nulls)
             temperature: countTemp > 0 ? parseFloat((countTemp === 1 ? avgTemp : avgTemp / countTemp).toFixed(1)) : null,
-            humidity: avgHum > 0 ? avgHum : null,
+            humidity: avgHum > 0 ? avgHum : null, // Now using Real Ambient Humidity
             substrateHumidity: countSubstrate > 0 ? parseFloat((avgSubstrate / countSubstrate).toFixed(0)) : null,
-            // Individual sensors - null if not available
-            sh1: (typeof sh1 === 'number' && sh1 > 0) ? sh1 : null,
-            sh2: (typeof sh2 === 'number' && sh2 > 0) ? sh2 : null,
-            sh3: (typeof sh3 === 'number' && sh3 > 0) ? sh3 : null,
-            // VPD calculation
-            vpd: (countTemp > 0 && avgHum > 0) ? parseFloat(calculateVPD(
-                countTemp === 1 ? avgTemp : avgTemp / countTemp,
-                avgHum
-            ).toFixed(2)) : null
+            // Individual values for chart (Use null instead of 0 to prevent chart drops)
+            sh1: sh1 > 0 ? sh1 : null,
+            sh2: sh2 > 0 ? sh2 : null,
+            sh3: sh3 > 0 ? sh3 : null
         };
 
-        // Only save if we have valid data (at least temp or humidity)
-        if (newRecord.temperature !== null || newRecord.humidity !== null || newRecord.substrateHumidity !== null) {
-            sensorHistory.push(newRecord);
-            if (sensorHistory.length > MAX_HISTORY_LENGTH) sensorHistory.shift();
+        sensorHistory.push(newRecord);
+        if (sensorHistory.length > MAX_HISTORY_LENGTH) sensorHistory.shift();
 
-            // Save to Persistence (Firestore)
-            firestore.saveSensorRecord(newRecord);
-            console.log(`[HISTORY] Saved: T${newRecord.temperature} H${newRecord.humidity} VPD${newRecord.vpd} VWC${newRecord.substrateHumidity}`);
-        } else {
-            console.log('[HISTORY] Skipped empty record - no valid sensor data');
-        }
+        // Save to Persistence (Firestore)
+        firestore.saveSensorRecord(newRecord);
 
         // Backup local (Legacy/Backup for Dev)
         // fs.writeFileSync(HISTORY_FILE, JSON.stringify(sensorHistory)); // Disabled for Cloud Cloud to avoid disk I/O cost/errors
@@ -4383,821 +4105,6 @@ setInterval(async () => {
     }
 }, 10000);
 
-// =========================================
-// CROP STEERING INTELLIGENT AUTOMATION
-// =========================================
-const cropSteeringEngine = require('./cropSteeringEngine');
-
-// Track irrigation for rate limiting
-let cropSteeringState = {
-    lastIrrigationTime: null,
-    irrigationCountToday: 0,
-    lastResetDate: new Date().toDateString()
-};
-
-// Reset daily counter at midnight
-setInterval(() => {
-    const today = new Date().toDateString();
-    if (cropSteeringState.lastResetDate !== today) {
-        cropSteeringState.irrigationCountToday = 0;
-        cropSteeringState.lastResetDate = today;
-        console.log('[CROP-STEERING] Daily irrigation counter reset');
-    }
-}, 60000);
-
-// Crop Steering Automation Loop (every 30 seconds)
-setInterval(async () => {
-    try {
-        // Check if automation is enabled
-        if (!appSettings.cropSteering?.enabled) return;
-
-        // Get decision from engine
-        const decision = cropSteeringEngine.evaluateIrrigation(
-            sensorHistory,
-            appSettings,
-            pumpState
-        );
-
-        // Update state
-        appSettings.cropSteering.state = {
-            ...appSettings.cropSteering.state,
-            currentPhase: decision.phase,
-            lastDecision: {
-                ...decision,
-                timestamp: new Date().toISOString()
-            }
-        };
-
-        // Log decision (not every time to reduce noise)
-        if (decision.action !== 'wait' && decision.action !== 'vwc_ok') {
-            console.log(`[CROP-STEERING] Phase: ${decision.phase} | VWC: ${decision.currentVWC}% | Action: ${decision.action} | ${decision.reasoning}`);
-        }
-
-        // Execute irrigation if needed
-        if (decision.shouldIrrigate) {
-            const profile = cropSteeringEngine.getProfile(appSettings.cropSteering.direction);
-
-            // Check daily limit
-            if (cropSteeringState.irrigationCountToday >= profile.maxEventsPerDay) {
-                console.log(`[CROP-STEERING] Daily limit reached (${profile.maxEventsPerDay} events). Skipping.`);
-                return;
-            }
-
-            console.log(`[CROP-STEERING] 💧 IRRIGATING: ${decision.eventSize}% | Phase: ${decision.phase}`);
-
-            // Calculate volume and duration
-            const config = appSettings.irrigation;
-            const volumeMl = config.potSize * 1000 * (decision.eventSize / 100);
-            const durationMs = (volumeMl / config.pumpRate) * 1000;
-
-            // Execute pump sequence
-            const pumpKey = 'bombaControlador';
-
-            try {
-                // Turn pump ON
-                await setDeviceState(pumpKey, true);
-                pumpState.isOn = true;
-                pumpState.lastOnTime = new Date().toISOString();
-                pumpState.lastVwcAtOn = decision.currentVWC;
-
-                // Schedule pump OFF
-                setTimeout(async () => {
-                    await setDeviceState(pumpKey, false);
-                    pumpState.isOn = false;
-                    pumpState.lastOffTime = new Date().toISOString();
-
-                    // Update counters
-                    cropSteeringState.lastIrrigationTime = new Date().toISOString();
-                    cropSteeringState.irrigationCountToday++;
-                    appSettings.cropSteering.state.lastIrrigationTime = cropSteeringState.lastIrrigationTime;
-                    appSettings.cropSteering.state.irrigationCountToday = cropSteeringState.irrigationCountToday;
-
-                    // Log irrigation event
-                    const event = {
-                        timestamp: new Date().toISOString(),
-                        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                        phase: decision.phase,
-                        vwcValue: decision.currentVWC,
-                        percentage: decision.eventSize,
-                        volumeMl,
-                        durationMs,
-                        direction: appSettings.cropSteering.direction
-                    };
-                    irrigationEvents.push(event);
-                    if (irrigationEvents.length > 50) irrigationEvents.shift();
-
-                    console.log(`[CROP-STEERING] ✅ Irrigation complete: ${volumeMl}ml in ${(durationMs/1000).toFixed(1)}s`);
-
-                }, durationMs);
-
-            } catch (pumpError) {
-                console.error('[CROP-STEERING] Pump control error:', pumpError.message);
-                pumpState.isOn = false;
-            }
-        }
-
-    } catch (error) {
-        console.error('[CROP-STEERING] Automation error:', error.message);
-    }
-}, 30000);
-
-// --- CROP STEERING API ENDPOINTS ---
-
-// Get current status
-app.get('/api/crop-steering/status', (req, res) => {
-    try {
-        const status = cropSteeringEngine.getStatusSummary(appSettings, sensorHistory, pumpState);
-
-        // Calculate days since start
-        const startDate = appSettings.cropSteering?.flipDate || appSettings.cropSteering?.startDate;
-        let daysInCycle = 0;
-        if (startDate) {
-            daysInCycle = Math.floor((Date.now() - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24));
-        }
-
-        res.json({
-            success: true,
-            enabled: appSettings.cropSteering?.enabled || false,
-            stage: appSettings.cropSteering?.stage || 'veg_early',
-            daysInCycle,
-            ...status,
-            irrigationCountToday: cropSteeringState.irrigationCountToday,
-            lastIrrigationTime: cropSteeringState.lastIrrigationTime
-        });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
-});
-
-// Get day schedule
-app.get('/api/crop-steering/schedule', (req, res) => {
-    try {
-        const schedule = cropSteeringEngine.getDaySchedule(appSettings);
-        res.json({ success: true, ...schedule });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
-});
-
-// Update direction
-app.post('/api/crop-steering/direction', async (req, res) => {
-    try {
-        const { direction } = req.body;
-        const validDirections = ['vegetative', 'generative', 'balanced', 'ripening'];
-
-        if (!validDirections.includes(direction)) {
-            return res.status(400).json({ error: `Invalid direction. Use: ${validDirections.join(', ')}` });
-        }
-
-        appSettings.cropSteering.direction = direction;
-        await firestore.saveGlobalSettings(appSettings);
-
-        console.log(`[CROP-STEERING] Direction changed to: ${direction}`);
-        res.json({ success: true, direction });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
-});
-
-// Toggle automation
-app.post('/api/crop-steering/toggle', async (req, res) => {
-    try {
-        const { enabled } = req.body;
-        appSettings.cropSteering.enabled = !!enabled;
-        await firestore.saveGlobalSettings(appSettings);
-
-        console.log(`[CROP-STEERING] Automation ${enabled ? 'ENABLED' : 'DISABLED'}`);
-        res.json({ success: true, enabled: appSettings.cropSteering.enabled });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
-});
-
-// Get profiles info
-app.get('/api/crop-steering/profiles', (req, res) => {
-    res.json({
-        success: true,
-        profiles: cropSteeringEngine.STEERING_PROFILES
-    });
-});
-
-// Manual irrigation trigger (respects phase rules but forces event)
-app.post('/api/crop-steering/manual-irrigation', async (req, res) => {
-    try {
-        const { eventSize, force = false } = req.body;
-        const size = eventSize || appSettings.cropSteering.overrides?.eventSize || 3;
-
-        // Check if we should block (unless force)
-        if (!force) {
-            const phaseInfo = cropSteeringEngine.getCurrentPhase(
-                appSettings.lighting,
-                appSettings.cropSteering.direction
-            );
-
-            if (!phaseInfo.isInWindow && phaseInfo.phase === 'night') {
-                return res.status(400).json({
-                    error: 'Riego bloqueado - Período nocturno',
-                    phase: phaseInfo.phase,
-                    message: phaseInfo.message
-                });
-            }
-        }
-
-        // Execute irrigation
-        const config = appSettings.irrigation;
-        const volumeMl = config.potSize * 1000 * (size / 100);
-        const durationMs = (volumeMl / config.pumpRate) * 1000;
-
-        const pumpKey = 'bombaControlador';
-        await setDeviceState(pumpKey, true);
-
-        setTimeout(async () => {
-            await setDeviceState(pumpKey, false);
-            cropSteeringState.irrigationCountToday++;
-        }, durationMs);
-
-        console.log(`[CROP-STEERING] Manual irrigation: ${size}% (${volumeMl}ml)`);
-
-        res.json({
-            success: true,
-            message: `Riego manual iniciado: ${volumeMl}ml (${(durationMs/1000).toFixed(1)}s)`,
-            eventSize: size,
-            volumeMl,
-            durationMs
-        });
-
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
-});
-
-// Get available stages
-app.get('/api/crop-steering/stages', (req, res) => {
-    const stages = [
-        { id: 'veg_early', name: 'Vegetativo Temprano', durationDays: 14 },
-        { id: 'veg_late', name: 'Vegetativo Tardío', durationDays: 14 },
-        { id: 'transition', name: 'Transición', durationDays: 7 },
-        { id: 'flower_early', name: 'Floración Temprana', durationDays: 21 },
-        { id: 'flower_mid', name: 'Floración Media', durationDays: 21 },
-        { id: 'flower_late', name: 'Floración Tardía', durationDays: 14 },
-        { id: 'ripening', name: 'Maduración', durationDays: 14 }
-    ];
-    res.json({ success: true, stages });
-});
-
-// Get irrigation recommendation
-app.get('/api/crop-steering/recommendation', (req, res) => {
-    try {
-        const latest = sensorHistory[sensorHistory.length - 1];
-        const vwc = latest?.substrateHumidity || 0;
-        const profile = cropSteeringEngine.getProfile(appSettings.cropSteering.direction);
-        const phaseInfo = cropSteeringEngine.getCurrentPhase(appSettings.lighting, appSettings.cropSteering.direction);
-
-        let shouldIrrigate = false;
-        let reason = 'Esperando datos...';
-        let suggestedPercentage = profile.eventSizeDefault;
-
-        if (phaseInfo.phase === 'night') {
-            reason = 'Período nocturno - No irrigar';
-        } else if (vwc === 0) {
-            reason = 'Sin datos de VWC disponibles';
-        } else if (vwc < profile.fieldCapacityTarget - 10) {
-            shouldIrrigate = true;
-            reason = `VWC bajo (${vwc}%) - Riego recomendado`;
-            suggestedPercentage = Math.min(profile.eventSizeMax, profile.eventSizeDefault * 1.5);
-        } else if (vwc < profile.fieldCapacityTarget) {
-            shouldIrrigate = true;
-            reason = `VWC en rango bajo (${vwc}%) - Riego sugerido`;
-        } else {
-            reason = `VWC óptimo (${vwc}%) - Mantener observación`;
-        }
-
-        res.json({
-            success: true,
-            recommendation: {
-                shouldIrrigate,
-                phase: phaseInfo.phase,
-                reason,
-                suggestedPercentage,
-                nextIrrigationIn: phaseInfo.minutesUntilP1 || null,
-                currentVWC: vwc,
-                targetVWC: profile.fieldCapacityTarget
-            }
-        });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
-});
-
-// Set current stage
-app.post('/api/crop-steering/stage', async (req, res) => {
-    try {
-        const { stage } = req.body;
-        if (!stage) {
-            return res.status(400).json({ error: 'Stage is required' });
-        }
-
-        // Save to memory (always works)
-        appSettings.cropSteering.stage = stage;
-
-        // Try to persist to Firestore (may fail but that's OK)
-        try {
-            await firestore.saveGlobalSettings(appSettings);
-            console.log(`[CROP-STEERING] Stage changed and saved to Firestore: ${stage}`);
-        } catch (fsErr) {
-            console.warn(`[CROP-STEERING] Stage changed in memory but Firestore save failed: ${stage}`);
-        }
-
-        res.json({ success: true, stage });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
-});
-
-// Enhanced status endpoint with full data for StageDashboard
-app.get('/api/crop-steering/full-status', (req, res) => {
-    try {
-        const latest = sensorHistory[sensorHistory.length - 1];
-        const profile = cropSteeringEngine.getProfile(appSettings.cropSteering.direction);
-        const phaseInfo = cropSteeringEngine.getCurrentPhase(appSettings.lighting, appSettings.cropSteering.direction);
-
-        // Calculate days in stage
-        const stageStartDate = appSettings.cropSteering.flipDate ? new Date(appSettings.cropSteering.flipDate) : new Date();
-        const daysInStage = Math.floor((Date.now() - stageStartDate.getTime()) / (1000 * 60 * 60 * 24));
-
-        res.json({
-            success: true,
-            stage: {
-                id: appSettings.cropSteering.stage || 'veg_early',
-                name: profile.name,
-                startDate: appSettings.cropSteering.flipDate,
-                daysInStage: Math.max(0, daysInStage)
-            },
-            current: {
-                temperature: latest?.temperature || 0,
-                humidity: latest?.humidity || 0,
-                vpd: latest?.vpd || 0,
-                vwc: latest?.substrateHumidity || 0,
-                dli: 0 // TODO: Calculate from light data
-            },
-            targets: {
-                temperature: { day: 26, night: 22 },
-                humidity: { day: 55, night: 65 },
-                vpd: { min: profile.vpdMin, max: profile.vpdMax, target: (profile.vpdMin + profile.vpdMax) / 2 },
-                vwc: {
-                    min: profile.fieldCapacityTarget - 15,
-                    target: profile.fieldCapacityTarget,
-                    max: profile.fieldCapacityTarget + 10
-                },
-                dryback: { min: profile.drybackP3Min, max: profile.drybackP3Max },
-                ec: { input: 1.8, substrate: 2.2 },
-                light: { ppfd: 800, dli: 45, hours: appSettings.lighting?.hoursOn || 12 }
-            },
-            status: {
-                vpdStatus: latest?.vpd >= profile.vpdMin && latest?.vpd <= profile.vpdMax ? 'optimal' : 'warning',
-                tempStatus: latest?.temperature >= 22 && latest?.temperature <= 28 ? 'optimal' : 'warning',
-                vwcStatus: (latest?.substrateHumidity || 0) >= profile.fieldCapacityTarget - 15 ? 'optimal' : 'warning'
-            },
-            phase: phaseInfo.phase,
-            phaseMessage: phaseInfo.message
-        });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
-});
-
-// =========================================
-// GEMINI AI CHAT ENDPOINT
-// =========================================
-const { GoogleGenerativeAI } = require('@google/generative-ai');
-
-app.post('/api/chat', express.json(), async (req, res) => {
-    try {
-        const apiKey = process.env.GEMINI_API_KEY;
-
-        if (!apiKey) {
-            console.error('[CHAT] GEMINI_API_KEY no está configurada');
-            return res.json({
-                reply: '⚠️ API Key de Gemini no configurada. Ve a Render → Environment Variables y añade GEMINI_API_KEY.'
-            });
-        }
-
-        const { message, context } = req.body;
-
-        if (!message) {
-            return res.status(400).json({ error: 'Message is required' });
-        }
-
-        // Get latest sensor data for context
-        const latestSensor = sensorHistory.length > 0 ? sensorHistory[sensorHistory.length - 1] : {};
-
-        const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-
-        const systemPrompt = `Eres un experto en cultivo de cannabis con conocimiento profundo de la metodología Athena Agriculture y CCI (Crop Steering).
-
-DATOS ACTUALES DEL CULTIVO:
-- Temperatura: ${latestSensor.temperature?.toFixed(1) || 'N/A'}°C
-- Humedad: ${latestSensor.humidity?.toFixed(0) || 'N/A'}%
-- VPD: ${latestSensor.vpd?.toFixed(2) || 'N/A'} kPa
-- VWC Sustrato: ${latestSensor.substrateHumidity?.toFixed(0) || 'N/A'}%
-- Fase actual: ${context?.phase || 'No definida'}
-
-CONOCIMIENTO BASE:
-- Fases de riego: P1 (mantenimiento rápido), P2 (ajuste fino), P3 (dryback nocturno)
-- VWC óptimo: 45-55% en vegetativo, 40-50% en floración
-- VPD óptimo: 0.8-1.0 kPa en veg, 1.0-1.4 kPa en floración
-- Dryback objetivo: 12-15% desde lights on
-
-Responde en español, de forma concisa y práctica. Da recomendaciones específicas basadas en los datos actuales.`;
-
-        const result = await model.generateContent([systemPrompt, message]);
-        const reply = result.response.text();
-
-        console.log('[CHAT] Response generated successfully');
-        res.json({ reply });
-
-    } catch (e) {
-        console.error('[CHAT] Error:', e.message);
-        res.json({
-            reply: `Error: ${e.message}. Verifica que la API Key de Gemini sea válida.`
-        });
-    }
-});
-
-// =========================================
-// MEROSS LOGIN ENDPOINT
-// =========================================
-
-app.post('/api/meross/login', express.json(), async (req, res) => {
-    const { email, password } = req.body;
-
-    if (!email || !password) {
-        return res.status(400).json({ success: false, error: 'Email y password requeridos' });
-    }
-
-    try {
-        console.log('[MEROSS] Intentando login con:', email);
-
-        // Save credentials to settings first
-        appSettings.meross = { email, connected: false, lastAttempt: new Date().toISOString() };
-        await saveSettings();
-
-        // Try to connect to Meross Cloud
-        if (typeof MerossCloud === 'function') {
-            try {
-                const meross = new MerossCloud({
-                    email,
-                    password,
-                    logger: console.log
-                });
-
-                // Save client globally for later use
-                merossClient = meross;
-
-                // Set up event handlers
-                let connected = false;
-                meross.on('connected', () => {
-                    console.log('[MEROSS] Connected successfully');
-                    connected = true;
-                    appSettings.meross.connected = true;
-                    saveSettings();
-                });
-
-                meross.on('error', (err) => {
-                    console.error('[MEROSS] Connection error:', err?.message || err);
-                });
-
-                // Device discovery listener - THIS WAS MISSING
-                meross.on('deviceInitialized', (deviceId, deviceDef, device) => {
-                    console.log(`[MEROSS] Device discovered: ${deviceDef.devName} (${deviceId})`);
-                    merossDevices[deviceId] = {
-                        id: deviceId,
-                        name: deviceDef.devName || deviceDef.dev?.devName || 'Meross Device',
-                        type: deviceDef.deviceType || 'switch',
-                        model: deviceDef.model || 'unknown',
-                        online: deviceDef.onlineStatus === 1,
-                        device: device, // Keep reference for control
-                        platform: 'meross'
-                    };
-                    console.log(`[MEROSS] Total devices discovered: ${Object.keys(merossDevices).length}`);
-                });
-
-                // Try to connect with timeout
-                const connectPromise = meross.connect();
-                const timeoutPromise = new Promise((_, reject) =>
-                    setTimeout(() => reject(new Error('Timeout: Conexión demoró demasiado')), 15000)
-                );
-
-                await Promise.race([connectPromise, timeoutPromise]);
-
-                appSettings.meross.connected = true;
-                await saveSettings();
-
-                res.json({
-                    success: true,
-                    message: 'Conectado a Meross Cloud exitosamente',
-                    email,
-                    deviceCount: Object.keys(merossDevices).length
-                });
-            } catch (merossError) {
-                console.error('[MEROSS] Connection error:', merossError?.message || merossError);
-
-                // Still save credentials for future attempts
-                appSettings.meross = { email, connected: false, error: merossError?.message };
-                await saveSettings();
-
-                // Return error with helpful message
-                res.json({
-                    success: false,
-                    error: `Error de Meross: ${merossError?.message || 'Conexión fallida'}. Verifica email/password o intenta más tarde.`
-                });
-            }
-        } else {
-            // MerossCloud not available - save credentials anyway
-            console.log('[MEROSS] MerossCloud library not available, saving credentials');
-            appSettings.meross = { email, connected: true, simulated: true };
-            await saveSettings();
-
-            res.json({
-                success: true,
-                message: 'Credenciales guardadas. Los dispositivos Meross se sincronizarán automáticamente.',
-                email
-            });
-        }
-    } catch (e) {
-        console.error('[MEROSS] General error:', e?.message || e);
-        res.json({
-            success: false,
-            error: e?.message || 'Error desconocido'
-        });
-    }
-});
-
-// GET /api/meross/status - Check Meross connection status
-app.get('/api/meross/status', (req, res) => {
-    res.json({
-        connected: appSettings.meross?.connected || false,
-        email: appSettings.meross?.email || null,
-        deviceCount: merossDevices?.length || 0
-    });
-});
-
-// =========================================
-// CROP STEERING API ENDPOINTS
-// =========================================
-
-// Growth stage configurations (mirroring frontend cropSteeringConfig.ts)
-const GROWTH_STAGES = {
-    clone: { name: 'Clones', vpd: { min: 0.4, max: 0.8, target: 0.6 }, temp: { day: 25, night: 23 }, humidity: { day: 75, night: 80 }, vwc: { min: 55, target: 65, max: 75 }, dryback: { min: 5, max: 15 }, ec: { input: 1.0, substrate: 1.2 }, light: { ppfd: 150, dli: 8, hours: 18 }, p1Delay: 30 },
-    veg_early: { name: 'Veg Temprano', vpd: { min: 0.6, max: 0.9, target: 0.75 }, temp: { day: 26, night: 22 }, humidity: { day: 70, night: 75 }, vwc: { min: 50, target: 60, max: 70 }, dryback: { min: 10, max: 20 }, ec: { input: 1.4, substrate: 1.8 }, light: { ppfd: 400, dli: 25, hours: 18 }, p1Delay: 45 },
-    veg_late: { name: 'Veg Tardío', vpd: { min: 0.8, max: 1.1, target: 0.95 }, temp: { day: 26, night: 22 }, humidity: { day: 65, night: 70 }, vwc: { min: 45, target: 55, max: 65 }, dryback: { min: 15, max: 25 }, ec: { input: 1.8, substrate: 2.2 }, light: { ppfd: 500, dli: 35, hours: 18 }, p1Delay: 60 },
-    flower_transition: { name: 'Transición', vpd: { min: 0.9, max: 1.2, target: 1.05 }, temp: { day: 26, night: 20 }, humidity: { day: 60, night: 65 }, vwc: { min: 40, target: 50, max: 60 }, dryback: { min: 20, max: 30 }, ec: { input: 2.2, substrate: 2.6 }, light: { ppfd: 650, dli: 40, hours: 12 }, p1Delay: 90 },
-    flower_early: { name: 'Flora Temprana', vpd: { min: 0.9, max: 1.3, target: 1.1 }, temp: { day: 26, night: 20 }, humidity: { day: 57, night: 62 }, vwc: { min: 35, target: 45, max: 55 }, dryback: { min: 25, max: 35 }, ec: { input: 2.4, substrate: 2.8 }, light: { ppfd: 750, dli: 45, hours: 12 }, p1Delay: 90 },
-    flower_mid: { name: 'Flora Media', vpd: { min: 1.0, max: 1.5, target: 1.25 }, temp: { day: 24, night: 20 }, humidity: { day: 52, night: 57 }, vwc: { min: 30, target: 40, max: 50 }, dryback: { min: 30, max: 40 }, ec: { input: 2.6, substrate: 3.2 }, light: { ppfd: 850, dli: 50, hours: 12 }, p1Delay: 120 },
-    flower_late: { name: 'Flora Tardía', vpd: { min: 1.2, max: 1.7, target: 1.45 }, temp: { day: 22, night: 18 }, humidity: { day: 42, night: 47 }, vwc: { min: 25, target: 35, max: 45 }, dryback: { min: 35, max: 45 }, ec: { input: 2.2, substrate: 2.8 }, light: { ppfd: 850, dli: 48, hours: 12 }, p1Delay: 150 },
-    flush: { name: 'Maduración', vpd: { min: 1.4, max: 1.8, target: 1.6 }, temp: { day: 21, night: 16 }, humidity: { day: 37, night: 42 }, vwc: { min: 20, target: 30, max: 40 }, dryback: { min: 40, max: 50 }, ec: { input: 0.3, substrate: 0.8 }, light: { ppfd: 750, dli: 40, hours: 12 }, p1Delay: 180 }
-};
-
-// GET /api/crop-steering/status - Get current stage with targets vs actual
-app.get('/api/crop-steering/status', (req, res) => {
-    try {
-        const currentStage = appSettings.cropSteering?.stage || 'veg_early';
-        const stageConfig = GROWTH_STAGES[currentStage] || GROWTH_STAGES.veg_early;
-
-        // Get current sensor values
-        const latestSensor = sensorHistory.length > 0 ? sensorHistory[sensorHistory.length - 1] : {};
-        const temp = latestSensor.temperature || 0;
-        const humidity = latestSensor.humidity || 0;
-        const vwc = latestSensor.substrateHumidity || 0;
-
-        // Calculate VPD
-        let vpd = 0;
-        if (temp > 0 && humidity > 0) {
-            const svp = 0.6108 * Math.exp((17.27 * temp) / (temp + 237.3));
-            vpd = parseFloat((svp * (1 - humidity / 100)).toFixed(2));
-        }
-
-        // Calculate DLI (if we have PPFD data - estimate from light hours)
-        const lighting = appSettings.lighting || {};
-        const lightHours = stageConfig.light.hours;
-        const estimatedPPFD = stageConfig.light.ppfd;
-        const dli = parseFloat((estimatedPPFD * lightHours * 0.0036).toFixed(1));
-
-        res.json({
-            success: true,
-            stage: {
-                id: currentStage,
-                name: stageConfig.name,
-                startDate: appSettings.cropSteering?.startDate || null,
-                daysInStage: appSettings.cropSteering?.startDate
-                    ? Math.floor((Date.now() - new Date(appSettings.cropSteering.startDate).getTime()) / (1000 * 60 * 60 * 24))
-                    : 0
-            },
-            current: {
-                temperature: temp,
-                humidity: humidity,
-                vpd: vpd,
-                vwc: vwc,
-                dli: dli
-            },
-            targets: {
-                temperature: stageConfig.temp,
-                humidity: stageConfig.humidity,
-                vpd: stageConfig.vpd,
-                vwc: stageConfig.vwc,
-                dryback: stageConfig.dryback,
-                ec: stageConfig.ec,
-                light: stageConfig.light
-            },
-            status: {
-                vpdStatus: vpd >= stageConfig.vpd.min && vpd <= stageConfig.vpd.max ? 'optimal' : 'warning',
-                tempStatus: temp >= stageConfig.temp.night && temp <= stageConfig.temp.day + 2 ? 'optimal' : 'warning',
-                vwcStatus: vwc >= stageConfig.vwc.min && vwc <= stageConfig.vwc.max ? 'optimal' : 'warning'
-            }
-        });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
-});
-
-// GET /api/crop-steering/recommendation - Get irrigation recommendations
-app.get('/api/crop-steering/recommendation', (req, res) => {
-    try {
-        const currentStage = appSettings.cropSteering?.stage || 'veg_early';
-        const stageConfig = GROWTH_STAGES[currentStage] || GROWTH_STAGES.veg_early;
-        const lighting = appSettings.lighting || {};
-
-        const now = new Date();
-        const currentTime = now.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', hour12: false });
-
-        // Calculate time since lights on
-        let minutesSinceLightsOn = 0;
-        if (lighting.onTime) {
-            const [onH, onM] = lighting.onTime.split(':').map(Number);
-            const lightsOnDate = new Date(now);
-            lightsOnDate.setHours(onH, onM, 0, 0);
-            if (now < lightsOnDate) lightsOnDate.setDate(lightsOnDate.getDate() - 1);
-            minutesSinceLightsOn = Math.floor((now - lightsOnDate) / (1000 * 60));
-        }
-
-        // Get current VWC
-        const latestSensor = sensorHistory.length > 0 ? sensorHistory[sensorHistory.length - 1] : {};
-        const currentVWC = latestSensor.substrateHumidity || 0;
-
-        // Determine recommendation
-        let recommendation = {
-            shouldIrrigate: false,
-            phase: 'p1',
-            reason: '',
-            suggestedPercentage: 2,
-            nextIrrigationIn: null
-        };
-
-        const p1DelayMinutes = stageConfig.p1Delay;
-
-        if (minutesSinceLightsOn < p1DelayMinutes) {
-            // Before P1 window
-            recommendation.shouldIrrigate = false;
-            recommendation.reason = `Esperar ${p1DelayMinutes - minutesSinceLightsOn} min para P1`;
-            recommendation.nextIrrigationIn = p1DelayMinutes - minutesSinceLightsOn;
-            recommendation.phase = 'waiting';
-        } else if (currentVWC < stageConfig.vwc.min) {
-            // VWC below minimum - urgent irrigation needed
-            recommendation.shouldIrrigate = true;
-            recommendation.reason = `VWC (${currentVWC}%) bajo mínimo (${stageConfig.vwc.min}%)`;
-            recommendation.suggestedPercentage = 3;
-            recommendation.phase = 'p1';
-        } else if (currentVWC < stageConfig.vwc.target) {
-            // VWC below target - irrigation recommended
-            recommendation.shouldIrrigate = true;
-            recommendation.reason = `VWC (${currentVWC}%) bajo target (${stageConfig.vwc.target}%)`;
-            recommendation.suggestedPercentage = 2;
-            recommendation.phase = minutesSinceLightsOn < (stageConfig.light.hours * 60 / 2) ? 'p1' : 'p2';
-        } else {
-            // VWC OK
-            recommendation.shouldIrrigate = false;
-            recommendation.reason = `VWC óptimo (${currentVWC}%)`;
-            recommendation.phase = 'monitoring';
-        }
-
-        res.json({
-            success: true,
-            currentTime,
-            minutesSinceLightsOn,
-            stageP1Delay: p1DelayMinutes,
-            currentVWC,
-            targetVWC: stageConfig.vwc,
-            recommendation
-        });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
-});
-
-// POST /api/crop-steering/stage - Set current growth stage
-app.post('/api/crop-steering/stage', express.json(), async (req, res) => {
-    try {
-        const { stage, startDate } = req.body;
-
-        if (!GROWTH_STAGES[stage]) {
-            return res.status(400).json({ error: 'Invalid stage. Valid stages: ' + Object.keys(GROWTH_STAGES).join(', ') });
-        }
-
-        appSettings.cropSteering = {
-            ...appSettings.cropSteering,
-            stage: stage,
-            startDate: startDate || new Date().toISOString()
-        };
-
-        await saveSettings();
-
-        console.log(`[CROP-STEERING] Stage set to: ${stage}`);
-
-        res.json({
-            success: true,
-            stage: stage,
-            config: GROWTH_STAGES[stage]
-        });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
-});
-
-// GET /api/crop-steering/stages - List all available stages
-app.get('/api/crop-steering/stages', (req, res) => {
-    res.json({
-        success: true,
-        stages: Object.entries(GROWTH_STAGES).map(([id, config]) => ({
-            id,
-            name: config.name,
-            targets: {
-                vpd: config.vpd,
-                temp: config.temp,
-                humidity: config.humidity,
-                vwc: config.vwc,
-                ec: config.ec,
-                light: config.light
-            }
-        }))
-    });
-});
-
-// --- IRRIGATION EVENTS API ---
-// GET /api/irrigation/events - Get irrigation events (optionally filtered by date)
-app.get('/api/irrigation/events', (req, res) => {
-    try {
-        const { date } = req.query;
-        let events = irrigationEvents;
-
-        // Filter by date if provided
-        if (date) {
-            events = events.filter(e => e.timestamp && e.timestamp.startsWith(date));
-        }
-
-        res.json({
-            success: true,
-            events: events,
-            pumpState: {
-                isOn: pumpState.isOn,
-                lastOnTime: pumpState.lastOnTime,
-                lastOffTime: pumpState.lastOffTime
-            }
-        });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
-});
-
-// POST /api/irrigation/events - Manually log irrigation event
-app.post('/api/irrigation/events', express.json(), (req, res) => {
-    try {
-        const { phase, vwcValue, duration, notes } = req.body;
-        const now = new Date();
-
-        const event = {
-            timestamp: now.toISOString(),
-            time: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            phase: phase || classifyIrrigationPhase(),
-            vwcValue: vwcValue || 0,
-            percentage: Math.round((vwcValue || 0)),
-            duration: duration || 0,
-            manual: true,
-            notes: notes
-        };
-
-        irrigationEvents.push(event);
-        console.log('[IRRIGATION] Manual event logged:', event);
-
-        res.json({
-            success: true,
-            event: event
-        });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
-});
-
 // --- SERVE FRONTEND STATIC FILES ---
 app.use(express.static(path.join(__dirname, '../dist')));
 
@@ -5216,37 +4123,35 @@ app.use((err, req, res, next) => {
     });
 });
 
-// --- SERVER INITIALIZATION ---
-// CRITICAL: Start server FIRST to respond to health checks (required for Cloud Run)
-// Then load configurations in background
-
-const server = app.listen(PORT, () => {
-    console.log(`✓ PKGrower Server LISTENING on port ${PORT}`);
-    console.log(`📡 Server Ready - Loading configuration in background...`);
-
-    // Load configurations asynchronously AFTER server is listening
-    (async () => {
-        try {
-            console.log('[STARTUP] Loading saved configuration from Firestore...');
-            await loadSettings();
-            await loadCustomDevices();
-            console.log('[STARTUP] Configuration loaded successfully');
-            console.log(`✓ Dispositivos Tuya registrados: ${Object.keys(tuyaDevices).length}`);
-            console.log(`📗 All configuration modules loaded from Firestore`);
-        } catch (e) {
-            console.warn('[STARTUP] Config load error (using defaults):', e.message);
-            // Don't crash - continue with defaults
-        }
-    })();
-});
-
-// Handle uncaught errors gracefully
-process.on('uncaughtException', (err) => {
-    console.error('[FATAL] Uncaught Exception:', err.message);
-    // Don't exit - try to keep running
-});
-
-process.on('unhandledRejection', (reason, promise) => {
-    console.error('[FATAL] Unhandled Rejection at:', promise, 'reason:', reason);
-    // Don't exit - try to keep running
+// Start Server
+app.listen(PORT, () => {
+  console.log(`âœ“ Dispositivos Tuya registrados: ${Object.keys(tuyaDevices).length}`);
+  console.log(`\nðŸ“¡ Endpoints disponibles:`);
+  console.log(`  â€¢ GET  /api/sensors/latest`);
+  console.log(`  â€¢ GET  /api/sensors/history`);
+  console.log(`  â€¢ GET  /api/devices`);
+  console.log(`  â€¢ GET  /api/devices/all`);
+  console.log(`  â€¢ GET  /api/devices/tuya`);
+  console.log(`  â€¢ GET  /api/sensors/soil`);
+  console.log(`  â€¢ GET  /api/camera/info`);
+  console.log(`  â€¢ GET  /api/camera/snapshot`);
+  console.log(`  â€¢ GET  /api/camera/stream`);
+  console.log(`  â€¢ POST /api/camera/night-vision`);
+  console.log(`  â€¢ GET  /api/device/camera/status`);
+  console.log(`  â€¢ POST /api/device/camera/record/start`);
+  console.log(`  â€¢ POST /api/device/camera/record/stop`);
+  console.log(`  â€¢ POST /api/device/camera/capture`);
+  console.log(`  â€¢ GET  /api/device/humidifier/status`);
+  console.log(`  â€¢ POST /api/automation/humidifier-extractor`);
+  console.log(`  â€¢ POST /api/device/:id/control`);
+  console.log(`  â€¢ POST /api/device/:id/toggle`);
+  console.log(`  â€¢ POST /api/chat`);
+  console.log(`  â€¢ GET  /api/devices/diagnostics`);
+  console.log(`  â€¢ GET  /api/calendar/events`);
+  console.log(`  â€¢ POST /api/calendar/events`);
+  console.log(`  â€¢ DELETE /api/calendar/events/:id`);
+  console.log(`  â€¢ GET  /api/settings`);
+  console.log(`  â€¢ POST /api/settings`);
+  console.log(`  â€¢ POST /api/settings/reset`);
+  console.log(`\nðŸ”— Frontend: http://localhost:5173\n`);
 });
