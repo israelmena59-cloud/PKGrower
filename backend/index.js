@@ -841,13 +841,19 @@ async function saveSensorSnapshot() {
 }
 
 // --- SECURITY MIDDLEWARE ---
-// Protect all routes with API Key
+// Protect all routes with API Key (only when API_KEY is set)
 const API_KEY = process.env.API_KEY;
-
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 
 app.use('/api', (req, res, next) => {
     // Exempt CORS preflight (OPTIONS)
     if (req.method === 'OPTIONS') return next();
+
+    // In Cloud Run production without API_KEY configured, skip auth
+    // The service is protected by Cloud Run IAM / allow-unauthenticated setting
+    if (IS_PRODUCTION && !API_KEY) {
+        return next();
+    }
 
     // EXEMPTIONS: Allow Dashboard Read-Only access without strict Key (Fixes 401 on refresh)
     // Only apply for GET requests to specific data endpoints
@@ -863,11 +869,8 @@ app.use('/api', (req, res, next) => {
         return next();
     }
 
-    // Check Header
+    // Check Header - Only enforce if API_KEY is configured
     const clientKey = req.headers['x-api-key'];
-
-    // In Simulation Mode or Localhost (optional), we might skip, but let's be strict for tunnel safety.
-    // If API_KEY is set in .env, enforce it.
     if (API_KEY && clientKey !== API_KEY) {
         console.warn(`[SECURITY] Unauthorized access attempt from ${req.ip} to ${req.path}`);
         return res.status(401).json({ error: 'Unauthorized: Invalid API Key' });
