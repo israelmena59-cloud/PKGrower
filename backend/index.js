@@ -796,6 +796,12 @@ function processTuyaDevices(cloudDevices) {
              s.code === 'moisture' ||
              s.code === 'soil_moisture'
          );
+
+         // DEBUG: Log status codes for soil sensors if humidity/temp not found
+         if (mapDef.category === 'soil_sensor') {
+             console.log(`[DEBUG-SENSOR] ${key} (${mapDef.name}) codes:`, cloudDevice.status.map(s => `${s.code}=${s.value}`).join(', '));
+         }
+
          if (humStatus) {
              // Heuristic: If > 100, likely scaled by 10 or 100. Soil sensors often 0-100 or 0-1000.
              // If value is 450, it probably means 45.0% or just 45%.
@@ -1239,6 +1245,10 @@ app.get('/api/devices/all', async (req, res) => {
           unit: device.deviceType === 'sensor' ? '%' : '',
           description: `${device.name} (${device.status || 'offline'})`,
           lastUpdate: device.lastUpdate ? new Date(device.lastUpdate).toLocaleTimeString() : new Date().toLocaleTimeString(),
+          properties: {
+              ...device, // Include all internal props
+              online: device.status !== 'offline'
+          }
         });
       }
     }
