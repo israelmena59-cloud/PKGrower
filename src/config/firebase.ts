@@ -15,20 +15,21 @@ import {
   onAuthStateChanged,
   sendEmailVerification as firebaseSendEmailVerification,
   sendPasswordResetEmail as firebaseSendPasswordResetEmail,
-  updatePassword as firebaseUpdatePassword,
+//   updatePassword as firebaseUpdatePassword, // Removed unused
   linkWithCredential,
   User
 } from 'firebase/auth';
 
 // Firebase config - from Firebase Console
+// Firebase config - from Environment Variables
 const firebaseConfig = {
-  apiKey: "AIzaSyCy6KzSqt5-751gkdX_S-7XvwK2Ly8fJSo",
-  authDomain: "pk-grower.firebaseapp.com",
-  projectId: "pk-grower",
-  storageBucket: "pk-grower.firebasestorage.app",
-  messagingSenderId: "664237832244",
-  appId: "1:664237832244:web:14f6b72c15118cb18f7261",
-  measurementId: "G-7FY8Z2522E"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
 

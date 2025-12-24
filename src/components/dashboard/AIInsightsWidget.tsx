@@ -1,23 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Box,
-  Typography,
-  Card,
-  CardContent,
-  Chip,
-  CircularProgress,
-  IconButton,
-  Tooltip,
-  Divider,
-} from '@mui/material';
-import {
   Sparkles,
   RefreshCw,
   Lightbulb,
-  TrendingUp,
   AlertTriangle,
   CheckCircle,
   Zap,
+  TrendingUp,
 } from 'lucide-react';
 import { apiClient } from '../../api/client';
 
@@ -67,136 +56,105 @@ const AIInsightsWidget: React.FC<AIInsightsWidgetProps> = ({
 
   const getTypeColor = (type: string) => {
     switch (type) {
-      case 'critical': return '#ef4444';
-      case 'warning': return '#f59e0b';
-      case 'success': return '#22c55e';
-      default: return '#6b7280';
+      case 'critical': return 'text-red-500 border-red-500/30 bg-red-500/10';
+      case 'warning': return 'text-amber-500 border-amber-500/30 bg-amber-500/10';
+      case 'success': return 'text-green-500 border-green-500/30 bg-green-500/10';
+      default: return 'text-gray-400 border-gray-500/30 bg-gray-500/10';
     }
   };
 
-  const getTypeIcon = (type: string) => {
-    const size = compact ? 14 : 16;
+  const getTypeIcon = (type: string, size = 16) => {
     switch (type) {
-      case 'critical': return <AlertTriangle size={size} />;
-      case 'warning': return <Lightbulb size={size} />;
-      case 'success': return <CheckCircle size={size} />;
-      default: return <Sparkles size={size} />;
+      case 'critical': return <AlertTriangle size={size} className="text-red-500" />;
+      case 'warning': return <Lightbulb size={size} className="text-amber-500" />;
+      case 'success': return <CheckCircle size={size} className="text-green-500" />;
+      default: return <Sparkles size={size} className="text-gray-400" />;
     }
   };
 
   if (compact) {
     return (
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+      <div className="flex flex-wrap gap-2">
         {loading ? (
-          <CircularProgress size={16} sx={{ color: 'white' }} />
+          <RefreshCw size={16} className="animate-spin text-white/50" />
         ) : (
           insights.slice(0, 3).map((insight, i) => (
-            <Tooltip key={i} title={insight.message}>
-              <Chip
-                icon={getTypeIcon(insight.type)}
-                label={insight.message.substring(0, 30) + (insight.message.length > 30 ? '...' : '')}
-                size="small"
-                sx={{
-                  bgcolor: `${getTypeColor(insight.type)}20`,
-                  color: getTypeColor(insight.type),
-                  fontSize: '0.7rem',
-                  '& .MuiChip-icon': { color: getTypeColor(insight.type) }
-                }}
-              />
-            </Tooltip>
+            <div
+              key={i}
+              className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium border ${getTypeColor(insight.type)}`}
+              title={insight.message}
+            >
+              {getTypeIcon(insight.type, 12)}
+              <span className="truncate max-w-[150px]">{insight.message}</span>
+            </div>
           ))
         )}
-      </Box>
+      </div>
     );
   }
 
   return (
-    <Card sx={{
-      bgcolor: 'rgba(0,0,0,0.3)',
-      border: '1px solid rgba(255,255,255,0.1)',
-      borderRadius: 3
-    }}>
-      <CardContent>
-        {/* Header */}
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Sparkles size={20} className="animate-pulse" color="#a5f3fc" />
-            <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: 'white' }}>
-              AI Insights
-            </Typography>
-          </Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            {lastUpdate && (
-              <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.5)' }}>
-                {lastUpdate.toLocaleTimeString()}
-              </Typography>
-            )}
-            <IconButton size="small" onClick={fetchInsights} disabled={loading} sx={{ color: 'white' }}>
-              <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-            </IconButton>
-          </Box>
-        </Box>
+    <div className="glass-panel p-0 h-full flex flex-col">
+      {/* Header */}
+      <div className="p-4 border-b border-white/10 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Sparkles size={20} className="text-cyan-300 animate-pulse" />
+          <h3 className="font-semibold text-white">AI Insights</h3>
+        </div>
+        <div className="flex items-center gap-2">
+          {lastUpdate && (
+            <span className="text-xs text-white/50">
+              {lastUpdate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+            </span>
+          )}
+          <button
+            onClick={fetchInsights}
+            disabled={loading}
+            className="text-white/70 hover:text-cyan-300 transition-colors disabled:opacity-50"
+          >
+            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+          </button>
+        </div>
+      </div>
 
-        <Divider sx={{ borderColor: 'rgba(255,255,255,0.1)', mb: 2 }} />
-
-        {/* Insights List */}
+      {/* Insights List */}
+      <div className="p-4 space-y-3 flex-1 overflow-y-auto custom-scrollbar">
         {loading && insights.length === 0 ? (
-          <Box sx={{ textAlign: 'center', py: 2 }}>
-            <CircularProgress size={24} sx={{ color: 'white' }} />
-          </Box>
+          <div className="flex justify-center py-4">
+            <RefreshCw size={24} className="animate-spin text-cyan-500/50" />
+          </div>
         ) : (
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-            {insights.map((insight, i) => (
-              <Box
+          insights.length > 0 ? (
+            insights.map((insight, i) => (
+              <div
                 key={i}
-                sx={{
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: 1.5,
-                  p: 1.5,
-                  borderRadius: 2,
-                  bgcolor: `${getTypeColor(insight.type)}10`,
-                  borderLeft: `3px solid ${getTypeColor(insight.type)}`
-                }}
+                className={`p-3 rounded-lg border flex items-start gap-3 transition-all hover:bg-white/5 ${getTypeColor(insight.type)}`}
               >
-                <Box sx={{ color: getTypeColor(insight.type), pt: 0.3 }}>
+                <div className="mt-0.5 shrink-0">
                   {getTypeIcon(insight.type)}
-                </Box>
-                <Box sx={{ flex: 1 }}>
-                  <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.9)', lineHeight: 1.4 }}>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-gray-200 leading-snug">
                     {insight.message}
-                  </Typography>
+                  </p>
                   {insight.action && (
-                    <Chip
-                      icon={<Zap size={10} />}
-                      label={insight.action}
-                      size="small"
-                      sx={{
-                        mt: 1,
-                        height: 20,
-                        fontSize: '0.65rem',
-                        bgcolor: 'rgba(255,255,255,0.1)',
-                        color: 'rgba(255,255,255,0.8)',
-                        cursor: 'pointer',
-                        '& .MuiChip-icon': { color: 'rgba(255,255,255,0.8)' },
-                        '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' }
-                      }}
-                    />
+                    <button className="mt-2 flex items-center gap-1.5 px-2 py-1 rounded bg-white/10 hover:bg-white/20 text-xs text-white/90 transition-colors">
+                      <Zap size={10} className="text-yellow-400" />
+                      <span>{insight.action}</span>
+                    </button>
                   )}
-                </Box>
-              </Box>
-            ))}
-          </Box>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="text-center py-8 text-white/30 flex flex-col items-center">
+              <TrendingUp size={32} strokeWidth={1.5} />
+              <p className="mt-2 text-sm">Sin insights disponibles</p>
+            </div>
+          )
         )}
-
-        {insights.length === 0 && !loading && (
-          <Box sx={{ textAlign: 'center', color: 'rgba(255,255,255,0.5)', py: 2 }}>
-            <TrendingUp size={24} />
-            <Typography variant="body2" sx={{ mt: 1 }}>Sin insights disponibles</Typography>
-          </Box>
-        )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 };
 

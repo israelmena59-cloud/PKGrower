@@ -1,43 +1,299 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@config "../tailwind.config.js";
 
-:root {
-  --background: 0 0% 100%;
-  --foreground: 240 10% 3.9%;
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 240 10% 3.9%;
 
-  --card: 0 0% 100%;
-  --card-foreground: 240 10% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
 
-  --popover: 0 0% 100%;
-  --popover-foreground: 240 10% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
 
-  --primary: 142.1 76.2% 36.3%; /* Green Apple (IOS Style) */
-  --primary-foreground: 355.7 100% 97.3%;
+    --primary: 142.1 76.2% 36.3%; /* Green Apple (IOS Style) */
+    --primary-foreground: 355.7 100% 97.3%;
 
-  --secondary: 240 4.8% 95.9%;
-  --secondary-foreground: 240 5.9% 10%;
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
 
-  --muted: 240 4.8% 95.9%;
-  --muted-foreground: 240 3.8% 46.1%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
 
-  --accent: 240 4.8% 95.9%;
-  --accent-foreground: 240 5.9% 10%;
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
 
-  --destructive: 0 84.2% 60.2%;
-  --destructive-foreground: 0 0% 98%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
 
-  --border: 240 5.9% 90%;
-  --input: 240 5.9% 90%;
-  --ring: 142.1 76.2% 36.3%;
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 142.1 76.2% 36.3%;
 
-  --radius: 1rem; /* More rounded IOS config */
+    --radius: 1rem; /* More rounded IOS config */
 
-  /* GLASS SYSTEM (Light) */
-  --glass-bg: rgba(255, 255, 255, 0.7);
-  --glass-border: 1px solid rgba(255, 255, 255, 0.5);
-  --backdrop-blur: blur(20px) saturate(180%);
+    /* GLASS SYSTEM (Light) */
+    --glass-bg: rgba(255, 255, 255, 0.7);
+    --glass-border: 1px solid rgba(255, 255, 255, 0.5);
+    --backdrop-blur: blur(20px) saturate(180%);
+
+    /* Spacing System */
+    --spacing-xs: 4px;
+    --spacing-sm: 8px;
+    --spacing-md: 16px;
+    --spacing-lg: 24px;
+    --spacing-xl: 32px;
+
+    /* Button Heights */
+    --btn-height-xs: 28px;
+    --btn-height-sm: 32px;
+    --btn-height-md: 40px;
+    --btn-height-lg: 48px;
+    --btn-height-xl: 56px;
+  }
+
+  .dark {
+    /* FLUID GLASS THEME (Refined Dark Mode) */
+    --background: 222 47% 11%; /* Deep Space Blue #0f172a */
+    --foreground: 210 40% 98%;
+
+    --card: 240 10% 6%; /* #111 */
+    --card-foreground: 0 0% 98%;
+
+    --popover: 240 10% 4%;
+    --popover-foreground: 0 0% 98%;
+
+    --primary: 142 70% 50%; /* #22c55e (Vivid Green) */
+    --primary-foreground: 144.9 80.4% 10%;
+
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 98%;
+
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+
+    --accent: 260 50% 50%; /* Electric Purple for secondary actions */
+    --accent-foreground: 0 0% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 142 70% 50%;
+
+    --radius: 1.5rem; /* Squircle radius 24px */
+
+    /* ADVANCED GLASS SYSTEM (iOS Style) */
+    --glass-bg: rgba(15, 23, 42, 0.6);
+    --glass-border: 1px solid rgba(255, 255, 255, 0.08);
+    --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+    --backdrop-blur: blur(20px) saturate(180%);
+    --squircle-radius: 24px;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
 }
+
+@layer components {
+  /* Utilities */
+  .glass-panel {
+    background: var(--glass-bg);
+    backdrop-filter: var(--backdrop-blur);
+    border: var(--glass-border);
+    box-shadow: var(--glass-shadow, none);
+    border-radius: var(--radius);
+    @apply transition-all duration-300;
+  }
+
+  .glass-panel:hover {
+    @apply -translate-y-0.5 shadow-lg;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+  }
+
+  .btn-standard {
+    @apply inline-flex items-center justify-center rounded-lg font-medium whitespace-nowrap transition-all duration-200;
+    min-height: var(--btn-height-md);
+    padding: 0 var(--spacing-md);
+  }
+
+  .btn-sm { min-height: var(--btn-height-sm); padding: 0 var(--spacing-sm); font-size: 13px; }
+  .btn-lg { min-height: var(--btn-height-lg); padding: 0 var(--spacing-lg); font-size: 16px; }
+
+  /* Effects */
+  .ai-gradient-text {
+    background: linear-gradient(135deg, #22c55e 0%, #a855f7 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .neon-glow {
+    box-shadow: 0 0 10px rgba(34, 197, 94, 0.5), 0 0 20px rgba(168, 85, 247, 0.3);
+  }
+
+  .glass-card-hover {
+    @apply transition-all duration-300;
+  }
+
+  .glass-card-hover:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(34, 197, 94, 0.3);
+    transform: translateY(-2px);
+  }
+
+  /* Loading Shimmer */
+  .loading-shimmer {
+    background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.1) 50%, transparent 100%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+  }
+
+  .skeleton {
+    background: linear-gradient(90deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.05) 100%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: 8px;
+  }
+
+  /* Sensor Borders */
+  .sensor-card-ok { border-left: 3px solid #22c55e !important; }
+  .sensor-card-warning { border-left: 3px solid #f59e0b !important; }
+  .sensor-card-danger { border-left: 3px solid #ef4444 !important; }
+}
+
+@layer utilities {
+    /* Animations */
+    .animate-spin {
+        animation: spin 1s linear infinite;
+    }
+
+    .animate-pulse {
+        animation: pulse 2s infinite;
+    }
+
+    .animate-slideUp {
+        animation: slideInUp 0.3s ease-out;
+    }
+
+    .animate-scaleIn {
+        animation: scaleIn 0.2s ease-out;
+    }
+
+    .animate-fadeIn {
+        animation: fadeIn 0.3s ease-out;
+    }
+
+    .value-changed {
+        animation: numberPop 0.3s ease-out;
+        color: #22c55e !important;
+    }
+
+    .glow-green { animation: pulseGlow 2s infinite; color: #22c55e; }
+    .glow-red { animation: pulseGlow 2s infinite; color: #ef4444; }
+    .glow-purple { animation: pulseGlow 2s infinite; color: #8b5cf6; }
+
+    .status-online { animation: pulse-green 2s infinite; }
+    .status-offline { animation: pulse-red 2s infinite; }
+    .status-warning { animation: pulse-amber 2s infinite; }
+
+    .no-shrink {
+        flex-shrink: 0;
+    }
+}
+
+/* Base Keyframes */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 5px currentColor; }
+  50% { box-shadow: 0 0 20px currentColor, 0 0 30px currentColor; }
+}
+
+@keyframes numberPop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideInUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes scaleIn {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+@keyframes pulse-green {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(34, 197, 94, 0); }
+}
+
+@keyframes pulse-red {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+}
+
+@keyframes pulse-amber {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(245, 158, 11, 0); }
+}
+
+/* Material UI Overrides - Keeping these as global styles */
+.MuiButton-root,
+.MuiIconButton-root,
+.MuiListItemButton-root {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.MuiButton-contained:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2) !important;
+}
+
+.MuiCard-root {
+  transition: transform 0.3s ease, box-shadow 0.3s ease !important;
+}
+
+.MuiCard-root:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+    width: 6px;
+    background: transparent;
+}
+::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground));
+    border-radius: 3px;
+}
+
 
 /* Dark Mode Theme */
 .dark {

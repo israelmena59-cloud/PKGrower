@@ -1,22 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Box,
-  Paper,
-  Typography,
-  Grid,
-  Card,
-  CardContent,
-  CardActions,
-  Button,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
-  CircularProgress,
-  Alert,
-  Chip,
-  Divider,
-  Slider,
+  Button,
+  Slider
 } from '@mui/material';
 import {
   Power,
@@ -26,9 +15,16 @@ import {
   Droplets,
   Thermometer,
   Video,
+  Server,
+  Activity,
+  Wifi,
+  MoreVertical,
+  CheckCircle2,
+  XCircle
 } from 'lucide-react';
 import { apiClient } from '../api/client';
 import DeviceConfigModal from '../components/devices/DeviceConfigModal';
+import { PageHeader } from '../components/layout/PageHeader';
 
 interface Device {
   id: string;
@@ -51,6 +47,7 @@ const DevicesPage: React.FC = () => {
   const [openConfigModal, setOpenConfigModal] = useState(false);
   const [configDevice, setConfigDevice] = useState<any>(null);
   const [controlValue, setControlValue] = useState<number>(50);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Obtener dispositivos
   useEffect(() => {
@@ -61,7 +58,9 @@ const DevicesPage: React.FC = () => {
 
   const fetchDevices = async () => {
     try {
-      setLoading(true);
+      if (devices.length === 0) setLoading(true);
+      else setRefreshing(true);
+
       const response = await apiClient.getAllDevices();
 
       // Smart Merge: Respect local optimistic updates
@@ -81,96 +80,29 @@ const DevicesPage: React.FC = () => {
     } catch (error) {
       console.error('Error fetching devices:', error);
       // Datos simulados si la API falla
-      const mockDevices: Device[] = [
-        {
-          id: 'tuya-sensor-1',
-          name: 'Sensor Sustrato 1',
-          type: 'sensor',
-          status: true,
-          platform: 'tuya',
-          value: 65,
-          unit: '%',
-          description: 'Sensor de humedad del sustrato',
-          lastUpdate: new Date().toLocaleTimeString(),
-        },
-        {
-          id: 'tuya-sensor-2',
-          name: 'Sensor Sustrato 2',
-          type: 'sensor',
-          status: true,
-          platform: 'tuya',
-          value: 72,
-          unit: '%',
-          description: 'Sensor de humedad del sustrato',
-          lastUpdate: new Date().toLocaleTimeString(),
-        },
-        {
-          id: 'tuya-sensor-3',
-          name: 'Sensor Sustrato 3',
-          type: 'sensor',
-          status: true,
-          platform: 'tuya',
-          value: 58,
-          unit: '%',
-          description: 'Sensor de humedad del sustrato',
-          lastUpdate: new Date().toLocaleTimeString(),
-        },
-        {
-          id: 'tuya-light-1',
-          name: 'Panel LED 1',
-          type: 'light',
-          status: true,
-          platform: 'tuya',
-          value: 100,
-          unit: '%',
-          description: 'Panel LED de cultivo',
-          lastUpdate: new Date().toLocaleTimeString(),
-        },
-        {
-          id: 'tuya-light-2',
-          name: 'Panel LED 2',
-          type: 'light',
-          status: false,
-          platform: 'tuya',
-          value: 0,
-          unit: '%',
-          description: 'Panel LED de cultivo',
-          lastUpdate: new Date().toLocaleTimeString(),
-        },
-        {
-          id: 'xiaomi-humidifier',
-          name: 'Humidificador Xiaomi',
-          type: 'humidifier',
-          status: true,
-          platform: 'xiaomi',
-          value: 55,
-          unit: '%',
-          description: 'Humidificador inteligente',
-          lastUpdate: new Date().toLocaleTimeString(),
-        },
-        {
-          id: 'xiaomi-camera',
-          name: 'Cámara Xiaomi',
-          type: 'camera',
-          status: true,
-          platform: 'xiaomi',
-          description: 'Cámara de vigilancia 1080p',
-          lastUpdate: new Date().toLocaleTimeString(),
-        },
-        {
-          id: 'tuya-pump',
-          name: 'Bomba de Agua',
-          type: 'pump',
-          status: false,
-          platform: 'tuya',
-          description: 'Sistema de riego automático',
-          lastUpdate: new Date().toLocaleTimeString(),
-        },
-      ];
-
-      setDevices(mockDevices);
+      if (devices.length === 0) {
+        setDevices([
+          {
+            id: 'tuya-sensor-1', name: 'Sensor Sustrato 1', type: 'sensor', status: true, platform: 'tuya',
+            value: 65, unit: '%', description: 'Sensor de humedad del sustrato', lastUpdate: new Date().toLocaleTimeString(),
+          },
+          {
+            id: 'tuya-light-1', name: 'Panel LED 1', type: 'light', status: true, platform: 'tuya',
+            value: 100, unit: '%', description: 'Panel LED de cultivo', lastUpdate: new Date().toLocaleTimeString(),
+          },
+          {
+            id: 'xiaomi-humidifier', name: 'Humidificador', type: 'humidifier', status: true, platform: 'xiaomi',
+            value: 55, unit: '%', description: 'Humidificador inteligente', lastUpdate: new Date().toLocaleTimeString(),
+          },
+          {
+            id: 'tuya-pump', name: 'Bomba de Agua', type: 'pump', status: false, platform: 'tuya',
+            description: 'Sistema de riego automático', lastUpdate: new Date().toLocaleTimeString(),
+          },
+        ]);
+      }
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
@@ -192,7 +124,6 @@ const DevicesPage: React.FC = () => {
     try {
       const action = newStatus ? 'on' : 'off';
       await apiClient.controlDevice(device.id, action);
-      // Success - no need to do anything, state is already updated
     } catch (error) {
       console.error('Error toggling device:', error);
       // Rollback on error
@@ -213,7 +144,8 @@ const DevicesPage: React.FC = () => {
     if (!selectedDevice) return;
 
     try {
-      const action = controlValue > 50 ? 'on' : 'off';
+      const action = controlValue > 50 ? 'on' : 'off'; // Simplified logic, ideally should send value
+      // Note: Backend might need update to accept specific values, currently just on/off for most
       await apiClient.controlDevice(selectedDevice.id, action);
       setDevices(
         devices.map(d =>
@@ -231,36 +163,31 @@ const DevicesPage: React.FC = () => {
 
   const getDeviceIcon = (type: string) => {
     switch (type) {
-      case 'light':
-        return <Zap size={24} />;
-      case 'sensor':
-        return <Thermometer size={24} />;
-      case 'camera':
-        return <Video size={24} />;
-      case 'humidifier':
-        return <Droplets size={24} />;
-      case 'pump':
-        return <Zap size={24} />;
-      default:
-        return <Power size={24} />;
+      case 'light': return <Zap size={20} />;
+      case 'sensor': return <Thermometer size={20} />;
+      case 'camera': return <Video size={20} />;
+      case 'humidifier': return <Droplets size={20} />;
+      case 'pump': return <Zap size={20} />; // Maybe Waves or Droplet
+      default: return <Power size={20} />;
     }
   };
 
-  const getDeviceColor = (type: string) => {
+  const getDeviceColorClass = (type: string) => {
     switch (type) {
-      case 'light':
-        return '#FDB913';
-      case 'sensor':
-        return '#2196F3';
-      case 'camera':
-        return '#FF5722';
-      case 'humidifier':
-        return '#00BCD4';
-      case 'pump':
-        return '#4CAF50';
-      default:
-        return '#9C27B0';
+      case 'light': return 'text-yellow-400 bg-yellow-400/10 border-yellow-400/20';
+      case 'sensor': return 'text-blue-400 bg-blue-400/10 border-blue-400/20';
+      case 'camera': return 'text-red-400 bg-red-400/10 border-red-400/20';
+      case 'humidifier': return 'text-cyan-400 bg-cyan-400/10 border-cyan-400/20';
+      case 'pump': return 'text-green-400 bg-green-400/10 border-green-400/20';
+      default: return 'text-purple-400 bg-purple-400/10 border-purple-400/20';
     }
+  };
+
+  const getPlatformLabel = (platform: string) => {
+    if (platform === 'tuya') return 'Tuya Smart';
+    if (platform === 'xiaomi') return 'Xiaomi Home';
+    if (platform === 'meross') return 'Meross';
+    return platform;
   };
 
   // Agrupar dispositivos por plataforma
@@ -268,372 +195,261 @@ const DevicesPage: React.FC = () => {
   const xiaomiDevices = devices.filter(d => d.platform === 'xiaomi');
   const merossDevices = devices.filter(d => d.platform === 'meross');
 
-  if (loading) {
-    return (
-      <Box sx={{ p: 3 }}>
-        <Typography variant="h4" sx={{ mb: 3 }}>Control de Dispositivos</Typography>
-        <Grid container spacing={2} sx={{ mb: 3 }}>
-          {[1, 2, 3, 4].map((i) => (
-            <Grid item xs={6} sm={6} md={3} key={i}>
-              <Box className="loading-shimmer glass-panel" sx={{ p: 2, height: 80, borderRadius: '16px' }} />
-            </Grid>
-          ))}
-        </Grid>
-        <Grid container spacing={2}>
-          {[1, 2, 3, 4, 5, 6].map((i) => (
-            <Grid item xs={12} sm={6} md={4} key={i}>
-              <Box className="loading-shimmer glass-panel" sx={{ height: 180, borderRadius: '16px' }} />
-            </Grid>
-          ))}
-        </Grid>
-      </Box>
-    );
-  }
+  // Helper to render device card
+  const DeviceCard = ({ device }: { device: Device }) => (
+    <div className={`glass-panel p-0 overflow-hidden transition-all duration-300 hover:shadow-[0_0_20px_rgba(59,130,246,0.15)] group ${!device.status ? 'opacity-80' : ''}`}>
+      <div className="p-4">
+        {/* Header */}
+        <div className="flex items-start justify-between mb-3">
+          <div className="flex items-center gap-3">
+            <div className={`p-2.5 rounded-xl border ${getDeviceColorClass(device.type)} transition-colors`}>
+              {getDeviceIcon(device.type)}
+            </div>
+            <div>
+              <h3 className="font-semibold text-white leading-tight">{device.name}</h3>
+              <p className="text-xs text-gray-400 mt-0.5 capitalize">{device.type}</p>
+            </div>
+          </div>
+          <div className={`w-2.5 h-2.5 rounded-full ${device.status ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' : 'bg-red-500/50'}`} />
+        </div>
+
+        {/* Info */}
+        <div className="space-y-2 mb-4">
+           {device.description && (
+             <p className="text-xs text-gray-400 line-clamp-2 min-h-[2.5em]">{device.description}</p>
+           )}
+           {device.value !== undefined && (
+             <div className="flex items-baseline gap-1">
+               <span className="text-xl font-bold text-white">{device.value}</span>
+               <span className="text-xs text-gray-500">{device.unit}</span>
+             </div>
+           )}
+           {!device.value && device.value !== 0 && (
+              <div className="h-7 flex items-end">
+                  <span className="text-xs text-gray-600">Sin lecturas recientes</span>
+              </div>
+           )}
+        </div>
+
+        {/* Footer / Controls */}
+        <div className="flex items-center gap-2 pt-3 border-t border-white/5">
+            {['light', 'switch', 'pump', 'humidifier'].includes(device.type) && (
+             <button
+                onClick={() => handleToggleDevice(device)}
+                className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all
+                  ${device.status
+                    ? 'bg-gradient-to-r from-emerald-600 to-emerald-500 text-white shadow-lg shadow-emerald-900/20 hover:from-emerald-500 hover:to-emerald-400'
+                    : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
+                  }`}
+             >
+                <Power size={14} />
+                {device.status ? 'ON' : 'OFF'}
+             </button>
+            )}
+
+            {['light', 'pump', 'humidifier'].includes(device.type) && (
+                <button
+                  onClick={() => handleOpenControlDialog(device)}
+                  className="p-1.5 rounded-lg bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white transition-colors"
+                >
+                    <SettingsIcon size={16} />
+                </button>
+            )}
+
+            <button
+                onClick={() => {
+                  setConfigDevice(device);
+                  setOpenConfigModal(true);
+                }}
+                className="p-1.5 rounded-lg bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white transition-colors ml-auto"
+                title="Configurar"
+            >
+                <MoreVertical size={16} />
+            </button>
+        </div>
+      </div>
+
+      {/* Last Update Footer */}
+      <div className="px-4 py-2 bg-black/20 text-[10px] text-gray-600 flex justify-between items-center">
+        <span>Actualizado: {device.lastUpdate || '--:--'}</span>
+        <span>{getPlatformLabel(device.platform)}</span>
+      </div>
+    </div>
+  );
 
   return (
-    <Box sx={{ p: 3 }}>
-      {/* Header */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Power size={32} />
-          <Typography variant="h4">Control de Dispositivos</Typography>
-        </Box>
-        <Button
-          variant="outlined"
-          startIcon={<RefreshCw size={20} />}
-          onClick={fetchDevices}
-        >
-          Actualizar
-        </Button>
-      </Box>
+    <div className="p-4 md:p-6 max-w-[1600px] mx-auto space-y-6">
+      <PageHeader
+        title="Control de Dispositivos"
+        subtitle="Gestiona y monitorea todos tus dispositivos IoT conectados"
+        icon={Power}
+        refreshing={refreshing}
+        action={
+          <button
+            onClick={fetchDevices}
+            disabled={refreshing || loading}
+            className="btn-standard glass-card-hover border border-white/10 flex items-center gap-2 text-sm"
+          >
+            <RefreshCw size={16} className={refreshing || loading ? "animate-spin" : ""} />
+            <span className="hidden sm:inline">Actualizar</span>
+          </button>
+        }
+      />
 
-      {/* Resumen de dispositivos - Improved Glass Cards */}
-      <Grid container spacing={2} sx={{ mb: 3 }}>
-        <Grid item xs={6} sm={6} md={3}>
-          <Box className="glass-panel" sx={{ p: 2, textAlign: 'center', borderRadius: '16px' }}>
-            <Typography variant="h4" fontWeight="bold" color="primary">
-              {devices.length}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Total Dispositivos
-            </Typography>
-          </Box>
-        </Grid>
-        <Grid item xs={6} sm={6} md={3}>
-          <Box className="glass-panel" sx={{
-            p: 2,
-            textAlign: 'center',
-            borderRadius: '16px',
-            borderLeft: '3px solid #22c55e'
-          }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
-              <Box className="status-online" sx={{
-                width: 8,
-                height: 8,
-                borderRadius: '50%',
-                bgcolor: '#22c55e'
-              }} />
-              <Typography variant="h4" fontWeight="bold" sx={{ color: '#22c55e' }}>
-                {devices.filter(d => d.status).length}
-              </Typography>
-            </Box>
-            <Typography variant="body2" color="text.secondary">
-              Activos
-            </Typography>
-          </Box>
-        </Grid>
-        <Grid item xs={6} sm={6} md={3}>
-          <Box className="glass-panel" sx={{
-            p: 2,
-            textAlign: 'center',
-            borderRadius: '16px',
-            borderLeft: '3px solid #ef4444'
-          }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
-              <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#ef4444' }} />
-              <Typography variant="h4" fontWeight="bold" sx={{ color: '#ef4444' }}>
-                {devices.filter(d => !d.status).length}
-              </Typography>
-            </Box>
-            <Typography variant="body2" color="text.secondary">
-              Inactivos
-            </Typography>
-          </Box>
-        </Grid>
-        <Grid item xs={6} sm={6} md={3}>
-          <Box className="glass-panel" sx={{ p: 2, textAlign: 'center', borderRadius: '16px' }}>
-            <Box sx={{ display: 'flex', justifyContent: 'center', gap: 0.5 }}>
-              <Chip label={`T:${tuyaDevices.length}`} size="small" sx={{ bgcolor: 'rgba(33, 150, 243, 0.2)', color: '#2196f3' }} />
-              <Chip label={`X:${xiaomiDevices.length}`} size="small" sx={{ bgcolor: 'rgba(76, 175, 80, 0.2)', color: '#4caf50' }} />
-              <Chip label={`M:${merossDevices.length}`} size="small" sx={{ bgcolor: 'rgba(156, 39, 176, 0.2)', color: '#9c27b0' }} />
-            </Box>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-              Por Plataforma
-            </Typography>
-          </Box>
-        </Grid>
-      </Grid>
-
-      {/* Dispositivos Tuya */}
-      {tuyaDevices.length > 0 && (
-        <Box sx={{ mb: 4 }}>
-          <Typography variant="h5" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Chip label="Tuya Cloud" color="primary" />
-          </Typography>
-          <Grid container spacing={2}>
-            {tuyaDevices.map(device => (
-              <Grid item xs={12} sm={6} md={4} key={device.id}>
-                <Card>
-                  <CardContent>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-                      <Box
-                        sx={{
-                          p: 1.5,
-                          bgcolor: getDeviceColor(device.type) + '20',
-                          borderRadius: 1,
-                          color: getDeviceColor(device.type),
-                        }}
-                      >
-                        {getDeviceIcon(device.type)}
-                      </Box>
-                      <Box sx={{ flex: 1 }}>
-                        <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
-                          {device.name}
-                        </Typography>
-                        <Typography variant="caption" color="textSecondary">
-                          {device.type}
-                        </Typography>
-                      </Box>
-                    </Box>
-                    {device.description && (
-                      <Typography variant="body2" color="textSecondary" sx={{ mb: 1 }}>
-                        {device.description}
-                      </Typography>
-                    )}
-                    {device.value !== undefined && (
-                      <Typography variant="body1" sx={{ my: 1 }}>
-                        <strong>Valor:</strong> {device.value} {device.unit || ''}
-                      </Typography>
-                    )}
-                    <Typography variant="caption" color="textSecondary">
-                      Actualizado: {device.lastUpdate}
-                    </Typography>
-                  </CardContent>
-                  <Divider />
-                  <CardActions sx={{ display: 'flex', gap: 1 }}>
-                    {['light', 'switch', 'pump', 'humidifier'].includes(device.type) && (
-                      <Button
-                        size="small"
-                        variant={device.status ? 'contained' : 'outlined'}
-                        onClick={() => handleToggleDevice(device)}
-                        fullWidth
-                      >
-                        {device.status ? 'Encendido' : 'Apagado'}
-                      </Button>
-                    )}
-                    {['light', 'pump', 'humidifier'].includes(device.type) && (
-                      <Button
-                        size="small"
-                        variant="outlined"
-                        onClick={() => handleOpenControlDialog(device)}
-                      >
-                        <SettingsIcon size={16} />
-                      </Button>
-                    )}
-                    <Button
-                      size="small"
-                      variant="text"
-                      onClick={() => {
-                        setConfigDevice(device);
-                        setOpenConfigModal(true);
-                      }}
-                    >
-                      Configurar
-                    </Button>
-                  </CardActions>
-                </Card>
-              </Grid>
+      {loading && devices.length === 0 ? (
+         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 animate-pulse">
+            {[1, 2, 3, 4].map(i => (
+                <div key={i} className="h-48 rounded-2xl bg-white/5 border border-white/5"></div>
             ))}
-          </Grid>
-        </Box>
+         </div>
+      ) : (
+        <>
+            {/* Stats Summary */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="glass-panel p-4 flex flex-col items-center justify-center text-center">
+                    <span className="text-3xl font-bold text-white mb-1">{devices.length}</span>
+                    <span className="text-xs text-gray-400 uppercase tracking-wider">Total</span>
+                </div>
+                <div className="glass-panel p-4 flex flex-col items-center justify-center text-center border-l-4 border-l-green-500">
+                    <div className="flex items-center gap-2 mb-1">
+                        <CheckCircle2 size={16} className="text-green-500" />
+                        <span className="text-3xl font-bold text-green-500">{devices.filter(d => d.status).length}</span>
+                    </div>
+                    <span className="text-xs text-gray-400 uppercase tracking-wider">Activos</span>
+                </div>
+                <div className="glass-panel p-4 flex flex-col items-center justify-center text-center border-l-4 border-l-red-500/50">
+                     <div className="flex items-center gap-2 mb-1">
+                        <XCircle size={16} className="text-red-500/50" />
+                        <span className="text-3xl font-bold text-red-500/70">{devices.filter(d => !d.status).length}</span>
+                    </div>
+                    <span className="text-xs text-gray-400 uppercase tracking-wider">Inactivos</span>
+                </div>
+                <div className="glass-panel p-4 flex flex-col items-center justify-center text-center">
+                    <div className="flex gap-2 mb-2">
+                        {tuyaDevices.length > 0 && <span className="px-1.5 py-0.5 rounded text-[10px] bg-blue-500/20 text-blue-400 border border-blue-500/30">Tuya</span>}
+                        {xiaomiDevices.length > 0 && <span className="px-1.5 py-0.5 rounded text-[10px] bg-green-500/20 text-green-400 border border-green-500/30">Xiaomi</span>}
+                        {merossDevices.length > 0 && <span className="px-1.5 py-0.5 rounded text-[10px] bg-purple-500/20 text-purple-400 border border-purple-500/30">Meross</span>}
+                    </div>
+                    <span className="text-xs text-gray-400 uppercase tracking-wider">Plataformas</span>
+                </div>
+            </div>
+
+            {/* Device Groups */}
+            <div className="space-y-8">
+                {tuyaDevices.length > 0 && (
+                    <section>
+                        <div className="flex items-center gap-2 mb-4 px-1">
+                            <Server size={18} className="text-blue-400" />
+                            <h3 className="text-lg font-medium text-white">Tuya Smart</h3>
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20">{tuyaDevices.length}</span>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                            {tuyaDevices.map(device => <DeviceCard key={device.id} device={device} />)}
+                        </div>
+                    </section>
+                )}
+
+                {xiaomiDevices.length > 0 && (
+                    <section>
+                        <div className="flex items-center gap-2 mb-4 px-1">
+                            <Wifi size={18} className="text-green-400" />
+                            <h3 className="text-lg font-medium text-white">Xiaomi Home</h3>
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 border border-green-500/20">{xiaomiDevices.length}</span>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                            {xiaomiDevices.map(device => <DeviceCard key={device.id} device={device} />)}
+                        </div>
+                    </section>
+                )}
+
+                {merossDevices.length > 0 && (
+                    <section>
+                        <div className="flex items-center gap-2 mb-4 px-1">
+                            <Activity size={18} className="text-purple-400" />
+                            <h3 className="text-lg font-medium text-white">Meross</h3>
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20">{merossDevices.length}</span>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                            {merossDevices.map(device => <DeviceCard key={device.id} device={device} />)}
+                        </div>
+                    </section>
+                )}
+            </div>
+        </>
       )}
 
-      {/* Dispositivos Xiaomi */}
-      {xiaomiDevices.length > 0 && (
-        <Box sx={{ mb: 4 }}>
-          <Typography variant="h5" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Chip label="Xiaomi Local" color="success" />
-          </Typography>
-          <Grid container spacing={2}>
-            {xiaomiDevices.map(device => (
-              <Grid item xs={12} sm={6} md={4} key={device.id}>
-                <Card>
-                  <CardContent>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-                      <Box
-                        sx={{
-                          p: 1.5,
-                          bgcolor: getDeviceColor(device.type) + '20',
-                          borderRadius: 1,
-                          color: getDeviceColor(device.type),
-                        }}
-                      >
-                        {getDeviceIcon(device.type)}
-                      </Box>
-                      <Box sx={{ flex: 1 }}>
-                        <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
-                          {device.name}
-                        </Typography>
-                        <Typography variant="caption" color="textSecondary">
-                          {device.type}
-                        </Typography>
-                      </Box>
-                    </Box>
-                    {device.description && (
-                      <Typography variant="body2" color="textSecondary" sx={{ mb: 1 }}>
-                        {device.description}
-                      </Typography>
-                    )}
-                    {device.value !== undefined && (
-                      <Typography variant="body1" sx={{ my: 1 }}>
-                        <strong>Valor:</strong> {device.value} {device.unit || ''}
-                      </Typography>
-                    )}
-                    <Typography variant="caption" color="textSecondary">
-                      Actualizado: {device.lastUpdate}
-                    </Typography>
-                  </CardContent>
-                  <Divider />
-                  <CardActions sx={{ display: 'flex', gap: 1 }}>
-                    {['light', 'switch', 'pump', 'humidifier'].includes(device.type) && (
-                      <Button
-                        size="small"
-                        variant={device.status ? 'contained' : 'outlined'}
-                        onClick={() => handleToggleDevice(device)}
-                        fullWidth
-                      >
-                        {device.status ? 'Encendido' : 'Apagado'}
-                      </Button>
-                    )}
-                    {['light', 'pump', 'humidifier'].includes(device.type) && (
-                      <Button
-                        size="small"
-                        variant="outlined"
-                        onClick={() => handleOpenControlDialog(device)}
-                      >
-                        <SettingsIcon size={16} />
-                      </Button>
-                    )}
-                  </CardActions>
-                </Card>
-              </Grid>
-            ))}
-          </Grid>
-        </Box>
-      )}
-
-      {/* Dispositivos Meross */}
-      {merossDevices.length > 0 && (
-        <Box sx={{ mb: 4 }}>
-          <Typography variant="h5" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Chip label="Meross Cloud" color="secondary" />
-          </Typography>
-          <Grid container spacing={2}>
-            {merossDevices.map(device => (
-              <Grid item xs={12} sm={6} md={4} key={device.id}>
-                <Card>
-                  <CardContent>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-                      <Box sx={{ p: 1.5, bgcolor: '#9C27B0' + '20', borderRadius: 1, color: '#9C27B0' }}>
-                        {getDeviceIcon(device.type)}
-                      </Box>
-                      <Box sx={{ flex: 1 }}>
-                        <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>{device.name}</Typography>
-                        <Typography variant="caption" color="textSecondary">{device.type}</Typography>
-                      </Box>
-                    </Box>
-                    {device.value !== undefined && (
-                      <Typography variant="body1" sx={{ my: 1 }}>
-                        <strong>Valor:</strong> {device.value} {device.unit || ''}
-                      </Typography>
-                    )}
-                    <Typography variant="caption" color="textSecondary">
-                      Actualizado: {device.lastUpdate}
-                    </Typography>
-                  </CardContent>
-                  <Divider />
-                  <CardActions sx={{ display: 'flex', gap: 1 }}>
-                    <Button
-                      size="small"
-                      variant={device.status ? 'contained' : 'outlined'}
-                      onClick={() => handleToggleDevice(device)}
-                      fullWidth
-                    >
-                      {device.status ? 'Encendido' : 'Apagado'}
-                    </Button>
-                  </CardActions>
-                </Card>
-              </Grid>
-            ))}
-          </Grid>
-        </Box>
-      )}
-
-      {devices.length === 0 && (
-        <Alert severity="info">
-          No hay dispositivos configurados. Verifica tu conexión y las credenciales.
-        </Alert>
-      )}
-
-      {/* Dialog de control */}
-      <Dialog open={openControlDialog} onClose={() => setOpenControlDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Controlar {selectedDevice?.name}</DialogTitle>
-        <DialogContent sx={{ pt: 2 }}>
-          {selectedDevice?.type === 'humidifier' && (
-            <Box>
-              <Typography gutterBottom>
-                Humedad objetivo: {controlValue}%
-              </Typography>
-              <Slider
-                value={controlValue}
-                onChange={(_, value) => setControlValue(value as number)}
-                min={0}
-                max={100}
-                step={1}
-                marks={[
-                  { value: 0, label: '0%' },
-                  { value: 50, label: '50%' },
-                  { value: 100, label: '100%' },
-                ]}
-                valueLabelDisplay="auto"
-              />
-            </Box>
-          )}
-          {['light', 'pump'].includes(selectedDevice?.type || '') && (
-            <Box>
-              <Typography gutterBottom>
-                Intensidad: {controlValue}%
-              </Typography>
-              <Slider
-                value={controlValue}
-                onChange={(_, value) => setControlValue(value as number)}
-                min={0}
-                max={100}
-                step={1}
-                marks={[
-                  { value: 0, label: '0%' },
-                  { value: 50, label: '50%' },
-                  { value: 100, label: '100%' },
-                ]}
-                valueLabelDisplay="auto"
-              />
-            </Box>
-          )}
+      {/* Control Dialog - Styled */}
+      <Dialog
+        open={openControlDialog}
+        onClose={() => setOpenControlDialog(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            bgcolor: '#0f172a',
+            backgroundImage: 'none',
+            border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: '16px'
+          }
+        }}
+      >
+        <DialogTitle sx={{ color: 'white', display: 'flex', alignItems: 'center', gap: 1 }}>
+          <SettingsIcon size={20} className="text-cyan-400" />
+          Controlar {selectedDevice?.name}
+        </DialogTitle>
+        <DialogContent>
+          <div className="py-4">
+            {selectedDevice?.type === 'humidifier' && (
+              <div className="space-y-4">
+                <div className="flex justify-between items-center text-sm">
+                    <span className="text-gray-400">Humedad Objetivo</span>
+                    <span className="text-cyan-400 font-bold">{controlValue}%</span>
+                </div>
+                <Slider
+                  value={controlValue}
+                  onChange={(_, value) => setControlValue(value as number)}
+                  min={0}
+                  max={100}
+                  step={5}
+                  sx={{
+                    color: '#22d3ee',
+                    '& .MuiSlider-thumb': { boxShadow: '0 0 10px rgba(34,211,238,0.5)' }
+                  }}
+                />
+              </div>
+            )}
+            {['light', 'pump'].includes(selectedDevice?.type || '') && (
+              <div className="space-y-4">
+                 <div className="flex justify-between items-center text-sm">
+                    <span className="text-gray-400">Intensidad</span>
+                    <span className="text-yellow-400 font-bold">{controlValue}%</span>
+                </div>
+                <Slider
+                  value={controlValue}
+                  onChange={(_, value) => setControlValue(value as number)}
+                  min={0}
+                  max={100}
+                  step={10}
+                  sx={{
+                    color: '#facc15',
+                     '& .MuiSlider-thumb': { boxShadow: '0 0 10px rgba(250,204,21,0.5)' }
+                  }}
+                />
+              </div>
+            )}
+          </div>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenControlDialog(false)}>Cancelar</Button>
-          <Button onClick={handleApplyControl} variant="contained">
-            Aplicar
+        <DialogActions sx={{ p: 3, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+          <Button onClick={() => setOpenControlDialog(false)} sx={{ color: 'rgba(255,255,255,0.6)' }}>Cancelar</Button>
+          <Button
+            onClick={handleApplyControl}
+            variant="contained"
+            sx={{
+               bgcolor: '#2563eb',
+               '&:hover': { bgcolor: '#1d4ed8' }
+            }}
+          >
+            Aplicar Cambios
           </Button>
         </DialogActions>
       </Dialog>
@@ -648,7 +464,7 @@ const DevicesPage: React.FC = () => {
           setOpenConfigModal(false);
         }}
       />
-    </Box>
+    </div>
   );
 };
 

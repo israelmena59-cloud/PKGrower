@@ -1,17 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Box,
-  Typography,
-  Paper,
-  Grid,
-  Card,
-  CardContent,
-  CardActions,
-  Button,
-  Switch,
-  FormControlLabel,
-  Chip,
-  Divider,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -22,32 +10,26 @@ import {
   FormControl,
   InputLabel,
   IconButton,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemSecondaryAction,
-  Alert,
-  CircularProgress,
+  Switch,
+  Button
 } from '@mui/material';
 import {
   Zap,
   Plus,
-  Play,
-  Pause,
   Trash2,
   Sparkles,
   Droplets,
   Thermometer,
   Sun,
   Wind,
-  Clock,
-  TrendingUp,
-  AlertTriangle,
   Settings,
-  RefreshCw,
+  TrendingUp,
+  Archive,
+  ArrowRight
 } from 'lucide-react';
 import { apiClient } from '../api/client';
 import SmartNotifications from '../components/ai/SmartNotifications';
+import { PageHeader } from '../components/layout/PageHeader';
 
 interface AutomationRule {
   id: string;
@@ -109,7 +91,6 @@ const DEFAULT_RULES: AutomationRule[] = [
 
 const Automations: React.FC = () => {
   const [rules, setRules] = useState<AutomationRule[]>([]);
-  const [loading, setLoading] = useState(false);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingRule, setEditingRule] = useState<AutomationRule | null>(null);
   const [generatingAI, setGeneratingAI] = useState(false);
@@ -214,283 +195,297 @@ const Automations: React.FC = () => {
   };
 
   return (
-    <Box sx={{ p: 3, maxWidth: 1400, mx: 'auto' }}>
-      {/* Header */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
-        <Box>
-          <Typography variant="h4" fontWeight="bold" sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Zap size={32} color="#fbbf24" />
-            Automatizaciones
-          </Typography>
-          <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.7)', mt: 1 }}>
-            Crea reglas para controlar dispositivos automáticamente basándote en sensores
-          </Typography>
-        </Box>
-        <Box sx={{ display: 'flex', gap: 2 }}>
-          <Button
-            variant="outlined"
-            startIcon={generatingAI ? <CircularProgress size={16} /> : <Sparkles size={16} />}
-            onClick={generateAISuggestions}
-            disabled={generatingAI}
-            sx={{ borderColor: '#a5f3fc', color: '#a5f3fc' }}
-          >
-            Sugerencias IA
-          </Button>
-          <Button
-            variant="contained"
-            startIcon={<Plus size={16} />}
-            onClick={() => setIsAddOpen(true)}
-            sx={{ background: 'linear-gradient(45deg, #7c3aed 30%, #2563eb 90%)' }}
-          >
-            Nueva Regla
-          </Button>
-        </Box>
-      </Box>
+    <div className="p-4 md:p-6 max-w-[1600px] mx-auto space-y-6">
+      <PageHeader
+        title="Automatizaciones"
+        subtitle="Crea reglas para controlar dispositivos automáticamente basándote en sensores"
+        icon={Zap}
+        action={
+          <div className="flex gap-3">
+             <button
+              onClick={generateAISuggestions}
+              disabled={generatingAI}
+              className="btn-standard glass-card-hover border border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/10 flex items-center gap-2"
+            >
+               {generatingAI ? <span className="animate-spin">⏳</span> : <Sparkles size={16} />}
+              <span className="hidden sm:inline">Sugerencias IA</span>
+            </button>
+            <button
+              onClick={() => setIsAddOpen(true)}
+              className="btn-standard bg-gradient-to-r from-violet-600 to-blue-600 hover:from-violet-500 hover:to-blue-500 text-white shadow-lg shadow-blue-900/20 flex items-center gap-2"
+            >
+              <Plus size={18} />
+              <span>Nueva Regla</span>
+            </button>
+          </div>
+        }
+      />
 
-      <Grid container spacing={3}>
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
         {/* Left: Smart Notifications */}
-        <Grid item xs={12} md={4}>
+        <div className="md:col-span-4">
           <SmartNotifications autoRefresh={true} refreshInterval={30000} />
-        </Grid>
+        </div>
 
         {/* Right: Rules List */}
-        <Grid item xs={12} md={8}>
-          <Paper sx={{
-            bgcolor: 'rgba(0,0,0,0.3)',
-            border: '1px solid rgba(255,255,255,0.1)',
-            borderRadius: 3,
-            overflow: 'hidden'
-          }}>
-            <Box sx={{ p: 2, borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-              <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Settings size={20} />
-                Reglas de Automatización
-              </Typography>
-            </Box>
+        <div className="md:col-span-8">
+          <div className="glass-panel overflow-hidden">
+            <div className="p-4 border-b border-white/10 flex items-center gap-2">
+              <Settings size={20} className="text-gray-400" />
+              <h3 className="font-semibold text-white">Reglas de Automatización</h3>
+            </div>
 
             {rules.length === 0 ? (
-              <Box sx={{ p: 4, textAlign: 'center', color: 'rgba(255,255,255,0.5)' }}>
-                <Zap size={48} />
-                <Typography variant="body1" sx={{ mt: 2 }}>No hay reglas configuradas</Typography>
-                <Button
-                  variant="outlined"
-                  startIcon={<Plus size={16} />}
+              <div className="p-12 text-center text-gray-500 flex flex-col items-center">
+                <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-4">
+                  <Archive size={32} />
+                </div>
+                <p className="mb-4">No hay reglas configuradas</p>
+                <button
                   onClick={() => setIsAddOpen(true)}
-                  sx={{ mt: 2 }}
+                  className="text-blue-400 hover:text-blue-300 flex items-center gap-1"
                 >
-                  Crear Primera Regla
-                </Button>
-              </Box>
+                  <Plus size={16} /> Crear Primera Regla
+                </button>
+              </div>
             ) : (
-              <List sx={{ p: 0 }}>
-                {rules.map((rule, index) => (
-                  <React.Fragment key={rule.id}>
-                    {index > 0 && <Divider sx={{ borderColor: 'rgba(255,255,255,0.05)' }} />}
-                    <ListItem
-                      sx={{
-                        py: 2,
-                        opacity: rule.enabled ? 1 : 0.5,
-                        '&:hover': { bgcolor: 'rgba(255,255,255,0.05)' }
-                      }}
+              <div className="divide-y divide-white/5">
+                {rules.map((rule) => (
+                  <div
+                    key={rule.id}
+                    className={`p-4 flex items-center gap-4 hover:bg-white/5 transition-colors ${!rule.enabled ? 'opacity-50' : ''}`}
+                  >
+                    <Switch
+                      checked={rule.enabled}
+                      onChange={() => toggleRule(rule.id)}
+                      size="small"
+                      color="primary"
+                    />
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-medium text-white truncate">{rule.name}</span>
+                        {rule.createdBy === 'ai' && (
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 flex items-center gap-0.5">
+                            <Sparkles size={8} /> AI
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center flex-wrap gap-2 text-sm">
+                        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-300 border border-blue-500/20">
+                          {getSensorIcon(rule.trigger.sensor)}
+                          <span>
+                           {rule.trigger.sensor === 'substrateHumidity' ? 'Sustrato' :
+                            rule.trigger.sensor === 'temperature' ? 'Temp' :
+                            rule.trigger.sensor === 'humidity' ? 'Hum' : 'VPD'}
+                           {' '}{rule.trigger.operator}{' '}{rule.trigger.value}
+                           {rule.trigger.sensor === 'temperature' ? '°C' :
+                            (rule.trigger.sensor === 'humidity' || rule.trigger.sensor === 'substrateHumidity') ? '%' : ''}
+                          </span>
+                        </div>
+
+                        <ArrowRight size={14} className="text-gray-600" />
+
+                        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-green-500/10 text-green-300 border border-green-500/20">
+                          {getActionIcon(rule.action.deviceId)}
+                          <span>
+                            {rule.action.type === 'device'
+                              ? `${rule.action.deviceId} ➔ ${rule.action.deviceAction === 'on' ? 'ON' : 'OFF'}`
+                              : 'Notificar'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <IconButton
+                      size="small"
+                      onClick={() => deleteRule(rule.id)}
+                      sx={{ color: 'rgba(255,255,255,0.3)', '&:hover': { color: '#ef4444' } }}
                     >
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1 }}>
-                        <Switch
-                          checked={rule.enabled}
-                          onChange={() => toggleRule(rule.id)}
-                          size="small"
-                        />
-                        <Box sx={{ flex: 1 }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-                            <Typography variant="body1" sx={{ fontWeight: 'bold', color: 'white' }}>
-                              {rule.name}
-                            </Typography>
-                            {rule.createdBy === 'ai' && (
-                              <Chip
-                                icon={<Sparkles size={10} />}
-                                label="AI"
-                                size="small"
-                                sx={{ height: 18, fontSize: '0.65rem', bgcolor: 'rgba(165, 243, 252, 0.2)', color: '#a5f3fc' }}
-                              />
-                            )}
-                          </Box>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
-                            <Chip
-                              icon={getSensorIcon(rule.trigger.sensor)}
-                              label={`${rule.trigger.sensor} ${rule.trigger.operator} ${rule.trigger.value}`}
-                              size="small"
-                              sx={{ bgcolor: 'rgba(59, 130, 246, 0.2)', color: '#60a5fa' }}
-                            />
-                            <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.5)' }}>→</Typography>
-                            <Chip
-                              icon={getActionIcon(rule.action.deviceId)}
-                              label={rule.action.type === 'device'
-                                ? `${rule.action.deviceId} ${rule.action.deviceAction}`
-                                : 'Notificar'
-                              }
-                              size="small"
-                              sx={{ bgcolor: 'rgba(34, 197, 94, 0.2)', color: '#4ade80' }}
-                            />
-                          </Box>
-                        </Box>
-                      </Box>
-                      <ListItemSecondaryAction>
-                        <IconButton
-                          size="small"
-                          onClick={() => deleteRule(rule.id)}
-                          sx={{ color: 'rgba(255,255,255,0.5)', '&:hover': { color: '#ef4444' } }}
-                        >
-                          <Trash2 size={16} />
-                        </IconButton>
-                      </ListItemSecondaryAction>
-                    </ListItem>
-                  </React.Fragment>
+                      <Trash2 size={18} />
+                    </IconButton>
+                  </div>
                 ))}
-              </List>
+              </div>
             )}
-          </Paper>
+          </div>
 
-          {/* Info Card */}
-          <Alert
-            severity="info"
-            sx={{
-              mt: 3,
-              bgcolor: 'rgba(59, 130, 246, 0.1)',
-              border: '1px solid rgba(59, 130, 246, 0.3)',
-              '& .MuiAlert-icon': { color: '#3b82f6' }
-            }}
-          >
-            <Typography variant="body2">
-              <strong>Nota:</strong> Las reglas se evalúan cada vez que los sensores se actualizan (~5s).
-              Las acciones se ejecutan automáticamente cuando las condiciones se cumplen.
-            </Typography>
-          </Alert>
-        </Grid>
-      </Grid>
+          {/* Info Banner */}
+          <div className="mt-4 p-3 rounded-lg bg-blue-500/10 border border-blue-500/20 flex gap-3 text-sm text-blue-200/80">
+            <Zap size={18} className="text-blue-400 shrink-0 mt-0.5" />
+            <p>
+              <strong className="text-blue-300">Nota:</strong> Las reglas se evalúan cada vez que los sensores se actualizan (~5s).
+              Las acciones se ejecutan automáticamente cuando las condiciones se cumplen y continúan activas hasta que la condición cambie.
+            </p>
+          </div>
+        </div>
+      </div>
 
-      {/* Add/Edit Rule Dialog */}
-      <Dialog open={isAddOpen} onClose={() => setIsAddOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Zap size={20} />
-          {editingRule ? 'Editar Regla' : 'Nueva Regla de Automatización'}
+      {/* Add/Edit Rule Dialog - Keeping MUI for overlay but styling content */}
+      <Dialog
+        open={isAddOpen}
+        onClose={() => setIsAddOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            bgcolor: '#0f172a',
+            backgroundImage: 'none',
+            border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: '16px'
+          }
+        }}
+      >
+        <DialogTitle sx={{ color: 'white', display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Zap size={20} className="text-yellow-400" />
+          {editingRule ? 'Editar Regla' : 'Nueva Regla'}
         </DialogTitle>
         <DialogContent>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, mt: 2 }}>
+          <div className="flex flex-col gap-6 mt-2">
             <TextField
               label="Nombre de la Regla"
               fullWidth
               value={newRule.name || ''}
               onChange={(e) => setNewRule({ ...newRule, name: e.target.value })}
               placeholder="Ej: Encender humidificador si VPD alto"
+              variant="outlined"
+              sx={{
+                '& .MuiOutlinedInput-root': { color: 'white' },
+                '& .MuiInputLabel-root': { color: '#94a3b8' },
+                '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.2)' }
+              }}
             />
 
-            <Divider sx={{ my: 1 }}>
-              <Chip label="SI (Condición)" size="small" />
-            </Divider>
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-white/10"></div>
+              </div>
+              <div className="relative flex justify-center">
+                <span className="bg-[#0f172a] px-2 text-xs text-blue-400 uppercase tracking-wider font-bold">Si (Condición)</span>
+              </div>
+            </div>
 
-            <Grid container spacing={2}>
-              <Grid item xs={4}>
-                <FormControl fullWidth size="small">
-                  <InputLabel>Sensor</InputLabel>
-                  <Select
-                    value={newRule.trigger?.sensor || 'vpd'}
-                    label="Sensor"
-                    onChange={(e) => setNewRule({
-                      ...newRule,
-                      trigger: { ...newRule.trigger, type: 'sensor', sensor: e.target.value }
-                    })}
-                  >
-                    <MenuItem value="temperature">Temperatura</MenuItem>
-                    <MenuItem value="humidity">Humedad</MenuItem>
-                    <MenuItem value="vpd">VPD</MenuItem>
-                    <MenuItem value="substrateHumidity">Sustrato</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={4}>
-                <FormControl fullWidth size="small">
-                  <InputLabel>Operador</InputLabel>
-                  <Select
-                    value={newRule.trigger?.operator || '>'}
-                    label="Operador"
-                    onChange={(e) => setNewRule({
-                      ...newRule,
-                      trigger: { ...newRule.trigger, operator: e.target.value as any }
-                    })}
-                  >
-                    <MenuItem value=">">Mayor que (&gt;)</MenuItem>
-                    <MenuItem value="<">Menor que (&lt;)</MenuItem>
-                    <MenuItem value="==">Igual a (==)</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={4}>
-                <TextField
-                  label="Valor"
-                  type="number"
-                  size="small"
-                  fullWidth
-                  value={newRule.trigger?.value || 0}
+            <div className="grid grid-cols-3 gap-3">
+              <FormControl fullWidth size="small">
+                <InputLabel sx={{ color: '#94a3b8' }}>Sensor</InputLabel>
+                <Select
+                  value={newRule.trigger?.sensor || 'vpd'}
+                  label="Sensor"
                   onChange={(e) => setNewRule({
                     ...newRule,
-                    trigger: { ...newRule.trigger, value: parseFloat(e.target.value) }
+                    trigger: { ...newRule.trigger!, type: 'sensor', sensor: e.target.value }
                   })}
-                />
-              </Grid>
-            </Grid>
+                  sx={{ color: 'white', '.MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.2)' } }}
+                >
+                  <MenuItem value="temperature">Temperatura</MenuItem>
+                  <MenuItem value="humidity">Humedad</MenuItem>
+                  <MenuItem value="vpd">VPD</MenuItem>
+                  <MenuItem value="substrateHumidity">Sustrato</MenuItem>
+                </Select>
+              </FormControl>
 
-            <Divider sx={{ my: 1 }}>
-              <Chip label="ENTONCES (Acción)" size="small" />
-            </Divider>
+              <FormControl fullWidth size="small">
+                <InputLabel sx={{ color: '#94a3b8' }}>Operador</InputLabel>
+                <Select
+                  value={newRule.trigger?.operator || '>'}
+                  label="Operador"
+                  onChange={(e) => setNewRule({
+                    ...newRule,
+                    trigger: { ...newRule.trigger!, operator: e.target.value as any }
+                  })}
+                  sx={{ color: 'white', '.MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.2)' } }}
+                >
+                  <MenuItem value=">">Mayor que (&gt;)</MenuItem>
+                  <MenuItem value="<">Menor que (&lt;)</MenuItem>
+                  <MenuItem value="==">Igual a (==)</MenuItem>
+                </Select>
+              </FormControl>
 
-            <Grid container spacing={2}>
-              <Grid item xs={6}>
-                <FormControl fullWidth size="small">
-                  <InputLabel>Dispositivo</InputLabel>
-                  <Select
-                    value={newRule.action?.deviceId || ''}
-                    label="Dispositivo"
-                    onChange={(e) => setNewRule({
-                      ...newRule,
-                      action: { ...newRule.action, type: 'device', deviceId: e.target.value }
-                    })}
-                  >
-                    <MenuItem value="humidifier">Humidificador</MenuItem>
-                    <MenuItem value="extractorControlador">Extractor</MenuItem>
-                    <MenuItem value="luzPanel1">Luz Panel 1</MenuItem>
-                    <MenuItem value="luzPanel2">Luz Panel 2</MenuItem>
-                    <MenuItem value="bombaControlador">Bomba de Agua</MenuItem>
-                    <MenuItem value="deshumidificador">Deshumidificador</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={6}>
-                <FormControl fullWidth size="small">
-                  <InputLabel>Acción</InputLabel>
-                  <Select
-                    value={newRule.action?.deviceAction || 'on'}
-                    label="Acción"
-                    onChange={(e) => setNewRule({
-                      ...newRule,
-                      action: { ...newRule.action, deviceAction: e.target.value as any }
-                    })}
-                  >
-                    <MenuItem value="on">Encender</MenuItem>
-                    <MenuItem value="off">Apagar</MenuItem>
-                    <MenuItem value="toggle">Alternar</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-            </Grid>
-          </Box>
+              <TextField
+                label="Valor"
+                type="number"
+                size="small"
+                fullWidth
+                value={newRule.trigger?.value || 0}
+                onChange={(e) => setNewRule({
+                  ...newRule,
+                  trigger: { ...newRule.trigger!, value: parseFloat(e.target.value) }
+                })}
+                sx={{
+                  '& .MuiOutlinedInput-root': { color: 'white' },
+                  '& .MuiInputLabel-root': { color: '#94a3b8' },
+                  '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.2)' }
+                }}
+              />
+            </div>
+
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-white/10"></div>
+              </div>
+              <div className="relative flex justify-center">
+                <span className="bg-[#0f172a] px-2 text-xs text-green-400 uppercase tracking-wider font-bold">Entonces (Acción)</span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <FormControl fullWidth size="small">
+                <InputLabel sx={{ color: '#94a3b8' }}>Dispositivo</InputLabel>
+                <Select
+                  value={newRule.action?.deviceId || ''}
+                  label="Dispositivo"
+                  onChange={(e) => setNewRule({
+                    ...newRule,
+                    action: { ...newRule.action!, type: 'device', deviceId: e.target.value }
+                  })}
+                  sx={{ color: 'white', '.MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.2)' } }}
+                >
+                  <MenuItem value="humidifier">Humidificador</MenuItem>
+                  <MenuItem value="extractorControlador">Extractor</MenuItem>
+                  <MenuItem value="luzPanel1">Luz Panel 1</MenuItem>
+                  <MenuItem value="luzPanel2">Luz Panel 2</MenuItem>
+                  <MenuItem value="bombaControlador">Bomba de Agua</MenuItem>
+                  <MenuItem value="deshumidificador">Deshumidificador</MenuItem>
+                </Select>
+              </FormControl>
+
+              <FormControl fullWidth size="small">
+                <InputLabel sx={{ color: '#94a3b8' }}>Acción</InputLabel>
+                <Select
+                  value={newRule.action?.deviceAction || 'on'}
+                  label="Acción"
+                  onChange={(e) => setNewRule({
+                    ...newRule,
+                    action: { ...newRule.action!, deviceAction: e.target.value as any }
+                  })}
+                  sx={{ color: 'white', '.MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.2)' } }}
+                >
+                  <MenuItem value="on">Encender</MenuItem>
+                  <MenuItem value="off">Apagar</MenuItem>
+                  <MenuItem value="toggle">Alternar</MenuItem>
+                </Select>
+              </FormControl>
+            </div>
+          </div>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setIsAddOpen(false)}>Cancelar</Button>
-          <Button onClick={handleSaveRule} variant="contained" disabled={!newRule.name}>
+        <DialogActions sx={{ p: 3, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+          <Button onClick={() => setIsAddOpen(false)} sx={{ color: 'rgba(255,255,255,0.6)' }}>Cancelar</Button>
+          <Button
+            onClick={handleSaveRule}
+            variant="contained"
+            disabled={!newRule.name}
+            sx={{
+              bgcolor: '#2563eb',
+              '&:hover': { bgcolor: '#1d4ed8' },
+              '&.Mui-disabled': { bgcolor: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.3)' }
+            }}
+          >
             {editingRule ? 'Guardar Cambios' : 'Crear Regla'}
           </Button>
         </DialogActions>
       </Dialog>
-    </Box>
+    </div>
   );
 };
 

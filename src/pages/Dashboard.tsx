@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useMemo } from 'react';
 import { DashboardLayout } from '../components/widgets/DashboardLayout';
 import { WidgetDefinition } from '../components/widgets/WidgetRegistry';
@@ -10,12 +9,11 @@ import CropSteeringWidget from '../components/dashboard/CropSteeringWidget';
 import QuickActionsWidget from '../components/dashboard/QuickActionsWidget';
 import AIInsightsWidget from '../components/dashboard/AIInsightsWidget';
 import SmartNotifications from '../components/ai/SmartNotifications';
-import { Thermometer, Droplet, Wind, Droplets, Lightbulb, RefreshCw, Settings, Plus, X, Zap, Sparkles } from 'lucide-react';
-import { Box, Paper, Typography, IconButton, CircularProgress, Button, Tabs, Tab, TextField, Dialog, DialogTitle, DialogContent, DialogActions, Tooltip, Grid, Collapse } from '@mui/material';
-import _ from 'lodash';
+import { PageHeader } from '../components/layout/PageHeader';
+import { Thermometer, Droplet, Wind, Droplets, Lightbulb, RefreshCw } from 'lucide-react';
+import { Box, CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField } from '@mui/material';
 
 // Initial default layout for a fresh start
-// Default widgets (no charts - they are now static)
 const DEFAULT_WIDGETS_CONFIG: WidgetDefinition[] = [
     { id: 'temp', type: 'sensor', title: 'Temperatura' },
     { id: 'hum', type: 'sensor', title: 'Humedad' },
@@ -24,7 +22,7 @@ const DEFAULT_WIDGETS_CONFIG: WidgetDefinition[] = [
     { id: 'light_main', type: 'control', title: 'Luz Principal' }
 ];
 
-// Dashboard-level Error Boundary to catch layout crashes
+// Dashboard-level Error Boundary
 class DashboardErrorBoundary extends React.Component<{ children: React.ReactNode, onReset: () => void }, { hasError: boolean }> {
     constructor(props: any) {
         super(props);
@@ -35,12 +33,12 @@ class DashboardErrorBoundary extends React.Component<{ children: React.ReactNode
     render() {
         if (this.state.hasError) {
             return (
-                <Box sx={{ height: '90vh', display: 'flex', flexDirection: 'column', items: 'center', justifyContent: 'center', textAlign: 'center' }}>
-                    <Typography variant="h5" color="error" gutterBottom>Algo salió mal en el Dashboard</Typography>
+                <div className="h-[90vh] flex flex-col items-center justify-center text-center gap-4">
+                    <h2 className="text-xl font-bold text-destructive">Algo salió mal en el Dashboard</h2>
                     <Button variant="contained" color="error" onClick={this.props.onReset}>
                         Reestablecer Todo (Factory Reset)
                     </Button>
-                </Box>
+                </div>
             );
         }
         return this.props.children;
@@ -102,12 +100,6 @@ const Dashboard: React.FC = () => {
         return () => clearInterval(interval);
     }, []);
 
-    // ... (auto-discovery unchanged)
-
-    // ... (init & migration)
-
-    // ... (persist pages)
-
     // --- HYDRATION (For Active Page) ---
     const hydratedWidgets = useMemo(() => {
         if (!pages || typeof pages !== 'object') return [];
@@ -122,21 +114,20 @@ const Dashboard: React.FC = () => {
 
         currentWidgets.forEach(w => {
             let props: any = {};
-            // Get growth stage from settings
             const currentStage = settings?.cropSteering?.stage || 'none';
 
             const handleRename = (newName: string) => {
                 handleRenameWidget(w.id, newName);
             };
 
-            // Sensor Mapping with metricKey and growthStage
+            // Standard Sensors
             if (w.id === 'temp') props = { icon: <Thermometer/>, name: w.title, value: latestSensors?.temperature?.toFixed(1) ?? '--', unit: '°C', color: '#ef4444', onRename: handleRename, metricKey: 'temp', growthStage: currentStage };
             if (w.id === 'hum') props = { icon: <Droplet/>, name: w.title, value: latestSensors?.humidity?.toFixed(0) ?? '--', unit: '%', color: '#3b82f6', onRename: handleRename, metricKey: 'hum', growthStage: currentStage };
-            if (w.id === 'vpd') props = { icon: <Wind/>, name: w.title, value: latestSensors?.vpd?.toFixed(2) ?? '--', unit: 'kPa', color: '#8b5cf6', onRename: handleRename, metricKey: 'vpd', growthStage: currentStage };
+            if (w.id === 'vpd') props = { icon: <Wind/>, name: w.title, value: latestSensors?.vpd?.toFixed(2) ?? '--', unit: 'kPa', color: '#22c55e', onRename: handleRename, metricKey: 'vpd', growthStage: currentStage };
             if (w.id === 'sub') props = { icon: <Droplets/>, name: w.title, value: latestSensors?.substrateHumidity?.toFixed(0) ?? '--', unit: '%', color: '#f59e0b', onRename: handleRename, metricKey: 'sub', growthStage: currentStage };
 
             // Chart Mapping
-            if (w.id === 'chart_vpd') props = { data: sensorHistory, dataKey: 'vpd', color: '#8b5cf6', unit: 'kPa', lightSchedule };
+            if (w.id === 'chart_vpd') props = { data: sensorHistory, dataKey: 'vpd', color: '#22c55e', unit: 'kPa', lightSchedule };
             if (w.id === 'chart_soil') props = { data: sensorHistory, dataKey: 'substrateHumidity', color: '#f59e0b', unit: '%', lightSchedule };
 
             // Manual Device Mapping
@@ -166,10 +157,10 @@ const Dashboard: React.FC = () => {
                 const val = latestSensors?.[w.id as keyof SensorData];
                 const meta = deviceMeta.find(d => d.id === w.id);
                 props = {
-                    icon: <RefreshCw/>, // Default icon
+                    icon: <RefreshCw/>,
                     name: meta?.name || w.title || w.id,
                     value: typeof val === 'number' ? val.toFixed(1) : (val ?? '--'),
-                    unit: '', // Unknown unit
+                    unit: '',
                     color: '#64748b',
                     onRename: handleRename
                 };
@@ -203,7 +194,6 @@ const Dashboard: React.FC = () => {
     const handleAddWidget = (type: string, deviceId?: string, deviceName?: string) => {
         const id = `widget_${Date.now()}`;
         const title = deviceName || 'Nuevo Widget';
-        // If deviceId is provided, use 'device' type which auto-fetches data
         const widgetType = deviceId ? 'device' : type;
         const newWidget = {
             id,
@@ -222,10 +212,6 @@ const Dashboard: React.FC = () => {
             ...prev,
             [activePage]: prev[activePage].filter(w => w.id !== id)
         }));
-        // Clean layout
-        /* const currentLayout = layouts[activePage] || [];
-        const newLayout = currentLayout.filter((l: any) => l.i !== id);
-        handleLayoutChange(newLayout); */
     };
 
     const handleRefresh = async () => {
@@ -261,12 +247,6 @@ const Dashboard: React.FC = () => {
         }
     };
 
-
-
-    if (loading && !latestSensors) {
-         return <Box sx={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><CircularProgress /></Box>;
-    }
-
     const triggerReset = () => {
          localStorage.removeItem('dashboard_pages');
          localStorage.removeItem('dashboard_layouts');
@@ -274,123 +254,59 @@ const Dashboard: React.FC = () => {
          window.location.reload();
     };
 
+    if (loading && !latestSensors) {
+         return <Box sx={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><CircularProgress /></Box>;
+    }
+
     return (
 
-        <Box sx={{ maxWidth: 1800, mx: 'auto', p: 2 }}>
-             {/* HEADER */}
-             <Paper elevation={0} sx={{ p: 3, mb: 3, borderRadius: 'var(--squircle-radius)', background: 'var(--glass-bg)', backdropFilter: 'var(--backdrop-blur)', border: 'var(--glass-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
-                <Box>
-                    <Typography variant="overline" sx={{ opacity: 0.7 }}>SISTEMA ONLINE</Typography>
-                    <Typography variant="h4" fontWeight="900" sx={{ background: 'linear-gradient(45deg, #fff, #a5f3fc)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                        PKGrower OS
-                    </Typography>
-                </Box>
-
-                {/* TABS */}
-                <Box sx={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
-                     <Tabs
-                        value={activePage}
-                        onChange={(_, val) => setActivePage(val)}
-                        textColor="inherit"
-                        indicatorColor="secondary"
-                        variant="scrollable"
-                        scrollButtons="auto"
-                     >
-                        {Object.keys(pages).map(page => (
-                            <Tab
-                                key={page}
-                                value={page}
-                                label={
-                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                        {page}
-                                        {page !== 'General' && (
-                                            <X size={14} onClick={(e) => handleDeletePage(e, page)} style={{ opacity: 0.6, cursor: 'pointer' }} />
-                                        )}
-                                    </Box>
-                                }
-                            />
-                        ))}
-                     </Tabs>
-                     <IconButton size="small" onClick={() => setIsAddPageOpen(true)} sx={{ ml: 1, bgcolor: 'rgba(255,255,255,0.05)' }}>
-                        <Plus size={16} />
-                     </IconButton>
-                </Box>
-
-                <Box sx={{ display: 'flex', gap: 1 }}>
-                     <Button
-                        startIcon={<RefreshCw className={refreshing ? 'animate-spin' : ''} />}
-                        onClick={handleRefresh}
-                        sx={{ color: 'white', borderColor: 'rgba(255,255,255,0.2)' }}
-                        variant="outlined"
-                    >
-                        Refrescar
-                    </Button>
-                    <Tooltip title="Restablecer Diseño (Si hay errores)">
-                         <Button
-                            onClick={() => {
-                                if (confirm('¿Restablecer todo el diseño? Se perderán las personalizaciones.')) {
-                                    localStorage.removeItem('dashboard_pages');
-                                    localStorage.removeItem('dashboard_layouts');
-                                    localStorage.removeItem('known_devices');
-                                    window.location.reload();
-                                }
-                            }}
-                            sx={{ color: 'white', borderColor: 'rgba(255,0,0,0.5)', '&:hover': { borderColor: 'red', bgcolor: 'rgba(255,0,0,0.1)' } }}
-                            variant="outlined"
-                        >
-                            Reset
-                        </Button>
-                    </Tooltip>
-                    <IconButton onClick={() => setIsConfigOpen(true)} sx={{ color: 'white', bgcolor: 'rgba(255,255,255,0.1)' }}>
-                        <Settings />
-                    </IconButton>
-                    <IconButton onClick={() => setIsRulesOpen(true)} sx={{ color: '#fbbf24', bgcolor: 'rgba(251, 191, 36, 0.1)' }}>
-                        <Zap />
-                    </IconButton>
-                </Box>
-            </Paper>
+        <div className="max-w-[1800px] mx-auto p-4">
+            <PageHeader
+                title="PKGrower OS"
+                activePage={activePage}
+                pages={Object.keys(pages)}
+                onPageChange={setActivePage}
+                onAddPage={() => setIsAddPageOpen(true)}
+                onDeletePage={handleDeletePage}
+                onRefresh={handleRefresh}
+                onReset={() => {
+                     if (confirm('¿Restablecer todo el diseño? Se perderán las personalizaciones.')) {
+                        triggerReset();
+                     }
+                }}
+                onOpenConfig={() => setIsConfigOpen(true)}
+                onOpenRules={() => setIsRulesOpen(true)}
+                refreshing={refreshing}
+            />
 
             <ConfigModal open={isConfigOpen} onClose={() => setIsConfigOpen(false)} />
             <RulesModal open={isRulesOpen} onClose={() => setIsRulesOpen(false)} />
 
-            {/* STATIC CHARTS SECTION */}
-            {/* Crop Steering Widgets Row + AI Notifications */}
-            <Grid container spacing={2} sx={{ mb: 3 }}>
-                <Grid item xs={12} md={3}>
-                    <CropSteeringWidget />
-                </Grid>
-                <Grid item xs={12} md={3}>
-                    <QuickActionsWidget />
-                </Grid>
-                <Grid item xs={12} md={3}>
-                    <AIInsightsWidget autoRefresh={true} />
-                </Grid>
-                <Grid item xs={12} md={3}>
-                    <SmartNotifications maxVisible={3} autoRefresh={true} refreshInterval={30000} />
-                </Grid>
-            </Grid>
+            {/* STATIC CHARTS GRID */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                <CropSteeringWidget />
+                <QuickActionsWidget />
+                <AIInsightsWidget autoRefresh={true} />
+                <SmartNotifications maxVisible={3} autoRefresh={true} refreshInterval={30000} />
+            </div>
 
-            {/* Environment Charts Row */}
-            <Grid container spacing={2} sx={{ mb: 3 }}>
-                <Grid item xs={12} md={6}>
-                    <HistoryChart
-                        type="environment"
-                        title="Historial Ambiental"
-                        data={sensorHistory}
-                    />
-                </Grid>
-                <Grid item xs={12} md={6}>
-                    <HistoryChart
-                        type="substrate"
-                        title="Historial de Sustrato"
-                        data={sensorHistory}
-                        targets={{
-                            vwc: settings?.cropSteering?.targetVWC || 50,
-                            dryback: settings?.cropSteering?.targetDryback || 15
-                        }}
-                    />
-                </Grid>
-            </Grid>
+            {/* ENVIRONMENT CHARTS GRID */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+                <HistoryChart
+                    type="environment"
+                    title="Historial Ambiental"
+                    data={sensorHistory}
+                />
+                <HistoryChart
+                    type="substrate"
+                    title="Historial de Sustrato"
+                    data={sensorHistory}
+                    targets={{
+                        vwc: settings?.cropSteering?.targetVWC || 50,
+                        dryback: settings?.cropSteering?.targetDryback || 15
+                    }}
+                />
+            </div>
 
             {/* NEW PAGE MODAL */}
             <Dialog open={isAddPageOpen} onClose={() => setIsAddPageOpen(false)}>
@@ -411,7 +327,7 @@ const Dashboard: React.FC = () => {
                 </DialogActions>
             </Dialog>
 
-            {/* DYNAMIC GRID */}
+            {/* DYNAMIC GRID - Draggable Widgets */}
             <DashboardErrorBoundary key={activePage} onReset={triggerReset}>
                 <DashboardLayout
                     widgets={hydratedWidgets}
@@ -421,7 +337,7 @@ const Dashboard: React.FC = () => {
                     onRemoveWidget={handleRemoveWidget}
                 />
             </DashboardErrorBoundary>
-        </Box>
+        </div>
     );
 };
 
