@@ -49,6 +49,7 @@ const DevicesPage: React.FC = () => {
   const [configDevice, setConfigDevice] = useState<any>(null);
   const [controlValue, setControlValue] = useState<number>(50);
   const [refreshing, setRefreshing] = useState(false);
+  const [roomFilter, setRoomFilter] = useState<string | null>(null); // null = all, roomId = filter
   const { rooms } = useRooms();
 
   // Find which room a device belongs to
@@ -58,6 +59,14 @@ const DevicesPage: React.FC = () => {
       room.assignedSensors?.includes(deviceId)
     );
   };
+
+  // Filter devices by room
+  const filteredDevices = roomFilter
+    ? devices.filter(d => {
+        const room = getDeviceRoom(d.id);
+        return room?.id === roomFilter;
+      })
+    : devices;
 
   // Obtener dispositivos
   useEffect(() => {
@@ -200,10 +209,10 @@ const DevicesPage: React.FC = () => {
     return platform;
   };
 
-  // Agrupar dispositivos por plataforma
-  const tuyaDevices = devices.filter(d => d.platform === 'tuya');
-  const xiaomiDevices = devices.filter(d => d.platform === 'xiaomi');
-  const merossDevices = devices.filter(d => d.platform === 'meross');
+  // Agrupar dispositivos por plataforma (usando filteredDevices)
+  const tuyaDevices = filteredDevices.filter(d => d.platform === 'tuya');
+  const xiaomiDevices = filteredDevices.filter(d => d.platform === 'xiaomi');
+  const merossDevices = filteredDevices.filter(d => d.platform === 'meross');
 
   // Helper to render device card
   const DeviceCard = ({ device }: { device: Device }) => (
@@ -328,23 +337,59 @@ const DevicesPage: React.FC = () => {
          </div>
       ) : (
         <>
+            {/* Room Filter Buttons */}
+            <div className="flex flex-wrap gap-2 mb-4">
+              <button
+                onClick={() => setRoomFilter(null)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${!roomFilter
+                  ? 'bg-blue-500 text-white'
+                  : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                }`}
+              >
+                Todos ({devices.length})
+              </button>
+              {rooms.map(room => {
+                const roomDeviceCount = devices.filter(d => {
+                  const r = getDeviceRoom(d.id);
+                  return r?.id === room.id;
+                }).length;
+                return (
+                  <button
+                    key={room.id}
+                    onClick={() => setRoomFilter(roomFilter === room.id ? null : room.id)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${roomFilter === room.id
+                      ? 'text-white'
+                      : 'text-gray-400 hover:text-white'
+                    }`}
+                    style={{
+                      backgroundColor: roomFilter === room.id ? room.color : 'rgba(255,255,255,0.05)',
+                      borderColor: room.color
+                    }}
+                  >
+                    <span className="w-2 h-2 rounded-full" style={{ backgroundColor: room.color }} />
+                    {room.name} ({roomDeviceCount})
+                  </button>
+                );
+              })}
+            </div>
+
             {/* Stats Summary */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="glass-panel p-4 flex flex-col items-center justify-center text-center">
-                    <span className="text-3xl font-bold text-white mb-1">{devices.length}</span>
-                    <span className="text-xs text-gray-400 uppercase tracking-wider">Total</span>
+                    <span className="text-3xl font-bold text-white mb-1">{filteredDevices.length}</span>
+                    <span className="text-xs text-gray-400 uppercase tracking-wider">{roomFilter ? 'Filtrados' : 'Total'}</span>
                 </div>
                 <div className="glass-panel p-4 flex flex-col items-center justify-center text-center border-l-4 border-l-green-500">
                     <div className="flex items-center gap-2 mb-1">
                         <CheckCircle2 size={16} className="text-green-500" />
-                        <span className="text-3xl font-bold text-green-500">{devices.filter(d => d.status).length}</span>
+                        <span className="text-3xl font-bold text-green-500">{filteredDevices.filter(d => d.status).length}</span>
                     </div>
                     <span className="text-xs text-gray-400 uppercase tracking-wider">Activos</span>
                 </div>
                 <div className="glass-panel p-4 flex flex-col items-center justify-center text-center border-l-4 border-l-red-500/50">
                      <div className="flex items-center gap-2 mb-1">
                         <XCircle size={16} className="text-red-500/50" />
-                        <span className="text-3xl font-bold text-red-500/70">{devices.filter(d => !d.status).length}</span>
+                        <span className="text-3xl font-bold text-red-500/70">{filteredDevices.filter(d => !d.status).length}</span>
                     </div>
                     <span className="text-xs text-gray-400 uppercase tracking-wider">Inactivos</span>
                 </div>
