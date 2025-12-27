@@ -9,18 +9,15 @@ import {
   Card,
   Box,
   Typography,
-  LinearProgress,
-  Chip,
+  InputLabel,
+  CircularProgress,
+  TextField,
+  IconButton,
   Grid,
   Select,
   MenuItem,
   FormControl,
-  InputLabel,
-  Button,
-  CircularProgress,
-  Tooltip,
-  TextField,
-  IconButton
+  Button
 } from '@mui/material';
 import {
   Thermometer,
@@ -29,7 +26,6 @@ import {
   Leaf,
   TrendingUp,
   AlertTriangle,
-  CheckCircle,
   CheckCircle,
   Clock,
   Edit2,
@@ -104,7 +100,7 @@ const MetricRow: React.FC<MetricRowProps> = ({ icon, label, current, target, sta
 };
 
 const StageDashboard: React.FC = () => {
-  const { activeRoomId, activeRoom, updateRoom } = useRooms();
+  const { activeRoom, updateRoom } = useRooms();
   const [data, setData] = useState<StageData | null>(null);
   const [recommendation, setRecommendation] = useState<Recommendation | null>(null);
   const [stages, setStages] = useState<any[]>([]);
@@ -147,9 +143,11 @@ const StageDashboard: React.FC = () => {
 
         // Calculate Days Locally based on Active Room (Source of Truth)
         let calculatedDays = statusData.daysInCycle || 0;
+
+        // Priority: Room Config > Local Selection > Backend Status > Default
+        const activeStageId = activeRoom?.currentStage || selectedStage || statusData.stage || 'veg_early';
+
         if (activeRoom) {
-            // Use selectedStage logic to determine phase, fallback to backend stage
-            const activeStageId = selectedStage || statusData.stage || 'veg_early';
             const isFlower = activeStageId.includes('flower') || activeStageId === 'ripening' || activeStageId === 'transition';
 
             // Critical: If we are in flower, we MUST use flipDate
@@ -169,8 +167,8 @@ const StageDashboard: React.FC = () => {
         const safeData = {
           ...statusData,
           stage: {
-            id: statusData.stage || 'veg_early',
-            name: stageNames[statusData.stage] || statusData.direction || 'Vegetativo',
+            id: activeStageId,
+            name: stageNames[activeStageId] || statusData.direction || 'Vegetativo',
             daysInStage: calculatedDays
           },
           current: {
@@ -196,8 +194,11 @@ const StageDashboard: React.FC = () => {
           }
         };
         setData(safeData);
-        if (!selectedStage) {
-          setSelectedStage(statusData.stage || 'veg_early');
+        // Sync local selection with room source of truth
+        if (activeRoom?.currentStage && activeRoom.currentStage !== selectedStage) {
+             setSelectedStage(activeRoom.currentStage);
+        } else if (!selectedStage) {
+             setSelectedStage(statusData.stage || 'veg_early');
         }
       }
       if (recoData.success && recoData.recommendation) setRecommendation(recoData.recommendation);
@@ -229,8 +230,12 @@ const StageDashboard: React.FC = () => {
       console.log('[StageDashboard] Response status:', res.status);
       const data = await res.json();
       console.log('[StageDashboard] Response data:', data);
+      console.log('[StageDashboard] Response data:', data);
       if (res.ok && data.success) {
         setSelectedStage(newStage);
+        if (activeRoom) {
+             await updateRoom(activeRoom.id, { currentStage: newStage });
+        }
         await fetchData();
       } else {
         console.error('[StageDashboard] Stage change failed:', data);

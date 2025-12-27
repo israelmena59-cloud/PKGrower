@@ -892,10 +892,17 @@ const SettingsPage: React.FC = () => {
                             onClick={() => {
                                 const newStage = (stage === 'veg' ? 'veg_early' : stage === 'flower' ? 'flower_early' : 'veg_early') as any;
                                 updateCropSteeringSettings({ currentStage: newStage });
-                                // Also update flipDate automatically if switching to flower
-                                if (stage === 'flower' && activeRoom && !activeRoom.flipDate) {
-                                    const today = new Date().toISOString().split('T')[0];
-                                    updateRoom(activeRoom.id, { flipDate: today });
+
+                                if (activeRoom) {
+                                    const updates: any = { currentStage: newStage };
+
+                                    // Also update flipDate automatically if switching to flower and not set
+                                    if (stage === 'flower' && !activeRoom.flipDate) {
+                                        const today = new Date().toISOString().split('T')[0];
+                                        updates.flipDate = today;
+                                    }
+
+                                    updateRoom(activeRoom.id, updates);
                                 }
                             }}
                             sx={{ flex: 1, py: 1.5 }}

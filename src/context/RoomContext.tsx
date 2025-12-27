@@ -23,6 +23,7 @@ export interface Room {
   growStartDate: string | null;
   flipDate: string | null;
   harvestDate: string | null;
+  currentStage: string | null; // e.g. 'veg_early', 'flower_mid'
   // Device assignment
   assignedDevices: string[];  // Device IDs
   assignedSensors: string[];  // Sensor IDs
@@ -42,6 +43,7 @@ const DEFAULT_ROOMS: Room[] = [
     growStartDate: null,
     flipDate: null,
     harvestDate: null,
+    currentStage: 'veg_early',
     assignedDevices: [],
     assignedSensors: []
   },
@@ -57,9 +59,10 @@ const DEFAULT_ROOMS: Room[] = [
     growStartDate: null,
     flipDate: null,
     harvestDate: null,
+    currentStage: null,
     assignedDevices: [],
     assignedSensors: []
-  }
+  },
 ];
 
 interface RoomContextType {
