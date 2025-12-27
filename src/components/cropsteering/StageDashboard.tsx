@@ -1,6 +1,6 @@
 /**
  * Stage Dashboard Component
- * Shows current vs target comparison for crop steering parameters
+ * Premium AI-Enhanced Design with Dynamic Themes based on Crop Stage
  */
 
 import React, { useState, useEffect } from 'react';
@@ -9,9 +9,7 @@ import {
   Card,
   Box,
   Typography,
-  InputLabel,
   CircularProgress,
-  TextField,
   IconButton,
   Grid,
   Select,
@@ -30,9 +28,15 @@ import {
   Clock,
   Edit2,
   Save,
-  X
+  X,
+  Sprout,
+  Flower2,
+  Zap,
+  Wind,
+  BrainCircuit
 } from 'lucide-react';
 
+// --- Types ---
 interface StageData {
   stage: {
     id: string;
@@ -71,42 +75,92 @@ interface Recommendation {
   nextIrrigationIn: number | null;
 }
 
-interface MetricRowProps {
-  icon: React.ReactNode;
-  label: string;
-  current: number | string;
-  target: string;
-  status: 'optimal' | 'warning' | 'danger';
-  unit: string;
-}
-
-const MetricRow: React.FC<MetricRowProps> = ({ icon, label, current, target, status, unit }) => {
-  const statusColor = status === 'optimal' ? '#22c55e' : status === 'warning' ? '#f59e0b' : '#ef4444';
-  const StatusIcon = status === 'optimal' ? CheckCircle : AlertTriangle;
-
-  return (
-    <Box sx={{ display: 'flex', alignItems: 'center', py: 1.5, borderBottom: '1px solid', borderColor: 'divider' }}>
-      <Box sx={{ color: 'text.secondary', mr: 2 }}>{icon}</Box>
-      <Box sx={{ flex: 1 }}>
-        <Typography variant="body2" fontWeight={500}>{label}</Typography>
-        <Typography variant="caption" color="text.secondary">Target: {target}</Typography>
-      </Box>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-        <Typography variant="h6" fontWeight={600}>{current}{unit}</Typography>
-        <StatusIcon size={18} color={statusColor} />
-      </Box>
-    </Box>
-  );
+// --- Dynamic Theme Helper ---
+const getStageTheme = (stageId: string) => {
+  if (stageId.includes('veg')) {
+    return {
+      gradient: 'linear-gradient(135deg, rgba(34,197,94,0.15) 0%, rgba(16,185,129,0.05) 100%)',
+      border: 'rgba(34,197,94,0.3)',
+      iconColor: '#22c55e', // Green
+      mainIcon: Sprout,
+      accent: 'success.main',
+      glow: '0 0 20px rgba(34,197,94,0.2)'
+    };
+  }
+  if (stageId.includes('flower')) {
+    return {
+      gradient: 'linear-gradient(135deg, rgba(168,85,247,0.15) 0%, rgba(236,72,153,0.05) 100%)',
+      border: 'rgba(168,85,247,0.3)',
+      iconColor: '#d946ef', // Fuchsia
+      mainIcon: Flower2,
+      accent: 'secondary.main',
+      glow: '0 0 20px rgba(168,85,247,0.2)'
+    };
+  }
+  if (stageId === 'ripening') {
+    return {
+      gradient: 'linear-gradient(135deg, rgba(245,158,11,0.15) 0%, rgba(251,146,60,0.05) 100%)',
+      border: 'rgba(245,158,11,0.3)',
+      iconColor: '#f59e0b', // Amber
+      mainIcon: Sun,
+      accent: 'warning.main',
+      glow: '0 0 20px rgba(245,158,11,0.2)'
+    };
+  }
+  // Transition or Default
+  return {
+    gradient: 'linear-gradient(135deg, rgba(59,130,246,0.15) 0%, rgba(99,102,241,0.05) 100%)',
+    border: 'rgba(59,130,246,0.3)',
+    iconColor: '#3b82f6', // Blue
+    mainIcon: Wind,
+    accent: 'info.main',
+    glow: '0 0 20px rgba(59,130,246,0.2)'
+  };
 };
+
+const MetricCard = ({ label, value, unit, target, status, icon: Icon, theme }: any) => (
+  <Box sx={{
+    p: 2,
+    borderRadius: '16px',
+    bgcolor: 'rgba(255,255,255,0.03)',
+    border: '1px solid',
+    borderColor: status === 'optimal' ? 'rgba(255,255,255,0.08)' : 'rgba(239,68,68,0.3)',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 1,
+    transition: 'transform 0.2s',
+    '&:hover': { transform: 'translateY(-2px)', bgcolor: 'rgba(255,255,255,0.05)' }
+  }}>
+    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+      <Typography variant="caption" color="text.secondary" fontWeight={600}>{label.toUpperCase()}</Typography>
+      <Icon size={16} color={status === 'optimal' ? theme.iconColor : '#ef4444'} />
+    </Box>
+    <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5 }}>
+      <Typography variant="h5" fontWeight={700} color="white">
+        {value}
+      </Typography>
+      <Typography variant="caption" color="text.secondary">{unit}</Typography>
+    </Box>
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 'auto' }}>
+      <Typography variant="caption" sx={{
+        color: status === 'optimal' ? 'text.secondary' : 'error.main',
+        bgcolor: status === 'optimal' ? 'rgba(255,255,255,0.05)' : 'rgba(239,68,68,0.1)',
+        px: 1, py: 0.5, borderRadius: '4px', width: '100%', textAlign: 'center'
+      }}>
+        Meta: {target}
+      </Typography>
+    </Box>
+  </Box>
+);
 
 const StageDashboard: React.FC = () => {
   const { activeRoom, updateRoom } = useRooms();
   const [data, setData] = useState<StageData | null>(null);
   const [recommendation, setRecommendation] = useState<Recommendation | null>(null);
-  const [stages, setStages] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedStage, setSelectedStage] = useState('');
-  const [saving, setSaving] = useState(false);
+
+  // New state for manual day override via long press or click (hidden feature)
   const [editingDay, setEditingDay] = useState(false);
   const [tempDay, setTempDay] = useState(0);
 
@@ -114,43 +168,33 @@ const StageDashboard: React.FC = () => {
 
   const fetchData = async () => {
     try {
-      const [statusRes, recoRes, stagesRes] = await Promise.all([
+      const [statusRes, recoRes] = await Promise.all([
         fetch(`${API_URL}/api/crop-steering/status`),
-        fetch(`${API_URL}/api/crop-steering/recommendation`),
-        fetch(`${API_URL}/api/crop-steering/stages`)
+        fetch(`${API_URL}/api/crop-steering/recommendation`)
       ]);
 
       const statusData = await statusRes.json();
       const recoData = await recoRes.json();
-      const stagesData = await stagesRes.json();
 
       if (statusData.success) {
-        // Transform /status response into UI format
-        // Fetch latest sensor data for current values
         const sensorRes = await fetch(`${API_URL}/api/sensors/latest`);
         const sensorData = await sensorRes.json();
 
-        // Map stage ID to display name
         const stageNames: Record<string, string> = {
           'veg_early': 'Vegetativo Temprano',
           'veg_late': 'Vegetativo Tardío',
-          'transition': 'Transición',
+          'transition': 'Transición pre-flor',
           'flower_early': 'Floración Temprana',
-          'flower_mid': 'Floración Media',
-          'flower_late': 'Floración Tardía',
-          'ripening': 'Maduración'
+          'flower_mid': 'Floración Media (Engorde)',
+          'flower_late': 'Floración Tardía (Maduración)',
+          'ripening': 'Lavado de Raíces'
         };
 
-        // Calculate Days Locally based on Active Room (Source of Truth)
         let calculatedDays = statusData.daysInCycle || 0;
-
-        // Priority: Room Config > Local Selection > Backend Status > Default
         const activeStageId = activeRoom?.currentStage || selectedStage || statusData.stage || 'veg_early';
 
         if (activeRoom) {
             const isFlower = activeStageId.includes('flower') || activeStageId === 'ripening' || activeStageId === 'transition';
-
-            // Critical: If we are in flower, we MUST use flipDate
             const relevantDate = isFlower
                 ? (activeRoom.flipDate || activeRoom.growStartDate)
                 : activeRoom.growStartDate;
@@ -160,7 +204,6 @@ const StageDashboard: React.FC = () => {
                 const now = new Date();
                 const diffTime = Math.abs(now.getTime() - start.getTime());
                 calculatedDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-                // If today is start date, it is day 0 (or day 1 depending on preference, usually day 0 means "start of day 1")
             }
         }
 
@@ -184,7 +227,7 @@ const StageDashboard: React.FC = () => {
             vpd: { min: 0.8, max: 1.2, target: 1.0 },
             vwc: { min: 40, target: statusData.targetVWC || 55, max: 70 },
             dryback: { min: 5, max: 15 },
-            ec: { input: 1.8, substrate: 2.2 },
+            ec: { input: activeStageId.includes('flower') ? 2.4 : 1.8, substrate: activeStageId.includes('flower') ? 3.0 : 2.2 },
             light: { ppfd: 800, dli: 45, hours: 12 }
           },
           status: {
@@ -194,7 +237,7 @@ const StageDashboard: React.FC = () => {
           }
         };
         setData(safeData);
-        // Sync local selection with room source of truth
+
         if (activeRoom?.currentStage && activeRoom.currentStage !== selectedStage) {
              setSelectedStage(activeRoom.currentStage);
         } else if (!selectedStage) {
@@ -202,7 +245,6 @@ const StageDashboard: React.FC = () => {
         }
       }
       if (recoData.success && recoData.recommendation) setRecommendation(recoData.recommendation);
-      if (stagesData.success && stagesData.stages) setStages(stagesData.stages);
     } catch (e) {
       console.error('Error fetching crop steering data:', e);
       setLoading(false);
@@ -213,264 +255,197 @@ const StageDashboard: React.FC = () => {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 30000); // Refresh every 30s
+    const interval = setInterval(fetchData, 30000);
     return () => clearInterval(interval);
   }, [activeRoom]);
 
-  const handleStageChange = async (newStage: string) => {
-    console.log('[StageDashboard] Changing stage to:', newStage);
-    console.log('[StageDashboard] API URL:', API_URL);
-    setSaving(true);
-    try {
-      const res = await fetch(`${API_URL}/api/crop-steering/stage`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ stage: newStage })
-      });
-      console.log('[StageDashboard] Response status:', res.status);
-      const data = await res.json();
-      console.log('[StageDashboard] Response data:', data);
-      console.log('[StageDashboard] Response data:', data);
-      if (res.ok && data.success) {
-        setSelectedStage(newStage);
-        if (activeRoom) {
-             await updateRoom(activeRoom.id, { currentStage: newStage });
-        }
-        await fetchData();
-      } else {
-        console.error('[StageDashboard] Stage change failed:', data);
-      }
-    } catch (e) {
-      console.error('[StageDashboard] Error setting stage:', e);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleDayEdit = () => {
-    setTempDay(data?.stage?.daysInStage || 0);
-    setEditingDay(true);
-  };
-
+  // Simplified handler for saving manual day override
   const handleDaySave = async () => {
     if (!activeRoom) return;
-
-    // Calculate new start date based on current day
     const today = new Date();
     const startDate = new Date(today);
     startDate.setDate(today.getDate() - tempDay);
-
-    // Format as YYYY-MM-DD
     const dateString = startDate.toISOString().split('T')[0];
 
     const updates: any = {};
     const isFlower = selectedStage.includes('flower') || selectedStage === 'ripening';
+    if (isFlower) updates.flipDate = dateString;
+    else updates.growStartDate = dateString;
 
-    if (isFlower) {
-      updates.flipDate = dateString;
-    } else {
-      updates.growStartDate = dateString;
-    }
-
-    try {
-      setSaving(true);
-      await updateRoom(activeRoom.id, updates);
-
-      setData(prev => prev ? ({
-        ...prev,
-        stage: { ...prev.stage, daysInStage: tempDay }
-      }) : null);
-
-      setEditingDay(false);
-      setTimeout(fetchData, 1000);
-    } catch (e) {
-      console.error('Error updating days:', e);
-    } finally {
-      setSaving(false);
-    }
+    await updateRoom(activeRoom.id, updates);
+    setEditingDay(false);
+    setTimeout(fetchData, 500);
   };
 
   if (loading) {
     return (
-      <Card sx={{ p: 4, textAlign: 'center' }}>
-        <CircularProgress />
-        <Typography sx={{ mt: 2 }}>Cargando estado de cultivo...</Typography>
+      <Card sx={{ p: 4, textAlign: 'center', background: 'transparent', boxShadow: 'none' }}>
+        <CircularProgress size={40} thickness={4} sx={{ color: 'rgba(255,255,255,0.3)' }} />
       </Card>
     );
   }
 
-  if (!data) {
-    return (
-      <Card sx={{ p: 4, textAlign: 'center' }}>
-        <Typography color="error">Error cargando datos</Typography>
-      </Card>
-    );
-  }
+  if (!data) return null;
 
-  const getVWCStatus = (): 'optimal' | 'warning' | 'danger' => {
-    if (data.current.vwc >= data.targets.vwc.min && data.current.vwc <= data.targets.vwc.max) return 'optimal';
-    if (data.current.vwc < data.targets.vwc.min - 10 || data.current.vwc > data.targets.vwc.max + 10) return 'danger';
-    return 'warning';
-  };
-
-  const getVPDStatus = (): 'optimal' | 'warning' | 'danger' => {
-    if (data.current.vpd >= data.targets.vpd.min && data.current.vpd <= data.targets.vpd.max) return 'optimal';
-    if (data.current.vpd < data.targets.vpd.min - 0.3 || data.current.vpd > data.targets.vpd.max + 0.3) return 'danger';
-    return 'warning';
-  };
+  const theme = getStageTheme(data.stage.id);
+  const MainIcon = theme.mainIcon;
 
   return (
-    <Card sx={{ p: 3 }}>
-      {/* Header */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Box>
-          <Typography variant="h6" fontWeight={600}>Centro de Control</Typography>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            {editingDay ? (
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Typography variant="body2" color="text.secondary">Día</Typography>
-                <TextField
-                  type="number"
-                  variant="standard"
-                  size="small"
-                  value={tempDay}
-                  onChange={(e) => setTempDay(Number(e.target.value))}
-                  sx={{ width: 50 }}
-                  inputProps={{ min: 0 }}
-                />
-                <IconButton size="small" onClick={handleDaySave} disabled={saving}>
-                  <Save size={16} className="text-green-500" />
-                </IconButton>
-                <IconButton size="small" onClick={() => setEditingDay(false)}>
-                  <X size={16} className="text-red-500" />
-                </IconButton>
-              </Box>
-            ) : (
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, cursor: 'pointer' }} onClick={handleDayEdit} className="group">
-                <Typography variant="body2" color="text.secondary">
-                  Día {data?.stage?.daysInStage || 0} en {data?.stage?.name || 'Cargando...'}
-                </Typography>
-                <Edit2 size={14} className="text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity" />
-              </Box>
-            )}
-          </Box>
-        </Box>
-
-        <FormControl size="small" sx={{ minWidth: 150 }}>
-          <InputLabel>Etapa</InputLabel>
-          <Select
-            value={selectedStage}
-            label="Etapa"
-            onChange={(e) => handleStageChange(e.target.value)}
-            disabled={saving}
-          >
-            {stages.map((s) => (
-              <MenuItem key={s.id} value={s.id}>{s.name}</MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-      </Box>
-
-      {/* Recommendation Banner */}
-      {recommendation && (
+    <Card sx={{
+      p: 0,
+      borderRadius: '24px',
+      overflow: 'hidden',
+      background: '#121212',
+      border: `1px solid ${theme.border}`,
+      boxShadow: theme.glow,
+      transition: 'all 0.5s ease-in-out'
+    }}>
+      {/* --- Dynamic Header --- */}
+      <Box sx={{
+        background: theme.gradient,
+        p: 3,
+        pt: 4,
+        position: 'relative'
+      }}>
+        {/* Background Pattern */}
         <Box sx={{
-          p: 2,
-          mb: 3,
-          borderRadius: 2,
-          bgcolor: recommendation.shouldIrrigate ? 'rgba(34, 197, 94, 0.15)' : 'rgba(255,255,255,0.05)',
-          border: '1px solid',
-          borderColor: recommendation.shouldIrrigate ? 'rgba(34, 197, 94, 0.4)' : 'rgba(255,255,255,0.1)'
+            position: 'absolute', top: 0, right: 0, opacity: 0.1,
+            transform: 'translate(20%, -20%) scale(2)'
         }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            {recommendation.shouldIrrigate ? (
-              <Droplets color="#22c55e" size={24} />
-            ) : (
-              <Clock color="#6b7280" size={24} />
-            )}
-            <Box>
-              <Typography variant="subtitle1" fontWeight={600}>
-                {recommendation.shouldIrrigate
-                  ? `Regar ahora (${recommendation.phase.toUpperCase()}) - ${recommendation.suggestedPercentage}%`
-                  : 'Monitoreo'}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                {recommendation.reason}
-              </Typography>
-            </Box>
-          </Box>
+            <MainIcon size={200} />
         </Box>
-      )}
 
-      {/* Metrics Grid */}
-      <Grid container spacing={3}>
-        <Grid item xs={12} md={6}>
-          <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 2 }}>Ambiente</Typography>
-          <MetricRow
-            icon={<Thermometer size={20} />}
-            label="Temperatura"
-            current={data.current.temperature}
-            target={`${data.targets.temperature.night}-${data.targets.temperature.day}°C`}
-            status={data.status.tempStatus}
-            unit="°C"
-          />
-          <MetricRow
-            icon={<Droplets size={20} />}
-            label="Humedad"
-            current={data.current.humidity}
-            target={`${data.targets.humidity.night}-${data.targets.humidity.day}%`}
-            status={data.status.vpdStatus === 'optimal' ? 'optimal' : 'warning'}
-            unit="%"
-          />
-          <MetricRow
-            icon={<TrendingUp size={20} />}
-            label="VPD"
-            current={data.current.vpd}
-            target={`${data.targets.vpd.min}-${data.targets.vpd.max} kPa`}
-            status={getVPDStatus()}
-            unit=" kPa"
-          />
-        </Grid>
+        <Box sx={{ position: 'absolute', top: 16, right: 16 }}>
+             <Box sx={{
+                 display: 'flex', alignItems: 'center', gap: 1,
+                 bgcolor: 'rgba(0,0,0,0.3)', px: 1.5, py: 0.5, borderRadius: '12px',
+                 backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.1)'
+             }}>
+                 <BrainCircuit size={14} className="text-blue-400 animate-pulse" />
+                 <Typography variant="caption" fontWeight={600} color="text.secondary">
+                     IA ACTIVADA
+                 </Typography>
+             </Box>
+        </Box>
 
-        <Grid item xs={12} md={6}>
-          <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 2 }}>Sustrato</Typography>
-          <MetricRow
-            icon={<Leaf size={20} />}
-            label="VWC"
-            current={data.current.vwc}
-            target={`${data.targets.vwc.min}-${data.targets.vwc.max}%`}
-            status={getVWCStatus()}
-            unit="%"
-          />
-          <MetricRow
-            icon={<Sun size={20} />}
-            label="DLI Estimado"
-            current={data.current.dli}
-            target={`${data.targets.light.dli} mol/m²/día`}
-            status={Math.abs(data.current.dli - data.targets.light.dli) < 5 ? 'optimal' : 'warning'}
-            unit=" mol"
-          />
-          <Box sx={{ py: 1.5 }}>
-            <Typography variant="body2" fontWeight={500}>Dryback Target</Typography>
-            <Typography variant="caption" color="text.secondary">
-              {data.targets.dryback.min}-{data.targets.dryback.max}% para esta etapa
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1, position: 'relative', zIndex: 1 }}>
+          <Box sx={{
+              p: 1.5, borderRadius: '16px',
+              bgcolor: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(8px)',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+          }}>
+            <MainIcon size={32} color={theme.iconColor} />
+          </Box>
+          <Box>
+            <Typography variant="overline" color="rgba(255,255,255,0.7)" letterSpacing={1.5}>
+              ETAPA ACTUAL
+            </Typography>
+            <Typography variant="h4" fontWeight={800} sx={{ textShadow: '0 2px 10px rgba(0,0,0,0.3)' }}>
+              {data.stage.name}
             </Typography>
           </Box>
-        </Grid>
-      </Grid>
+        </Box>
 
-      {/* EC Targets */}
-      <Box sx={{ mt: 3, p: 2, bgcolor: 'rgba(255,255,255,0.05)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)' }}>
-        <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1 }}>Objetivos EC</Typography>
+        {/* Day Counter Big */}
+        <Box sx={{ mt: 3, mb: 1, position: 'relative', zIndex: 1, display: 'flex', alignItems: 'baseline', gap: 1 }}>
+            {editingDay ? (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, bgcolor: 'rgba(0,0,0,0.5)', p: 1, borderRadius: '12px' }}>
+                    <Typography>Día:</Typography>
+                    <input
+                        type="number"
+                        value={tempDay}
+                        onChange={e => setTempDay(Number(e.target.value))}
+                        style={{ background: 'transparent', border: 'none', color: 'white', fontSize: '24px', width: '60px', fontWeight: 'bold' }}
+                    />
+                    <IconButton size="small" onClick={handleDaySave} sx={{ color: '#22c55e' }}><Save size={20}/></IconButton>
+                </Box>
+            ) : (
+                <Box onClick={() => { setTempDay(data.stage.daysInStage); setEditingDay(true); }} sx={{ cursor: 'pointer' }}>
+                    <Typography variant="h1" fontWeight={900} sx={{ fontSize: '4.5rem', lineHeight: 1, color: '#fff' }}>
+                        Día {data.stage.daysInStage}
+                    </Typography>
+                </Box>
+            )}
+            <Typography variant="h6" color="rgba(255,255,255,0.6)" sx={{ mb: 1 }}>del ciclo</Typography>
+        </Box>
+
+        {/* Progress Bar Visual (Fake for now based on typical 60 day flower) */}
+        <Box sx={{ mt: 2, height: '4px', bgcolor: 'rgba(255,255,255,0.1)', borderRadius: '2px', overflow: 'hidden' }}>
+            <Box sx={{
+                height: '100%',
+                width: `${Math.min(100, (data.stage.daysInStage / (data.stage.id.includes('flower') ? 65 : 30)) * 100)}%`,
+                bgcolor: theme.iconColor,
+                boxShadow: `0 0 10px ${theme.iconColor}`
+            }} />
+        </Box>
+      </Box>
+
+      {/* --- Metrics Content --- */}
+      <Box sx={{ p: 3, bgcolor: '#121212' }}>
+
+        {/* Recommendation Pill */}
+        {recommendation && (
+            <Box sx={{
+                mb: 3, p: 2, borderRadius: '16px',
+                bgcolor: recommendation.shouldIrrigate ? 'rgba(34,197,94,0.05)' : 'rgba(255,255,255,0.02)',
+                border: '1px solid',
+                borderColor: recommendation.shouldIrrigate ? 'rgba(34,197,94,0.3)' : 'rgba(255,255,255,0.05)',
+                display: 'flex', alignItems: 'center', gap: 2
+            }}>
+                 <Box sx={{
+                     p: 1, borderRadius: '50%',
+                     bgcolor: recommendation.shouldIrrigate ? 'rgba(34,197,94,0.2)' : 'rgba(255,255,255,0.05)'
+                 }}>
+                    {recommendation.shouldIrrigate ? <Droplets size={20} className="text-green-500" /> : <Clock size={20} className="text-gray-400" />}
+                 </Box>
+                 <Box>
+                     <Typography variant="subtitle2" fontWeight={700} color="white">
+                        {recommendation.shouldIrrigate ? 'RIEGO SUGERIDO' : 'MONITOREO ACTIVO'}
+                     </Typography>
+                     <Typography variant="body2" color="text.secondary">
+                        {recommendation.reason}
+                     </Typography>
+                 </Box>
+            </Box>
+        )}
+
         <Grid container spacing={2}>
-          <Grid item xs={6}>
-            <Typography variant="body2" color="text.secondary">EC Input</Typography>
-            <Typography variant="h6">{data.targets.ec.input} mS/cm</Typography>
-          </Grid>
-          <Grid item xs={6}>
-            <Typography variant="body2" color="text.secondary">EC Sustrato</Typography>
-            <Typography variant="h6">{data.targets.ec.substrate} mS/cm</Typography>
-          </Grid>
+            {/* Quick Metrics */}
+            <Grid item xs={6} md={3}>
+                <MetricCard
+                    label="Temperatura" value={data.current.temperature} unit="°C"
+                    target={`${data.targets.temperature.night}-${data.targets.temperature.day}°`}
+                    status={data.status.tempStatus} icon={Thermometer} theme={theme}
+                />
+            </Grid>
+            <Grid item xs={6} md={3}>
+                <MetricCard
+                    label="VPD" value={data.current.vpd} unit="kPa"
+                    target={`${data.targets.vpd.min}-${data.targets.vpd.max}`}
+                    status={data.status.vpdStatus} icon={Wind} theme={theme}
+                />
+            </Grid>
+            <Grid item xs={6} md={3}>
+                <MetricCard
+                    label="Humedad" value={data.current.humidity} unit="%"
+                    target={`${data.targets.humidity.night}-${data.targets.humidity.day}%`}
+                    status={'optimal'} icon={Droplets} theme={theme}
+                />
+            </Grid>
+            <Grid item xs={6} md={3}>
+                <MetricCard
+                    label="EC Sustrato" value={data.targets.ec.substrate} unit="mS"
+                    target="< 3.0"
+                    status={'optimal'} icon={Zap} theme={theme}
+                />
+            </Grid>
         </Grid>
+
+        <Box sx={{ mt: 3, textAlign: 'center' }}>
+            <Typography variant="caption" color="text.secondary" sx={{ opacity: 0.5 }}>
+                Sincronizado con Sala Activa • {data.stage.name.toUpperCase()} • Actualizado hace instantes
+            </Typography>
+        </Box>
       </Box>
     </Card>
   );
