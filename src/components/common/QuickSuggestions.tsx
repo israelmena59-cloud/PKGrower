@@ -218,7 +218,7 @@ const QuickSuggestions: React.FC<QuickSuggestionsProps> = ({
                            {suggestion.icon}
                        </Box>
                        <Box>
-                           <Typography variant="subtitle2" fontWeight={700} color="white" sx={{ fontSize: '0.9rem' }}>
+                           <Typography variant="subtitle2" fontWeight={700} color="white" sx={{ fontSize: '0.9rem' }} noWrap>
                                {suggestion.title}
                            </Typography>
                        </Box>
@@ -228,7 +228,13 @@ const QuickSuggestions: React.FC<QuickSuggestionsProps> = ({
                    </IconButton>
                </Box>
 
-               <Typography variant="body2" color="rgba(255,255,255,0.7)" sx={{ mb: 2, fontSize: '0.8rem', pl: 0.5 }}>
+               <Typography variant="body2" color="rgba(255,255,255,0.7)" sx={{
+                   mb: 2, fontSize: '0.8rem', pl: 0.5,
+                   display: '-webkit-box',
+                   WebkitLineClamp: 2,
+                   WebkitBoxOrient: 'vertical',
+                   overflow: 'hidden'
+               }}>
                    {suggestion.description}
                </Typography>
 
@@ -243,12 +249,17 @@ const QuickSuggestions: React.FC<QuickSuggestionsProps> = ({
                         bgcolor: getPriorityColor(suggestion.priority),
                         borderRadius: '10px',
                         textTransform: 'none',
-                        fontWeight: 600,
+                        fontWeight: 700,
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        px: 1,
                         boxShadow: `0 4px 12px ${getPriorityColor(suggestion.priority)}40`,
                         '&:hover': {
                             bgcolor: getPriorityColor(suggestion.priority),
                             filter: 'brightness(1.1)',
-                            transform: 'translateY(-1px)'
+                            transform: 'translateY(-1px)',
+                            boxShadow: `0 6px 16px ${getPriorityColor(suggestion.priority)}60`
                         }
                     }}
                 >

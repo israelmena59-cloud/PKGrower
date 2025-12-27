@@ -17,7 +17,6 @@ import {
   Sparkles,
   RefreshCw,
   AlertTriangle,
-  CheckCircle,
   Zap,
   Droplets,
   Thermometer,
@@ -246,26 +245,30 @@ const UnifiedAIPanel: React.FC<UnifiedAIPanelProps> = ({
           ) : (
               items.map((item) => {
                   const theme = getTheme(item.type);
-                  const Icon = theme.icon;
+                  // Use specific icon if available, otherwise theme icon
+                  const Icon = item.icon === 'wind' ? Wind :
+                               item.icon === 'droplets' ? Droplets :
+                               item.icon === 'thermometer' ? Thermometer :
+                               theme.icon;
 
                   return (
                     <Box
                         key={item.id}
                         sx={{
-                            minWidth: 280,
-                            maxWidth: 320,
+                            minWidth: 300,
+                            maxWidth: 340,
                             p: 2.5,
                             borderRadius: '20px',
-                            background: `linear-gradient(145deg, rgba(20,30,40,0.8) 0%, rgba(10,12,15,0.9) 100%)`, // Base dark
+                            background: `linear-gradient(145deg, rgba(20,30,40,0.85) 0%, rgba(10,12,15,0.95) 100%)`,
                             border: `1px solid ${theme.border}`,
                             backdropFilter: 'blur(20px)',
                             position: 'relative',
                             overflow: 'hidden',
-                            transition: 'transform 0.2s, box-shadow 0.2s',
+                            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                             '&:hover': {
-                                transform: 'translateY(-4px)',
-                                boxShadow: `0 10px 30px -10px ${theme.color}40`,
-                                border: `1px solid ${theme.color}60`
+                                transform: 'translateY(-4px) scale(1.02)',
+                                boxShadow: `0 20px 40px -10px ${theme.color}30`,
+                                border: `1px solid ${theme.color}80`
                             }
                         }}
                     >
@@ -290,11 +293,19 @@ const UnifiedAIPanel: React.FC<UnifiedAIPanelProps> = ({
                             )}
                         </Box>
 
-                        <Typography variant="subtitle2" fontWeight={700} color="white" gutterBottom>
+                        <Typography variant="subtitle2" fontWeight={700} color="white" gutterBottom noWrap title={item.title}>
                             {item.title}
                         </Typography>
 
-                        <Typography variant="body2" color="rgba(255,255,255,0.7)" sx={{ mb: 2, minHeight: 40, fontSize: '0.85rem' }}>
+                        <Typography variant="body2" color="rgba(255,255,255,0.7)" sx={{
+                            mb: 2,
+                            minHeight: 40,
+                            fontSize: '0.85rem',
+                            display: '-webkit-box',
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden'
+                        }}>
                             {item.message}
                         </Typography>
 
@@ -310,10 +321,16 @@ const UnifiedAIPanel: React.FC<UnifiedAIPanelProps> = ({
                                     color: theme.color,
                                     borderRadius: '12px',
                                     textTransform: 'none',
-                                    fontWeight: 600,
+                                    fontWeight: 700,
+                                    whiteSpace: 'nowrap',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    px: 2,
+                                    boxShadow: `0 4px 10px rgba(0,0,0,0.2)`,
                                     '&:hover': {
                                         borderColor: theme.color,
-                                        bgcolor: `${theme.color}15`
+                                        bgcolor: `${theme.color}15`,
+                                        boxShadow: `0 0 15px ${theme.color}40`
                                     }
                                 }}
                             >
