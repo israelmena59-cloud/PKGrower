@@ -1866,46 +1866,40 @@ app.post('/api/settings/verify-2fa', async (req, res) => {
   console.log(`âœ“ Backend running on http://localhost:${PORT}`);
   console.log(`âœ“ Modo: ${MODO_SIMULACION ? 'ðŸŸ¢ SIMULACIÃ“N' : 'ðŸ”´ MODO REAL'}`);
 
-  // Inicializar dispositivos (BACKGROUND)
+  // Inicializar dispositivos (IMMEDIATE - FIXED)
   if (!MODO_SIMULACION) {
-    console.log('\nðŸ“± (Async) Programando inicializaciÃ³n de dispositivos en segundo plano...');
+    console.log('\n📱 Iniciando conexión con Tuya/Xiaomi INMEDIATAMENTE...');
 
-    // Defer initialization to allow Render to pass health checks immediately
-    setTimeout(async () => {
+    // Execute immediately instead of setTimeout
+    (async () => {
         try {
-            console.log('ðŸ“± [BACKGROUND] Iniciando conexiÃ³n con Tuya/Xiaomi...');
-
+            console.log('📱 [INIT] Conectando con Tuya Cloud API...');
+            
             // 1. Conectar Cliente Tuya (Core)
             await initSystemConnectors();
-
+            
             // 2. Descubrir Dispositivos
             await initTuyaDevices();
             await initXiaomiDevices();
-            console.log('ðŸ“± [BACKGROUND] Dispositivos inicializados.');
+            console.log('�� [INIT] Dispositivos inicializados correctamente.');
+            
+        } catch (err) {
+            console.error('❌ [INIT ERROR]', err);
+        }
+    })();
 
-            // Iniciar Polling de Tuya (Cada 15 segundos)
-            setInterval(async () => {
-                console.log('[POLLING] Actualizando estados de Tuya...');
-                await initTuyaDevices();
-
-                // ... (polling logic continues) ...
-
-
-        // --- ACTUALIZAR HISTORIAL DE SENSORES (REAL) ---
-        // Replaced inline logic with centralized function
+    // Iniciar Polling de Tuya (Cada 60 segundos)
+    setInterval(async () => {
+        console.log('[POLLING] Actualizando estados de Tuya...');
+        await initTuyaDevices();
+        
+        // Actualizar historial de sensores
         try {
              await saveSensorSnapshot();
         } catch (e) {
              console.error('[HISTORY-BG] Error saving snapshot:', e.message);
         }
-
-
-    }, 60000); // 60s (Save to DB every minute to reduce costs/bloat)
-
-        } catch (err) {
-            console.error('âŒ [BACKGROUND INIT ERROR]', err);
-        }
-    }, 5000); // Wait 5s before starting heavy init
+    }, 60000); // 60s
   }
 
 // --- RULES ENGINE LOGIC ---\n// automationRules declarada arriba en línea ~291
