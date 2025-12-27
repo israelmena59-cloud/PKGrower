@@ -12,6 +12,7 @@ import {
   Chip,
   CircularProgress,
   Tooltip,
+  Collapse,
 } from '@mui/material';
 import {
   Sparkles,
