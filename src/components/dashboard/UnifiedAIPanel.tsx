@@ -51,9 +51,12 @@ const UnifiedAIPanel: React.FC<UnifiedAIPanelProps> = ({
   refreshInterval = 60000,
 }) => {
   const [items, setItems] = useState<AIItem[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [executing, setExecuting] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true); // Changed initial state to true
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+  const [executing, setExecuting] = useState<string | null>(null);
+  // Debug State
+  const [debugMode, setDebugMode] = useState(false);
+  const [tuyaDevices, setTuyaDevices] = useState<any[]>([]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -137,6 +140,14 @@ const UnifiedAIPanel: React.FC<UnifiedAIPanelProps> = ({
       console.error('Error fetching AI data:', error);
     } finally {
       setLoading(false);
+
+      // Fetch devices for diagnostics (ONCE or low freq)
+      try {
+           const devRes = await apiClient.getTuyaDevices();
+           if (devRes && devRes.devices) {
+               setTuyaDevices(devRes.devices);
+           }
+      } catch (e) { console.warn('Device fetch failed', e); }
     }
   };
 
@@ -150,7 +161,9 @@ const UnifiedAIPanel: React.FC<UnifiedAIPanelProps> = ({
     }
   }, [autoRefresh, refreshInterval]);
 
-
+  const handleManualRefresh = () => {
+    fetchData();
+  };
 
   const executeAction = async (item: AIItem) => {
     if (!item.action) return;
@@ -301,12 +314,51 @@ const UnifiedAIPanel: React.FC<UnifiedAIPanelProps> = ({
               </Box>
 
               <Tooltip title="Actualizar Análisis">
-                <IconButton onClick={fetchData} disabled={loading} size="small" sx={{ bgcolor: 'rgba(255,255,255,0.05)' }}>
-                    <RefreshCw size={18} className={`text-gray-400 ${loading ? 'animate-spin' : ''}`} />
+                <IconButton onClick={handleManualRefresh} disabled={loading} size="small" sx={{ bgcolor: 'rgba(255,255,255,0.05)' }}>
+                    <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
                 </IconButton>
               </Tooltip>
+              <IconButton
+                 size="small"
+                 sx={{ color: debugMode ? '#22d3ee' : 'rgba(255,255,255,0.3)' }}
+                 onClick={() => setDebugMode(!debugMode)}
+              >
+                 <Activity size={18} />
+              </IconButton>
           </Box>
       </Box>
+
+      {/* DEBUG DEVICE LIST */}
+       <Collapse in={debugMode}>
+          <Box sx={{ mb: 2, p: 1.5, bgcolor: 'rgba(0,0,0,0.2)', borderRadius: 2, maxHeight: 200, overflowY: 'auto' }}>
+              <Typography variant="subtitle2" sx={{ color: '#aaa', mb: 1 }}>Dispositivos Detectados (Diagnóstico)</Typography>
+              {tuyaDevices.length === 0 ? (
+                  <Typography variant="caption" sx={{ color: '#666' }}>No se encontraron dispositivos o error de carga.</Typography>
+              ) : (
+                  tuyaDevices.map(d => (
+                      <Box key={d.id} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1, p: 0.5, borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                          <Box>
+                              <Typography variant="caption" display="block" sx={{ color: 'white', fontWeight: 600 }}>{d.name}</Typography>
+                              <Typography variant="caption" display="block" sx={{ color: '#666', fontSize: '0.65rem' }}>ID: {d.id} | Status: {d.status}</Typography>
+                          </Box>
+                          <Button
+                              size="small"
+                              variant="outlined"
+                              sx={{ minWidth: 60, py: 0.2, fontSize: '0.65rem', borderColor: 'rgba(255,255,255,0.2)', color: '#fff' }}
+                              onClick={() => {
+                                  if (confirm(`¿Toggle ${d.name}?`)) {
+                                      apiClient.controlDevice(d.id, 'on').catch(err => alert(err.message));
+                                      setTimeout(() => apiClient.controlDevice(d.id, 'off'), 5000); // 5s test pulse
+                                  }
+                              }}
+                          >
+                              TEST 5s
+                          </Button>
+                      </Box>
+                  ))
+              )}
+          </Box>
+       </Collapse>
 
       {/* Cards Scroll Container */}
       <Box sx={{
