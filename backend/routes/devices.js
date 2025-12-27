@@ -48,6 +48,7 @@ function detectCapabilities(type, category, platform) {
 
 module.exports = ({
     getTuyaDevices,
+    getTuyaStatus,
     getMerossDevices,
     getXiaomiClients,
     getDeviceMap,
@@ -497,6 +498,19 @@ module.exports = ({
 
     // Debug Lists
     router.get('/tuya', (req, res) => res.json(getTuyaDevices()));
+    router.get('/tuya/debug', (req, res) => {
+        const tuyaStatus = getTuyaStatus();
+        res.json({
+            connected: tuyaStatus.connected,
+            deviceCount: Object.keys(getTuyaDevices()).length,
+            devices: getTuyaDevices(),
+            configKeys: {
+                hasAccessKey: !!tuyaStatus.config.accessKey,
+                hasSecretKey: !!tuyaStatus.config.secretKey,
+                apiHost: tuyaStatus.config.apiHost
+            }
+        });
+    });
     router.get('/meross', (req, res) => res.json(getMerossDevices()));
 
     return router;

@@ -1,4 +1,5 @@
-require('dotenv').config({ path: require('path').join(__dirname, '.env') });
+// require('dotenv').config({ path: require('path').join(__dirname, '.env') });
+// NOTE: In Cloud Run, env vars are set directly. No need for dotenv here.
 
 // --- CONFIGURACIÃ“N DE LA INTEGRACIÃ“N ---
 const MODO_SIMULACION = process.env.MODO_SIMULACION === 'true';
@@ -25,6 +26,13 @@ const TUYA_CONFIG = {
   secretKey: process.env.TUYA_SECRET_KEY || '',
   apiHost: process.env.TUYA_API_HOST || 'https://openapi.tuyaus.com',
 };
+
+// DEBUG: Log Tuya config status
+console.log('[CONFIG] TUYA_CONFIG loaded:', {
+  accessKey: TUYA_CONFIG.accessKey ? `${TUYA_CONFIG.accessKey.substring(0, 10)}...` : 'EMPTY',
+  secretKey: TUYA_CONFIG.secretKey ? `${TUYA_CONFIG.secretKey.substring(0, 10)}...` : 'EMPTY',
+  apiHost: TUYA_CONFIG.apiHost
+});
 
 // --- MAPEO DE DISPOSITIVOS TUYA ---
 const TUYA_DEVICES_MAP = {

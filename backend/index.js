@@ -36,6 +36,7 @@ console.log('  XIAOMI_HUMIDIFIER_MODEL:', process.env.XIAOMI_HUMIDIFIER_MODEL ||
 console.log('  XIAOMI_CAMERA_MODEL:', process.env.XIAOMI_CAMERA_MODEL || 'DEFAULT (isa.camera.hlc7)');
 console.log('  TUYA_ACCESS_KEY:', process.env.TUYA_ACCESS_KEY ? 'CONFIGURADO (primeros 10 chars: ' + process.env.TUYA_ACCESS_KEY.substring(0, 10) + '...)' : 'NO CONFIGURADO');
 console.log('  TUYA_SECRET_KEY:', process.env.TUYA_SECRET_KEY ? 'CONFIGURADO (primeros 10 chars: ' + process.env.TUYA_SECRET_KEY.substring(0, 10) + '...)' : 'NO CONFIGURADO');
+// v2.6 - Force reload with env vars
 console.log('');
 
 const {
@@ -1139,6 +1140,7 @@ app.use('/api/sensors', require('./routes/sensors')({
 // --- DEVICES ROUTE MOUNT ---
 const devicesRouter = require('./routes/devices')({
     getTuyaDevices: () => tuyaDevices,
+    getTuyaStatus: () => ({ connected: tuyaConnected, config: TUYA_CONFIG }),
     getMerossDevices: () => merossDevices,
     getXiaomiClients: () => xiaomiClients,
     getDeviceMap: () => DEVICE_MAP,
