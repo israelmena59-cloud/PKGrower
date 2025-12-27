@@ -143,7 +143,9 @@ const UnifiedAIPanel: React.FC<UnifiedAIPanelProps> = ({
   useEffect(() => {
     fetchData();
     if (autoRefresh) {
-      const interval = setInterval(fetchData, refreshInterval);
+      // Enforce 60s minimum to avoid 429 Rate Limits
+      const safeInterval = Math.max(refreshInterval, 60000);
+      const interval = setInterval(fetchData, safeInterval);
       return () => clearInterval(interval);
     }
   }, [autoRefresh, refreshInterval]);
@@ -196,10 +198,13 @@ const UnifiedAIPanel: React.FC<UnifiedAIPanelProps> = ({
       }
 
       setTimeout(fetchData, 2000);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error executing action:', error);
-      // Optional: Show error toast
+      if (error && (error.status === 429 || (error.message && error.message.includes('429')))) {
+         alert('⚠️ Servidor Saturado (429). Por favor espera 5 minutos antes de intentar activar la bomba nuevamente.');
+      }
     } finally {
+      // Optional: Show error toast
       setExecuting(null);
     }
   };
