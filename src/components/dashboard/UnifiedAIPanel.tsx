@@ -102,13 +102,11 @@ const UnifiedAIPanel: React.FC<UnifiedAIPanelProps> = ({
             });
         }
 
-        if (sensors.substrateHumidity !== null && sensors.substrateHumidity < 30) {
             combined.push({
-                id: 'substrate-dry', type: 'warning', title: 'Riego Necesario',
+                id: 'substrate-dry', type: 'info', title: 'Riego Necesario',
                 message: `Humedad de sustrato al ${sensors.substrateHumidity.toFixed(0)}%.`,
                 action: { label: 'Iniciar Riego (30s)', command: 'set_irrigation(30)' }, icon: 'droplets', source: 'sensor'
             });
-        }
 
         // All good fallback
         if (combined.length === 0) {
@@ -151,10 +149,31 @@ const UnifiedAIPanel: React.FC<UnifiedAIPanelProps> = ({
 
   const getTheme = (type: string) => {
     switch (type) {
-      case 'critical': return { color: '#ef4444', bg: 'rgba(239,68,68,0.1)', border: 'rgba(239,68,68,0.3)', icon: ShieldAlert };
-      case 'warning': return { color: '#f59e0b', bg: 'rgba(245,158,11,0.1)', border: 'rgba(245,158,11,0.3)', icon: AlertTriangle };
-      case 'success': return { color: '#22c55e', bg: 'rgba(34,197,94,0.1)', border: 'rgba(34,197,94,0.3)', icon: ShieldCheck };
-      default: return { color: '#3b82f6', bg: 'rgba(59,130,246,0.1)', border: 'rgba(59,130,246,0.3)', icon: Sparkles };
+      case 'critical': return {
+          color: '#ffffff', // White text on saturated bg
+          bg: 'linear-gradient(135deg, rgba(185, 28, 28, 0.95) 0%, rgba(153, 27, 27, 0.95) 100%)', // Strong Red
+          border: 'rgba(252, 165, 165, 0.5)',
+          icon: ShieldAlert
+      };
+      case 'warning': return {
+          color: '#ffffff',
+          bg: 'linear-gradient(135deg, rgba(217, 119, 6, 0.95) 0%, rgba(180, 83, 9, 0.95) 100%)', // Strong Amber
+          border: 'rgba(253, 186, 116, 0.5)',
+          icon: AlertTriangle
+      };
+      case 'success': return {
+          color: '#ffffff',
+          bg: 'linear-gradient(135deg, rgba(21, 128, 61, 0.95) 0%, rgba(22, 101, 52, 0.95) 100%)', // Strong Green
+          border: 'rgba(134, 239, 172, 0.5)',
+          icon: ShieldCheck
+      };
+      default: return {
+          // Info / Irrigation (Blue)
+          color: '#ffffff',
+          bg: 'linear-gradient(135deg, rgba(29, 78, 216, 0.95) 0%, rgba(30, 64, 175, 0.95) 100%)', // Strong Blue
+          border: 'rgba(147, 197, 253, 0.5)',
+          icon: Sparkles
+      };
     }
   };
 
@@ -257,9 +276,9 @@ const UnifiedAIPanel: React.FC<UnifiedAIPanelProps> = ({
                         sx={{
                             minWidth: 300,
                             maxWidth: 340,
-                            p: 2.5,
-                            borderRadius: '20px',
-                            background: `linear-gradient(145deg, rgba(20,30,40,0.85) 0%, rgba(10,12,15,0.95) 100%)`,
+                            p: 3, // More padding
+                            borderRadius: '24px',
+                            background: theme.bg,
                             border: `1px solid ${theme.border}`,
                             backdropFilter: 'blur(20px)',
                             position: 'relative',
@@ -280,10 +299,10 @@ const UnifiedAIPanel: React.FC<UnifiedAIPanelProps> = ({
 
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2, mt: 1 }}>
                             <Box sx={{
-                                p: 1, borderRadius: '10px',
-                                bgcolor: `${theme.color}20`, color: theme.color
+                                p: 1, borderRadius: '50%',
+                                bgcolor: 'rgba(255,255,255,0.2)', color: 'white' // White icon on dark bg
                             }}>
-                                <Icon size={20} />
+                                <Icon size={24} />
                             </Box>
                             {item.source === 'ai' && (
                                 <Chip label="AI INSIGHT" size="small" sx={{
@@ -293,18 +312,14 @@ const UnifiedAIPanel: React.FC<UnifiedAIPanelProps> = ({
                             )}
                         </Box>
 
-                        <Typography variant="subtitle2" fontWeight={700} color="white" gutterBottom noWrap title={item.title}>
+                        <Typography variant="h6" fontWeight={800} color="white" gutterBottom sx={{ lineHeight: 1.2 }}>
                             {item.title}
                         </Typography>
 
-                        <Typography variant="body2" color="rgba(255,255,255,0.7)" sx={{
+                        <Typography variant="body2" color="rgba(255,255,255,0.9)" sx={{
                             mb: 2,
-                            minHeight: 40,
-                            fontSize: '0.85rem',
-                            display: '-webkit-box',
-                            WebkitLineClamp: 2,
-                            WebkitBoxOrient: 'vertical',
-                            overflow: 'hidden'
+                            fontSize: '0.9rem',
+                            lineHeight: 1.5
                         }}>
                             {item.message}
                         </Typography>
@@ -324,13 +339,18 @@ const UnifiedAIPanel: React.FC<UnifiedAIPanelProps> = ({
                                     fontWeight: 700,
                                     whiteSpace: 'nowrap',
                                     overflow: 'hidden',
-                                    textOverflow: 'ellipsis',
+                                    textOverflow: 'clip', // Allow text to show full
+                                    whiteSpace: 'normal', // Allow wrap
+                                    height: 'auto',
+                                    py: 1,
                                     px: 2,
+                                    lineHeight: 1.2,
                                     boxShadow: `0 4px 10px rgba(0,0,0,0.2)`,
+                                    bgcolor: 'rgba(255,255,255,0.15)', // Light button bg
                                     '&:hover': {
-                                        borderColor: theme.color,
-                                        bgcolor: `${theme.color}15`,
-                                        boxShadow: `0 0 15px ${theme.color}40`
+                                        borderColor: 'white',
+                                        bgcolor: 'rgba(255,255,255,0.25)',
+                                        boxShadow: `0 0 15px rgba(255,255,255,0.3)`
                                     }
                                 }}
                             >

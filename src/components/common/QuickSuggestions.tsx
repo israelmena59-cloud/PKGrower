@@ -30,7 +30,7 @@ import { apiClient } from '../../api/client';
 
 interface Suggestion {
   id: string;
-  priority: 'high' | 'medium' | 'low';
+  priority: 'high' | 'medium' | 'low' | 'blue';
   icon: React.ReactNode;
   title: string;
   description: string;
@@ -72,7 +72,7 @@ const QuickSuggestions: React.FC<QuickSuggestionsProps> = ({
             newSuggestions.push({
               id: 'vpd-low',
               priority: 'high',
-              icon: <Wind size={18} className="text-red-400" />,
+              icon: <Wind size={18} className="text-white" />,
               title: 'VPD Crítico',
               description: `Aumentar T° o bajar Humedad.`,
               action: { label: 'Activar Extractor', command: 'toggle_device(extractorControlador, on)' },
@@ -81,7 +81,7 @@ const QuickSuggestions: React.FC<QuickSuggestionsProps> = ({
             newSuggestions.push({
               id: 'vpd-high',
               priority: 'medium',
-              icon: <Droplets size={18} className="text-amber-400" />,
+              icon: <Droplets size={18} className="text-white" />,
               title: 'VPD Alto',
               description: `Humedad muy baja.`,
               action: { label: 'Humidificar', command: 'toggle_device(humidifier, on)' },
@@ -94,7 +94,7 @@ const QuickSuggestions: React.FC<QuickSuggestionsProps> = ({
           newSuggestions.push({
             id: 'temp-high',
             priority: 'high',
-            icon: <Thermometer size={18} className="text-red-400" />,
+            icon: <Thermometer size={18} className="text-white" />,
             title: 'Calor Excesivo',
             description: `Enfriar cultivo ya.`,
             action: { label: 'Enfriar', command: 'toggle_device(extractorControlador, on)' },
@@ -105,8 +105,8 @@ const QuickSuggestions: React.FC<QuickSuggestionsProps> = ({
         if (sensors.substrateHumidity !== null && sensors.substrateHumidity < 30) {
           newSuggestions.push({
             id: 'substrate-dry',
-            priority: 'medium',
-            icon: <Droplets size={18} className="text-amber-400" />,
+            priority: 'blue', // Special priority for irrigation as requested
+            icon: <Droplets size={18} className="text-white" />,
             title: 'Sustrato Seco',
             description: `Riego requerido.`,
             action: { label: 'Regar', command: 'set_irrigation(30)' },
@@ -149,11 +149,24 @@ const QuickSuggestions: React.FC<QuickSuggestionsProps> = ({
     }
   };
 
-  const getPriorityColor = (priority: string) => {
+  const getPriorityTheme = (priority: string) => {
     switch (priority) {
-      case 'high': return '#ef4444';
-      case 'medium': return '#f59e0b';
-      default: return '#3b82f6';
+      case 'high': return {
+          bg: 'linear-gradient(135deg, rgba(185, 28, 28, 0.95) 0%, rgba(153, 27, 27, 0.95) 100%)', // Red
+          border: 'rgba(252, 165, 165, 0.5)'
+      };
+      case 'medium': return {
+          bg: 'linear-gradient(135deg, rgba(217, 119, 6, 0.95) 0%, rgba(180, 83, 9, 0.95) 100%)', // Amber
+          border: 'rgba(253, 186, 116, 0.5)'
+      };
+      case 'blue': return {
+          bg: 'linear-gradient(135deg, rgba(29, 78, 216, 0.95) 0%, rgba(30, 64, 175, 0.95) 100%)', // Blue
+          border: 'rgba(147, 197, 253, 0.5)'
+      };
+      default: return {
+          bg: 'linear-gradient(135deg, rgba(59, 130, 246, 0.9) 0%, rgba(37, 99, 235, 0.95) 100%)', // Default Blue
+          border: 'rgba(147, 197, 253, 0.5)'
+      };
     }
   };
 
@@ -193,47 +206,38 @@ const QuickSuggestions: React.FC<QuickSuggestionsProps> = ({
             <Box
               key={suggestion.id}
               sx={{
-                p: 2,
+                p: 2.5,
                 borderRadius: '20px',
-                bgcolor: 'rgba(10, 15, 30, 0.85)',
-                backdropFilter: 'blur(20px)',
-                border: `1px solid ${getPriorityColor(suggestion.priority)}40`,
+                background: getPriorityTheme(suggestion.priority).bg,
+                border: `1px solid ${getPriorityTheme(suggestion.priority).border}`,
                 boxShadow: `0 8px 32px rgba(0, 0, 0, 0.3)`,
                 transformOrigin: 'bottom right',
                 animation: `fadeIn 0.3s ease-out ${index * 0.1}s`,
                 position: 'relative',
-                overflow: 'hidden'
+                overflow: 'visible' // Allow flow
               }}
             >
-               {/* Glow effect */}
-               <Box sx={{
-                   position: 'absolute', top: '-50%', right: '-50%', width: '200%', height: '200%',
-                   background: `radial-gradient(circle, ${getPriorityColor(suggestion.priority)}15 0%, transparent 60%)`,
-                   pointerEvents: 'none'
-               }} />
+               {/* No glow effect overlay needed due to saturated bg */}
 
                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
                    <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
-                       <Box sx={{ p: 0.8, borderRadius: '10px', bgcolor: 'rgba(255,255,255,0.05)', display: 'flex' }}>
+                       <Box sx={{ p: 0.8, borderRadius: '50%', bgcolor: 'rgba(255,255,255,0.2)', display: 'flex', color: 'white' }}>
                            {suggestion.icon}
                        </Box>
                        <Box>
-                           <Typography variant="subtitle2" fontWeight={700} color="white" sx={{ fontSize: '0.9rem' }} noWrap>
+                           <Typography variant="subtitle2" fontWeight={800} color="white" sx={{ fontSize: '0.95rem' }}>
                                {suggestion.title}
                            </Typography>
                        </Box>
                    </Box>
                    <IconButton size="small" onClick={() => setDismissed(prev => [...prev, suggestion.id])}>
-                       <X size={14} className="text-gray-500 hover:text-white transition-colors" />
+                       <X size={14} className="text-white opacity-70 hover:opacity-100 transition-opacity" />
                    </IconButton>
                </Box>
 
-               <Typography variant="body2" color="rgba(255,255,255,0.7)" sx={{
-                   mb: 2, fontSize: '0.8rem', pl: 0.5,
-                   display: '-webkit-box',
-                   WebkitLineClamp: 2,
-                   WebkitBoxOrient: 'vertical',
-                   overflow: 'hidden'
+               <Typography variant="body2" color="rgba(255,255,255,0.9)" sx={{
+                   mb: 2, fontSize: '0.85rem', pl: 0.5,
+                   lineHeight: 1.4
                }}>
                    {suggestion.description}
                </Typography>
@@ -246,20 +250,19 @@ const QuickSuggestions: React.FC<QuickSuggestionsProps> = ({
                     onClick={() => executeAction(suggestion)}
                     disabled={executing === suggestion.id}
                     sx={{
-                        bgcolor: getPriorityColor(suggestion.priority),
+                        bgcolor: 'rgba(255,255,255,0.2)',
+                        color: 'white',
                         borderRadius: '10px',
                         textTransform: 'none',
                         fontWeight: 700,
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        px: 1,
-                        boxShadow: `0 4px 12px ${getPriorityColor(suggestion.priority)}40`,
+                        whiteSpace: 'normal', // Allow wrap
+                        height: 'auto',
+                        py: 0.8,
+                        boxShadow: `0 4px 12px rgba(0,0,0,0.2)`,
                         '&:hover': {
-                            bgcolor: getPriorityColor(suggestion.priority),
-                            filter: 'brightness(1.1)',
+                            bgcolor: 'rgba(255,255,255,0.3)',
                             transform: 'translateY(-1px)',
-                            boxShadow: `0 6px 16px ${getPriorityColor(suggestion.priority)}60`
+                            boxShadow: `0 6px 16px rgba(0,0,0,0.3)`
                         }
                     }}
                 >
