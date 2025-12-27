@@ -21,12 +21,12 @@ import {
   Droplets,
   Thermometer,
   Wind,
-  Lightbulb,
-  TrendingUp,
   BrainCircuit,
   Activity,
   ShieldCheck,
-  ShieldAlert
+  ShieldAlert,
+  WifiOff,
+  Check
 } from 'lucide-react';
 import { apiClient } from '../../api/client';
 
@@ -38,6 +38,7 @@ interface AIItem {
   action?: { label: string; command: string };
   icon?: string;
   source: 'ai' | 'sensor';
+  containerStyle?: React.CSSProperties;
 }
 
 interface UnifiedAIPanelProps {
@@ -112,9 +113,22 @@ const UnifiedAIPanel: React.FC<UnifiedAIPanelProps> = ({
         if (combined.length === 0) {
             combined.push({
                 id: 'all-good', type: 'success', title: 'Sistemas Nominales',
-                message: 'Todos los parámetros biológicos dentro de rangos óptimos. Crecimiento estable.', source: 'sensor'
+                message: 'Todos los parámetros biológicos dentro de rangos óptimos. Crecimiento estable.', source: 'sensor',
+                icon: 'check'
             });
         }
+      } else {
+          // Offline / Error state
+          combined.push({
+              id: 'connection-loss',
+              type: 'critical',
+              title: 'Sin Conexión',
+              message: 'Se perdió la comunicación con los sensores. Revisa tu red o el controlador.',
+              action: { label: 'Reconectar', command: 'RETRY_FETCH' },
+              containerStyle: { opacity: 0.8 },
+              icon: 'wifi-off',
+              source: 'sensor'
+          });
       }
 
       setItems(combined);
@@ -134,14 +148,24 @@ const UnifiedAIPanel: React.FC<UnifiedAIPanelProps> = ({
     }
   }, [autoRefresh, refreshInterval]);
 
+
+
   const executeAction = async (item: AIItem) => {
     if (!item.action) return;
+
+    // Handle local retry action
+    if (item.action.command === 'RETRY_FETCH') {
+        fetchData();
+        return;
+    }
+
     setExecuting(item.id);
     try {
       await apiClient.sendChatMessageV2(item.action.command);
       setTimeout(fetchData, 2000);
     } catch (error) {
       console.error('Error executing action:', error);
+      // Optional: Show error toast
     } finally {
       setExecuting(null);
     }
@@ -268,6 +292,8 @@ const UnifiedAIPanel: React.FC<UnifiedAIPanelProps> = ({
                   const Icon = item.icon === 'wind' ? Wind :
                                item.icon === 'droplets' ? Droplets :
                                item.icon === 'thermometer' ? Thermometer :
+                               item.icon === 'wifi-off' ? WifiOff :
+                               item.icon === 'check' ? Check :
                                theme.icon;
 
                   return (
@@ -337,10 +363,9 @@ const UnifiedAIPanel: React.FC<UnifiedAIPanelProps> = ({
                                     borderRadius: '12px',
                                     textTransform: 'none',
                                     fontWeight: 700,
-                                    whiteSpace: 'nowrap',
-                                    overflow: 'hidden',
                                     textOverflow: 'clip', // Allow text to show full
                                     whiteSpace: 'normal', // Allow wrap
+                                    overflow: 'visible',
                                     height: 'auto',
                                     py: 1,
                                     px: 2,
