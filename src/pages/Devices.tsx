@@ -25,6 +25,7 @@ import {
 import { apiClient } from '../api/client';
 import DeviceConfigModal from '../components/devices/DeviceConfigModal';
 import { PageHeader } from '../components/layout/PageHeader';
+import { useRooms } from '../context/RoomContext';
 
 interface Device {
   id: string;
@@ -48,6 +49,15 @@ const DevicesPage: React.FC = () => {
   const [configDevice, setConfigDevice] = useState<any>(null);
   const [controlValue, setControlValue] = useState<number>(50);
   const [refreshing, setRefreshing] = useState(false);
+  const { rooms } = useRooms();
+
+  // Find which room a device belongs to
+  const getDeviceRoom = (deviceId: string) => {
+    return rooms.find(room =>
+      room.assignedDevices?.includes(deviceId) ||
+      room.assignedSensors?.includes(deviceId)
+    );
+  };
 
   // Obtener dispositivos
   useEffect(() => {
@@ -272,7 +282,21 @@ const DevicesPage: React.FC = () => {
       {/* Last Update Footer */}
       <div className="px-4 py-2 bg-black/20 text-[10px] text-gray-600 flex justify-between items-center">
         <span>Actualizado: {device.lastUpdate || '--:--'}</span>
-        <span>{getPlatformLabel(device.platform)}</span>
+        <div className="flex items-center gap-2">
+          {(() => {
+            const room = getDeviceRoom(device.id);
+            return room ? (
+              <span className="px-1.5 py-0.5 rounded text-[10px] border" style={{
+                backgroundColor: `${room.color}20`,
+                borderColor: `${room.color}40`,
+                color: room.color
+              }}>
+                {room.name}
+              </span>
+            ) : null;
+          })()}
+          <span>{getPlatformLabel(device.platform)}</span>
+        </div>
       </div>
     </div>
   );
