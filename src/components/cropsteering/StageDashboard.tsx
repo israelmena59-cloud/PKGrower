@@ -145,12 +145,28 @@ const StageDashboard: React.FC = () => {
           'ripening': 'Maduración'
         };
 
+        // Calculate Days Locally based on Active Room (Source of Truth)
+        let calculatedDays = statusData.daysInCycle || 0;
+        if (activeRoom) {
+            const currentStageId = statusData.stage || 'veg_early';
+            const isFlower = currentStageId.includes('flower') || currentStageId === 'ripening' || currentStageId === 'transition';
+            const relevantDate = isFlower && activeRoom.flipDate ? activeRoom.flipDate : activeRoom.growStartDate;
+
+            if (relevantDate) {
+                const start = new Date(relevantDate);
+                const now = new Date();
+                const diffTime = Math.abs(now.getTime() - start.getTime());
+                calculatedDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+                // If today is start date, it is day 0 (or day 1 depending on preference, usually day 0 means "start of day 1")
+            }
+        }
+
         const safeData = {
           ...statusData,
           stage: {
             id: statusData.stage || 'veg_early',
             name: stageNames[statusData.stage] || statusData.direction || 'Vegetativo',
-            daysInStage: statusData.daysInCycle || 0
+            daysInStage: calculatedDays
           },
           current: {
             temperature: sensorData.temperature || 0,
@@ -191,7 +207,7 @@ const StageDashboard: React.FC = () => {
     fetchData();
     const interval = setInterval(fetchData, 30000); // Refresh every 30s
     return () => clearInterval(interval);
-  }, []);
+  }, [activeRoom]);
 
   const handleStageChange = async (newStage: string) => {
     console.log('[StageDashboard] Changing stage to:', newStage);
