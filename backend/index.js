@@ -1355,8 +1355,13 @@ app.post('/api/cropsteering/settings', async (req, res) => {
         // Update in-memory settings
         appSettings.cropSteering = { ...appSettings.cropSteering, ...newSettings };
 
+        // Ensure stage compatibility (sync currentStage -> stage)
+        if (newSettings.currentStage) {
+            appSettings.cropSteering.stage = newSettings.currentStage;
+        }
+
         // Persist to Firestore
-        await firestore.saveCropSteeringSettings(newSettings);
+        await firestore.saveCropSteeringSettings(appSettings.cropSteering);
 
         console.log('[CROPSTEERING] Settings updated:', Object.keys(newSettings).join(', '));
         res.json({ success: true, settings: appSettings.cropSteering });
@@ -1383,8 +1388,30 @@ const CROP_STAGES = [
 // GET /api/crop-steering/status - Current crop steering status
 app.get('/api/crop-steering/status', async (req, res) => {
     try {
-        const direction = appSettings.cropSteering?.direction || 'vegetative';
+        const cropSettings = appSettings.cropSteering || {};
+        const stage = cropSettings.stage || cropSettings.currentStage || 'veg_early';
+        const direction = cropSettings.direction || 'vegetative';
         const phaseInfo = cropSteeringEngine.getCurrentPhase(appSettings.lighting || {}, direction);
+
+        // Calculate Days in Cycle dynamically
+        let daysInCycle = 0;
+        const now = new Date();
+
+        if (stage.includes('flower') || stage === 'ripening' || stage === 'transition') {
+            // Flower mode - calculate from flipDate
+            if (cropSettings.flipDate) {
+                const start = new Date(cropSettings.flipDate);
+                const diffTime = Math.abs(now - start);
+                daysInCycle = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            }
+        } else {
+            // Veg mode - calculate from growStartDate
+            if (cropSettings.growStartDate) {
+                const start = new Date(cropSettings.growStartDate);
+                const diffTime = Math.abs(now - start);
+                daysInCycle = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            }
+        }
 
         // Get current VWC from latest sensor data
         let currentVWC = 0;
@@ -1400,15 +1427,15 @@ app.get('/api/crop-steering/status', async (req, res) => {
 
         res.json({
             success: true,
-            stage: appSettings.cropSteering?.stage || 'veg_early',
+            stage: stage,
             direction: direction,
             currentVWC: Math.round(currentVWC),
-            targetVWC: appSettings.cropSteering?.targetVWC || 55,
+            targetVWC: cropSettings.targetVWC || 55,
             phase: phaseInfo.phase,
             phaseMessage: phaseInfo.message,
             isInWindow: phaseInfo.isInWindow,
             lightsOn: phaseInfo.lightsOn,
-            daysInCycle: appSettings.cropSteering?.daysInCycle || 0
+            daysInCycle: daysInCycle
         });
     } catch (error) {
         console.error('[CROP-STEERING] Error getting status:', error);
@@ -1474,14 +1501,18 @@ app.post('/api/crop-steering/stage', async (req, res) => {
         appSettings.cropSteering = {
             ...appSettings.cropSteering,
             stage: stage,
+            currentStage: stage, // Sync for compatibility
             direction: direction,
             stageChangedAt: new Date().toISOString()
         };
 
+        // Persist to Firestore
         await firestore.saveCropSteeringSettings(appSettings.cropSteering);
 
         console.log(`[CROP-STEERING] Stage changed to ${stage} (direction: ${direction})`);
         res.json({ success: true, stage, direction });
+
+
     } catch (error) {
         console.error('[CROP-STEERING] Error setting stage:', error);
         res.status(500).json({ success: false, error: error.message });
