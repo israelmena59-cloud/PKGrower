@@ -140,7 +140,7 @@ interface CropSteeringProviderProps {
 }
 
 export const CropSteeringProvider: React.FC<CropSteeringProviderProps> = ({ children }) => {
-  const { activeRoomId, activeRoom } = useRooms();
+  const { activeRoomId, activeRoom, updateRoom } = useRooms();
   const [settings, setSettings] = useState<CropSteeringSettings>(defaultSettings);
   const [conditions, setConditions] = useState<CurrentConditions>(defaultConditions);
 
@@ -246,8 +246,20 @@ export const CropSteeringProvider: React.FC<CropSteeringProviderProps> = ({ chil
     if (suggestedStage !== 'none' && suggestedStage !== settings.currentStage) {
         console.log(`[AutoStage] Switching to ${suggestedStage} based on dates/photoperiod`);
         setSettings(prev => ({ ...prev, currentStage: suggestedStage }));
+        if (activeRoom) {
+            const updates: any = { currentStage: suggestedStage as any };
+
+            // Auto-set Flip Date if entering flower/ripening and no date set
+            const isFlower = suggestedStage.includes('flower') || suggestedStage === 'ripening';
+            if (isFlower && !activeRoom.flipDate) {
+                updates.flipDate = new Date().toISOString().split('T')[0];
+                console.log('[AutoStage] Auto-setting Flip Date to today');
+            }
+
+            updateRoom(activeRoom.id, updates);
+        }
     }
-  }, [settings.growStartDate, settings.flipDate, settings.autoStageProgression, settings.lightsOnHour, settings.lightsOffHour]);
+  }, [settings.growStartDate, settings.flipDate, settings.autoStageProgression, settings.lightsOnHour, settings.lightsOffHour, activeRoom?.id, activeRoom?.flipDate]);
 
 
   // Robust Date Parsing Helper
