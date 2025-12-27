@@ -161,7 +161,33 @@ const UnifiedAIPanel: React.FC<UnifiedAIPanelProps> = ({
 
     setExecuting(item.id);
     try {
-      await apiClient.sendChatMessageV2(item.action.command);
+      // Parse command for direct execution
+      if (item.action.command.startsWith('set_irrigation(')) {
+        // format: set_irrigation(30)
+        const match = item.action.command.match(/set_irrigation\((\d+)\)/);
+        if (match) {
+           const seconds = parseInt(match[1]);
+           // Convert to ms for backend
+           await apiClient.pulseDevice('bombaControlador', seconds * 1000);
+        }
+      } else if (item.action.command.startsWith('toggle_device(')) {
+        // format: toggle_device(deviceId, on)
+        const match = item.action.command.match(/toggle_device\(([^,]+),\s*(on|off)\)/);
+        if (match) {
+            const [_, deviceId, state] = match;
+            await apiClient.controlDevice(deviceId.trim(), state as 'on' | 'off');
+        } else {
+             // Fallback for simple toggle without state
+             const simpleMatch = item.action.command.match(/toggle_device\(([^)]+)\)/);
+             if (simpleMatch) {
+                 await apiClient.toggleDevice(simpleMatch[1].trim() as any);
+             }
+        }
+      } else {
+        // Fallback to AI Chat
+        await apiClient.sendChatMessageV2(item.action.command);
+      }
+
       setTimeout(fetchData, 2000);
     } catch (error) {
       console.error('Error executing action:', error);

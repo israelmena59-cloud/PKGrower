@@ -139,7 +139,32 @@ const QuickSuggestions: React.FC<QuickSuggestionsProps> = ({
   const executeAction = async (suggestion: Suggestion) => {
     setExecuting(suggestion.id);
     try {
-      await apiClient.sendChatMessageV2(suggestion.action.command);
+      // Parse command for direct execution
+      if (suggestion.action.command.startsWith('set_irrigation(')) {
+        // format: set_irrigation(30)
+        const match = suggestion.action.command.match(/set_irrigation\((\d+)\)/);
+        if (match) {
+           const seconds = parseInt(match[1]);
+           // Convert to ms for backend
+           await apiClient.pulseDevice('bombaControlador', seconds * 1000);
+        }
+      } else if (suggestion.action.command.startsWith('toggle_device(')) {
+        // format: toggle_device(deviceId, on)
+        const match = suggestion.action.command.match(/toggle_device\(([^,]+),\s*(on|off)\)/);
+        if (match) {
+            const [_, deviceId, state] = match;
+            await apiClient.controlDevice(deviceId.trim(), state as 'on' | 'off');
+        } else {
+             // Fallback for simple toggle without state
+             const simpleMatch = suggestion.action.command.match(/toggle_device\(([^)]+)\)/);
+             if (simpleMatch) {
+                 await apiClient.toggleDevice(simpleMatch[1].trim() as any);
+             }
+        }
+      } else {
+         await apiClient.sendChatMessageV2(suggestion.action.command);
+      }
+
       setDismissed(prev => [...prev, suggestion.id]);
       setTimeout(generateSuggestions, 2000);
     } catch (error) {
