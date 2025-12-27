@@ -841,77 +841,153 @@ const SettingsPage: React.FC = () => {
 
         {/* Tab: Cultivo (Lighting) */}
         <TabPanel value={tabValue} index={4}>
-            <Box sx={{ p: 3, maxWidth: 600 }}>
-                <Typography variant="h6" gutterBottom>🌱 Etapa de Crecimiento</Typography>
-                <Alert severity="info" sx={{ mb: 3 }}>
-                    Selecciona la etapa actual de tu cultivo para ver los rangos ideales de temperatura, humedad y VPD en los widgets.
-                </Alert>
+            <Box sx={{ p: 3, maxWidth: 800 }}> {/* Increased maxWidth for better layout */}
 
+                {/* 1. STAGE CALCULATOR WIDGET */}
+                <Card sx={{ mb: 4, background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: 'white' }}>
+                    <CardContent>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                            <Leaf size={32} />
+                            <Box>
+                                <Typography variant="h6" fontWeight="bold">Progreso del Cultivo</Typography>
+                                <Typography variant="body2" sx={{ opacity: 0.9 }}>
+                                    Estado actual basado en tus fechas
+                                </Typography>
+                            </Box>
+                        </Box>
+
+                        <Grid container spacing={2}>
+                            <Grid item xs={12} md={4}>
+                                <Box sx={{ bgcolor: 'rgba(255,255,255,0.2)', p: 2, borderRadius: 2, textAlign: 'center' }}>
+                                    <Typography variant="overline" display="block">Edad Total</Typography>
+                                    <Typography variant="h4" fontWeight="bold">
+                                        {settings.growStartDate ?
+                                            Math.floor((new Date().getTime() - new Date(settings.growStartDate).getTime()) / (1000 * 60 * 60 * 24))
+                                            : 0}
+                                    </Typography>
+                                    <Typography variant="caption">Días</Typography>
+                                </Box>
+                            </Grid>
+                            <Grid item xs={12} md={8}>
+                                <Box sx={{ bgcolor: 'rgba(255,255,255,0.2)', p: 2, borderRadius: 2 }}>
+                                    <Typography variant="overline" display="block">Etapa Actual</Typography>
+                                    <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1 }}>
+                                        <Typography variant="h4" fontWeight="bold">
+                                            {(() => {
+                                                if (!settings.growStartDate) return "No iniciado";
+                                                const start = new Date(settings.growStartDate).getTime();
+                                                const flip = settings.flipDate ? new Date(settings.flipDate).getTime() : null;
+                                                const now = new Date().getTime();
+
+                                                if (flip && now >= flip) {
+                                                    const daysFlower = Math.floor((now - flip) / (1000 * 60 * 60 * 24));
+                                                    return `Floración (Día ${daysFlower})`;
+                                                } else {
+                                                    const daysVeg = Math.floor((now - start) / (1000 * 60 * 60 * 24));
+                                                    return `Vegetativo (Día ${daysVeg})`;
+                                                }
+                                            })()}
+                                        </Typography>
+                                    </Box>
+                                    {settings.flipDate && (
+                                        <Typography variant="body2" sx={{ mt: 1, opacity: 0.9 }}>
+                                            📅 Flip realizado el: {new Date(settings.flipDate).toLocaleDateString()}
+                                        </Typography>
+                                    )}
+                                </Box>
+                            </Grid>
+                        </Grid>
+                    </CardContent>
+                </Card>
+
+                {/* 2. DATES SETUP */}
+                <Typography variant="h6" gutterBottom className="flex items-center gap-2">
+                    <SettingsIcon size={20} /> Configuración de Fechas
+                </Typography>
                 <Grid container spacing={3} sx={{ mb: 4 }}>
-                    <Grid item xs={6}>
+                    <Grid item xs={12} md={6}>
                          <TextField
-                            label="Fecha Inicio (Vegetativo)"
+                            label="Fecha de Germinación / Inicio"
                             type="date"
                             fullWidth
                             value={settings.growStartDate || ''}
                             onChange={e => updateCropSteeringSettings({ growStartDate: e.target.value })}
                             InputLabelProps={{ shrink: true }}
-                            helperText="Día 0 de Vegetativo"
+                            helperText="¿Cuándo nació tu planta?"
                          />
                     </Grid>
-                    <Grid item xs={6}>
+                    <Grid item xs={12} md={6}>
                          <TextField
-                            label="Fecha Flip (Floración)"
+                            label="Fecha de Pase a Floración (Flip)"
                             type="date"
                             fullWidth
                             value={settings.flipDate || ''}
                             onChange={e => updateCropSteeringSettings({ flipDate: e.target.value })}
                             InputLabelProps={{ shrink: true }}
-                            helperText="Inicio ciclo 12/12"
+                            helperText="Déjalo vacío si aún estás en vegetativo"
                          />
                     </Grid>
                 </Grid>
-                <Box sx={{ display: 'flex', gap: 2, mb: 4 }}>
-                    {['veg', 'flower', 'none'].map(stage => (
-                        <Button
-                            key={stage}
-                            variant={settings.currentStage?.startsWith(stage) ? 'contained' : 'outlined'}
-                            onClick={() => updateCropSteeringSettings({ currentStage: (stage === 'veg' ? 'veg_early' : stage === 'flower' ? 'flower_early' : 'veg_early') as any })}
-                            sx={{ flex: 1, py: 1.5 }}
-                            color={stage === 'veg' ? 'success' : stage === 'flower' ? 'secondary' : 'inherit'}
-                        >
-                            {stage === 'veg' ? '🌿 Vegetación' : stage === 'flower' ? '🌸 Floración' : '❌ Sin Etapa'}
-                        </Button>
-                    ))}
-                </Box>
 
                 <Divider sx={{ my: 3 }} />
 
-                <Typography variant="h6" gutterBottom>🌞 Fotoperiodo (Ciclo de Luz)</Typography>
+                {/* 3. PHOTOPERIOD */}
+                <Typography variant="h6" gutterBottom className="flex items-center gap-2">
+                    <Sun size={20} /> Fotoperiodo (Luces)
+                </Typography>
                 <Alert severity="info" sx={{ mb: 3 }}>
-                    Configura el horario de encendido y apagado de las luces para visualizar el ciclo Día/Noche en las gráficas.
+                    Configura el ciclo de luz. Esto ajustará automáticamente tus gráficas y alertas.
                 </Alert>
+
                 <Grid container spacing={3}>
-                    <Grid item xs={6}>
+                    <Grid item xs={12} md={4}>
+                        <TextField
+                            label="Preset de Ciclo"
+                            select
+                            fullWidth
+                            value={settings.photoperiodMode || 'custom'}
+                            onChange={e => {
+                                const mode = e.target.value;
+                                const updates: any = { photoperiodMode: mode };
+                                if (mode === '18/6') {
+                                    setLightingSettings({ ...lightingSettings, onTime: '06:00', offTime: '00:00' }); // 18 hours
+                                    updates.photoperiodPreset = '18/6';
+                                } else if (mode === '12/12') {
+                                    setLightingSettings({ ...lightingSettings, onTime: '08:00', offTime: '20:00' }); // 12 hours
+                                    updates.photoperiodPreset = '12/12';
+                                } else if (mode === '20/4') {
+                                    setLightingSettings({ ...lightingSettings, onTime: '04:00', offTime: '00:00' }); // 20 hours
+                                    updates.photoperiodPreset = '20/4';
+                                }
+                                updateCropSteeringSettings(updates);
+                            }}
+                            SelectProps={{ native: true }}
+                        >
+                            <option value="custom">Personalizado</option>
+                            <option value="18/6">18/6 (Vegetativo Clásico)</option>
+                            <option value="12/12">12/12 (Floración)</option>
+                            <option value="20/4">20/4 (Autoflorecientes)</option>
+                            <option value="24/0">24/0 (Siempre Encendido)</option>
+                        </TextField>
+                    </Grid>
+                    <Grid item xs={6} md={4}>
                          <TextField
-                            label="Hora Encendido (Lights On)"
+                            label="Hora Encendido"
                             type="time"
                             fullWidth
                             value={lightingSettings.onTime}
                             onChange={e => setLightingSettings({ ...lightingSettings, onTime: e.target.value })}
                             InputLabelProps={{ shrink: true }}
-                            InputProps={{ startAdornment: <Sun size={18} className="mr-2 text-yellow-500"/> }}
                          />
                     </Grid>
-                    <Grid item xs={6}>
+                    <Grid item xs={6} md={4}>
                          <TextField
-                            label="Hora Apagado (Lights Off)"
+                            label="Hora Apagado"
                             type="time"
                             fullWidth
                             value={lightingSettings.offTime}
                             onChange={e => setLightingSettings({ ...lightingSettings, offTime: e.target.value })}
                             InputLabelProps={{ shrink: true }}
-                            InputProps={{ startAdornment: <Moon size={18} className="mr-2 text-blue-400"/> }}
                          />
                     </Grid>
                 </Grid>
