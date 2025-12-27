@@ -140,7 +140,7 @@ interface CropSteeringProviderProps {
 }
 
 export const CropSteeringProvider: React.FC<CropSteeringProviderProps> = ({ children }) => {
-  const { activeRoomId } = useRooms();
+  const { activeRoomId, activeRoom } = useRooms();
   const [settings, setSettings] = useState<CropSteeringSettings>(defaultSettings);
   const [conditions, setConditions] = useState<CurrentConditions>(defaultConditions);
 
@@ -161,11 +161,65 @@ export const CropSteeringProvider: React.FC<CropSteeringProviderProps> = ({ chil
     }
   }, [activeRoomId]);
 
-  // Auto-update stage based on days and flip date
+  // Sync room light schedule and dates to crop steering settings
+  useEffect(() => {
+    if (!activeRoom) return;
+
+    // Parse time strings to hours
+    const parseTimeToHour = (time: string) => {
+      const [hours] = time.split(':').map(Number);
+      return hours;
+    };
+
+    const roomSettings: Partial<CropSteeringSettings> = {};
+
+    // Sync light schedule
+    if (activeRoom.lightsOnTime) {
+      roomSettings.lightsOnHour = parseTimeToHour(activeRoom.lightsOnTime);
+    }
+    if (activeRoom.lightsOffTime) {
+      roomSettings.lightsOffHour = parseTimeToHour(activeRoom.lightsOffTime);
+    }
+
+    // Sync dates from room
+    if (activeRoom.growStartDate && activeRoom.growStartDate !== settings.growStartDate) {
+      roomSettings.growStartDate = activeRoom.growStartDate;
+    }
+    if (activeRoom.flipDate && activeRoom.flipDate !== settings.flipDate) {
+      roomSettings.flipDate = activeRoom.flipDate;
+    }
+    if (activeRoom.harvestDate && activeRoom.harvestDate !== settings.harvestDate) {
+      roomSettings.harvestDate = activeRoom.harvestDate;
+    }
+
+    // Apply room settings if any changed
+    if (Object.keys(roomSettings).length > 0) {
+      console.log('[CropSteering] Syncing from room:', activeRoom.name, roomSettings);
+      setSettings(prev => ({ ...prev, ...roomSettings }));
+    }
+  }, [activeRoom?.id, activeRoom?.lightsOnTime, activeRoom?.lightsOffTime, activeRoom?.growStartDate, activeRoom?.flipDate]);
+  // Calculate light hours from schedule
+  const calculateLightHours = () => {
+    const on = settings.lightsOnHour;
+    const off = settings.lightsOffHour;
+    if (off > on) return off - on;
+    return 24 - on + off; // Handles overnight schedules
+  };
+
+  // Detect photoperiod type from light hours
+  const detectPhotoperiodType = (): 'veg' | 'flower' | 'unknown' => {
+    const hours = calculateLightHours();
+    if (hours >= 16) return 'veg';    // 18/6 or similar
+    if (hours <= 14) return 'flower'; // 12/12 or similar
+    return 'unknown';
+  };
+
+  // Auto-update stage based on dates AND photoperiod
   useEffect(() => {
     if (!settings.autoStageProgression) return;
 
     let suggestedStage: GrowthStageId | 'none' = 'none';
+    const photoperiod = detectPhotoperiodType();
 
     // 1. Check if we are in Flower (Flip Date set)
     if (settings.flipDate) {
@@ -182,13 +236,18 @@ export const CropSteeringProvider: React.FC<CropSteeringProviderProps> = ({ chil
         if (vegDays <= 14) suggestedStage = 'veg_early';
         else suggestedStage = 'veg_late';
     }
+    // 3. Fallback: Detect from photoperiod if no dates set
+    else if (photoperiod !== 'unknown') {
+        suggestedStage = photoperiod === 'veg' ? 'veg_early' : 'flower_transition';
+        console.log(`[AutoStage] No dates set - using photoperiod detection: ${photoperiod}`);
+    }
 
     // Apply update if changed
     if (suggestedStage !== 'none' && suggestedStage !== settings.currentStage) {
-        console.log(`[AutoStage] Switching to ${suggestedStage} based on dates`);
+        console.log(`[AutoStage] Switching to ${suggestedStage} based on dates/photoperiod`);
         setSettings(prev => ({ ...prev, currentStage: suggestedStage }));
     }
-  }, [settings.growStartDate, settings.flipDate, settings.autoStageProgression]);
+  }, [settings.growStartDate, settings.flipDate, settings.autoStageProgression, settings.lightsOnHour, settings.lightsOffHour]);
 
 
   // Robust Date Parsing Helper
@@ -315,6 +374,22 @@ export const CropSteeringProvider: React.FC<CropSteeringProviderProps> = ({ chil
       const updated = { ...prev, ...updates };
       const key = `cropSteeringSettings_${activeRoomId}`;
       localStorage.setItem(key, JSON.stringify(updated));
+
+      // Auto-sync to backend (debounced via setTimeout to avoid too many requests)
+      setTimeout(async () => {
+        try {
+          const { API_BASE_URL } = await import('../api/client');
+          await fetch(`${API_BASE_URL}/api/cropsteering/settings`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updated)
+          });
+          console.log('[CropSteering] Settings synced to backend');
+        } catch (e) {
+          console.warn('[CropSteering] Backend sync failed, using localStorage:', e);
+        }
+      }, 500);
+
       return updated;
     });
   }, [activeRoomId]);

@@ -124,17 +124,6 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
                                 </Button>
                             </Tooltip>
                         )}
-
-                        {onOpenConfig && (
-                            <IconButton onClick={onOpenConfig} className="!bg-white/5 hover:!bg-white/10 !text-foreground !rounded-lg !w-10 !h-10">
-                                <Settings size={20} />
-                            </IconButton>
-                        )}
-                        {onOpenRules && (
-                            <IconButton onClick={onOpenRules} className="!bg-amber-500/10 hover:!bg-amber-500/20 !text-amber-500 !rounded-lg !w-10 !h-10">
-                                <Zap size={20} />
-                            </IconButton>
-                        )}
                     </div>
                 </>
             )}

@@ -5,6 +5,8 @@ import { ThemeProvider } from './context/ThemeContext';
 import { RoomProvider } from './context/RoomContext';
 import { CropSteeringProvider } from './context/CropSteeringContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { FeedbackProvider } from './components/common/ActionFeedback';
+import QuickSuggestions from './components/common/QuickSuggestions';
 import { Box, CircularProgress } from '@mui/material';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
@@ -91,6 +93,8 @@ function ProtectedApp() {
     <>
       <DebugOverlay />
       <AppContent />
+      {/* AI-powered floating suggestions */}
+      <QuickSuggestions position="bottom-right" autoRefresh refreshInterval={45000} />
     </>
   );
 }
@@ -101,7 +105,9 @@ function App() {
       <RoomProvider>
         <CropSteeringProvider>
           <AuthProvider>
-            <ProtectedApp />
+            <FeedbackProvider>
+              <ProtectedApp />
+            </FeedbackProvider>
           </AuthProvider>
         </CropSteeringProvider>
       </RoomProvider>
@@ -110,3 +116,4 @@ function App() {
 }
 
 export default App;
+

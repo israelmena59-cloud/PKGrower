@@ -2,6 +2,7 @@
 // src/components/Layout.tsx
 import React, { useState, useEffect } from 'react';
 import RoomSelector from './navigation/RoomSelector';
+import LiveStatusIndicator from './navigation/LiveStatusIndicator';
 import Alerts, { Alert } from './Alerts';
 import { Box, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Typography, Divider, GlobalStyles, Fade, IconButton, Tooltip, useMediaQuery, Drawer, AppBar, Toolbar } from '@mui/material';
 import { LayoutDashboard, Zap, Droplets, Wind, Bot, Calendar, Settings, Camera, Cpu, Sun, Moon, Menu as MenuIcon, Leaf, Beaker } from 'lucide-react';
@@ -179,12 +180,16 @@ const Layout: React.FC<LayoutProps> = ({ children, onNavigate, activePage }) => 
                 <RoomSelector />
                 {/* Timeline Badge */}
                 <TimelineBadge />
+                {/* Live Status Indicator */}
+                <Box sx={{ mt: 2 }}>
+                    <LiveStatusIndicator />
+                </Box>
             </Box>
 
             {/* MAIN SECTIONS - Consolidated */}
             <Typography variant="caption" sx={{ px: 4, mb: 1, display: 'block', fontWeight: 'bold', color: mode === 'dark' ? 'rgba(255,255,255,0.4)' : 'text.disabled', letterSpacing: 1 }}>PRINCIPAL</Typography>
             <List component="nav">
-                <NavItem page="dashboard" icon={<LayoutDashboard size={20} />} label="Dashboard" />
+                <NavItem page="dashboard" icon={<LayoutDashboard size={20} />} label="Inicio" />
                 <NavItem page="cropsteering" icon={<Leaf size={20} />} label="Cultivo" />
                 <NavItem page="irrigation" icon={<Droplets size={20} />} label="Riego" />
                 <NavItem page="environment" icon={<Wind size={20} />} label="Ambiente" />

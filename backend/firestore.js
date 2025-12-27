@@ -13,18 +13,35 @@ const BACKUP_FILE = path.join(BACKUP_DIR, 'sensor_backup.jsonl');
 let db = null;
 
 try {
-  // Support Cloud Path (Render Secret) or Local Path
-  const serviceAccountPath = process.env.FIREBASE_KEY_PATH || path.join(__dirname, 'service-account.json');
-  console.log(`[FIRESTORE] Buscando credenciales en: ${serviceAccountPath}`);
+  const isCloudRun = process.env.K_SERVICE !== undefined;
 
-  const serviceAccount = require(serviceAccountPath);
+  if (isCloudRun) {
+    // Cloud Run: Use Application Default Credentials (ADC)
+    // The service account attached to Cloud Run will be used automatically
+    console.log('[FIRESTORE] Cloud Run detected - using Application Default Credentials');
 
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount)
-  });
+    if (!admin.apps.length) {
+      admin.initializeApp({
+        projectId: process.env.GOOGLE_CLOUD_PROJECT || 'pk-grower'
+      });
+    }
+    db = admin.firestore();
+    console.log('[FIRESTORE] ✓ Conexión exitosa via ADC.');
+  } else {
+    // Local development: Use service account JSON
+    const serviceAccountPath = process.env.FIREBASE_KEY_PATH || path.join(__dirname, 'service-account.json');
+    console.log(`[FIRESTORE] Local mode - buscando credenciales en: ${serviceAccountPath}`);
 
-  db = admin.firestore();
-  console.log('[FIRESTORE] Conexión exitosa a la base de datos.');
+    const serviceAccount = require(serviceAccountPath);
+
+    if (!admin.apps.length) {
+      admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount)
+      });
+    }
+    db = admin.firestore();
+    console.log('[FIRESTORE] ✓ Conexión exitosa via Service Account.');
+  }
 } catch (error) {
   console.error('[FIRESTORE] Error inicializando Firebase Admin:', error.message);
   console.error('[FIRESTORE] Modo Offline: Se usarán copias locales.');

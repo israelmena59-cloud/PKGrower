@@ -4,6 +4,7 @@
  */
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { API_BASE_URL } from '../api/client';
 
 // Room Types
 export type RoomType = 'veg' | 'flower' | 'drying' | 'custom';
@@ -15,6 +16,16 @@ export interface Room {
   color: string;
   plantCount: number;
   creationDate: string;
+  // Light schedule
+  lightsOnTime: string;    // "06:00"
+  lightsOffTime: string;   // "00:00"
+  // Growth dates
+  growStartDate: string | null;
+  flipDate: string | null;
+  harvestDate: string | null;
+  // Device assignment
+  assignedDevices: string[];  // Device IDs
+  assignedSensors: string[];  // Sensor IDs
 }
 
 // Default Rooms
@@ -25,7 +36,14 @@ const DEFAULT_ROOMS: Room[] = [
     type: 'veg',
     color: '#22c55e',
     plantCount: 0,
-    creationDate: new Date().toISOString()
+    creationDate: new Date().toISOString(),
+    lightsOnTime: '06:00',
+    lightsOffTime: '00:00', // 18/6 schedule
+    growStartDate: null,
+    flipDate: null,
+    harvestDate: null,
+    assignedDevices: [],
+    assignedSensors: []
   },
   {
     id: 'room_2',
@@ -33,7 +51,14 @@ const DEFAULT_ROOMS: Room[] = [
     type: 'flower',
     color: '#a855f7',
     plantCount: 0,
-    creationDate: new Date().toISOString()
+    creationDate: new Date().toISOString(),
+    lightsOnTime: '06:00',
+    lightsOffTime: '18:00', // 12/12 schedule
+    growStartDate: null,
+    flipDate: null,
+    harvestDate: null,
+    assignedDevices: [],
+    assignedSensors: []
   }
 ];
 
@@ -75,9 +100,28 @@ export const RoomProvider: React.FC<RoomProviderProps> = ({ children }) => {
   // Derived active room
   const activeRoom = rooms.find(r => r.id === activeRoomId) || rooms[0];
 
+  // Sync rooms to backend (debounced)
+  const syncToBackend = async (roomsToSync: Room[]) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/settings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rooms: roomsToSync })
+      });
+      if (response.ok) {
+        console.log('[Rooms] Synced to backend');
+      }
+    } catch (e) {
+      console.warn('[Rooms] Backend sync failed, using localStorage');
+    }
+  };
+
   // Persistence effects
   useEffect(() => {
     localStorage.setItem('pkgrower_rooms', JSON.stringify(rooms));
+    // Debounced backend sync
+    const timer = setTimeout(() => syncToBackend(rooms), 1000);
+    return () => clearTimeout(timer);
   }, [rooms]);
 
   useEffect(() => {

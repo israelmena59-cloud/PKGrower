@@ -123,17 +123,81 @@ module.exports = ({ getAIService, model, systemContext }) => {
     router.get('/ai/insights', async (req, res) => {
         try {
             const service = getAIService();
-            if (!service) return res.json({ insights: [{ type: 'warning', message: 'API Key no configurada', action: null }] });
 
-            const sensors = await service.sensorReader?.getLatest();
-            const devices = await service.deviceController?.getStates();
-            const result = await service.generateInsights(sensors, devices);
-            res.json(result);
+            // Get sensor data first (needed for both AI and fallback)
+            const sensors = service?.sensorReader ? await service.sensorReader.getLatest() : null;
+            const devices = service?.deviceController ? await service.deviceController.getStates() : null;
+
+            if (!service) {
+                // No AI service - use rule-based fallback
+                return res.json(generateRuleBasedInsights(sensors, devices));
+            }
+
+            try {
+                const result = await service.generateInsights(sensors, devices);
+                res.json(result);
+            } catch (aiError) {
+                // AI failed - use rule-based fallback
+                console.warn('[AI Insights] Gemini failed, using rule-based fallback:', aiError.message);
+                res.json(generateRuleBasedInsights(sensors, devices));
+            }
         } catch (error) {
             console.error('[AI Insights] Error:', error);
             res.json({ insights: [{ type: 'warning', message: 'Error generando insights', action: null }] });
         }
     });
+
+    // Rule-based insights fallback when AI is unavailable
+    function generateRuleBasedInsights(sensors, devices) {
+        const insights = [];
+
+        if (!sensors || sensors.temperature === undefined) {
+            insights.push({ type: 'warning', message: 'Sin datos de sensores disponibles', action: 'Verifica la conexión con los dispositivos' });
+            return { insights };
+        }
+
+        const { temperature, humidity, vpd, substrateHumidity } = sensors;
+
+        // Temperature checks
+        if (temperature > 30) {
+            insights.push({ type: 'critical', message: `Temperatura alta: ${temperature}°C`, action: 'Activa extractor o reduce luces' });
+        } else if (temperature < 18) {
+            insights.push({ type: 'warning', message: `Temperatura baja: ${temperature}°C`, action: 'Considera calefacción' });
+        } else if (temperature >= 22 && temperature <= 26) {
+            insights.push({ type: 'success', message: `Temperatura óptima: ${temperature}°C`, action: null });
+        }
+
+        // Humidity checks
+        if (humidity > 75) {
+            insights.push({ type: 'critical', message: `Humedad muy alta: ${humidity}%`, action: 'Activa deshumidificador' });
+        } else if (humidity < 40) {
+            insights.push({ type: 'warning', message: `Humedad baja: ${humidity}%`, action: 'Activa humidificador' });
+        }
+
+        // VPD checks
+        if (vpd && vpd > 1.5) {
+            insights.push({ type: 'warning', message: `VPD alto: ${vpd} kPa`, action: 'La planta puede estresarse - aumenta humedad' });
+        } else if (vpd && vpd < 0.6) {
+            insights.push({ type: 'warning', message: `VPD bajo: ${vpd} kPa`, action: 'Riesgo de moho - reduce humedad' });
+        } else if (vpd && vpd >= 0.8 && vpd <= 1.3) {
+            insights.push({ type: 'success', message: `VPD ideal: ${vpd} kPa`, action: null });
+        }
+
+        // Substrate checks
+        if (substrateHumidity && substrateHumidity < 30) {
+            insights.push({ type: 'critical', message: `Sustrato seco: ${substrateHumidity}%`, action: 'Riega pronto' });
+        } else if (substrateHumidity && substrateHumidity > 70) {
+            insights.push({ type: 'warning', message: `Sustrato saturado: ${substrateHumidity}%`, action: 'Espera antes del próximo riego' });
+        }
+
+        // If no issues found
+        if (insights.length === 0) {
+            insights.push({ type: 'success', message: 'Condiciones estables', action: null });
+        }
+
+        // Limit to 3 insights
+        return { insights: insights.slice(0, 3) };
+    }
 
     router.post('/ai/analyze-image', aiUpload.single('image'), async (req, res) => {
         try {

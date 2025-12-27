@@ -136,7 +136,7 @@ VALORES ÓPTIMOS DE REFERENCIA:
    */
   getModel(enableFunctionCalling = true) {
     const config = {
-      model: "gemini-2.5-flash-preview-05-20",
+      model: "gemini-1.5-flash",
       generationConfig: {
         maxOutputTokens: 1500,
         temperature: 0.7,
@@ -227,7 +227,7 @@ VALORES ÓPTIMOS DE REFERENCIA:
   async handleSearch({ query }) {
     // Use Gemini with grounding for search (simplified - actual would use Google Search API)
     const searchModel = this.genAI.getGenerativeModel({
-      model: "gemini-2.5-flash-preview-05-20",
+      model: "gemini-1.5-flash",
       // Note: Google Search grounding requires specific API setup
     });
 
@@ -383,7 +383,7 @@ ${Object.entries(context.devices).map(([k, v]) => `- ${k}: ${v ? 'ENCENDIDO' : '
    * Analyze an image of the grow
    */
   async analyzeImage(imageBuffer, mimeType = 'image/jpeg', prompt = null) {
-    const model = this.genAI.getGenerativeModel({ model: "gemini-2.5-flash-preview-05-20" });
+    const model = this.genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
     const analysisPrompt = prompt || `Analiza esta imagen del cultivo y proporciona:
 
@@ -414,7 +414,23 @@ Sé específico y usa emojis para claridad. 🌱`;
    * Generate proactive insights based on sensor data
    */
   async generateInsights(sensorData, deviceStates, historicalData = null) {
+    // Handle null/undefined inputs
+    if (!sensorData || sensorData.temperature === undefined) {
+      return {
+        insights: [{
+          type: 'warning',
+          message: 'Esperando datos de sensores...',
+          action: 'Verifica la conexión con los dispositivos'
+        }]
+      };
+    }
+
     const model = this.getModel(false);
+
+    // Build device states string safely
+    const deviceStatesStr = deviceStates
+      ? Object.entries(deviceStates).map(([k, v]) => `- ${k}: ${v ? 'ON' : 'OFF'}`).join('\n')
+      : '- No hay dispositivos conectados';
 
     const prompt = `Basándote en estos datos del cultivo, genera 2-3 insights breves y accionables:
 
@@ -425,7 +441,7 @@ SENSORES ACTUALES:
 - Humedad Sustrato: ${sensorData.substrateHumidity}%
 
 DISPOSITIVOS:
-${Object.entries(deviceStates).map(([k, v]) => `- ${k}: ${v ? 'ON' : 'OFF'}`).join('\n')}
+${deviceStatesStr}
 
 Responde en formato JSON con este esquema:
 {

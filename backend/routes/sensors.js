@@ -77,11 +77,16 @@ module.exports = ({ getTuyaDevices, getSimulationMode, firestore }) => {
     router.get('/history', async (req, res) => {
         try {
             const { limit, start, end } = req.query;
-            const history = await firestore.getHistory({
-                limit: limit ? parseInt(limit) : 288, // Default 24h (5min interval)
-                start,
-                end
-            });
+            let history;
+
+            if (start && end) {
+                // Date range query
+                history = await firestore.getSensorHistoryRange(start, end);
+            } else {
+                // Simple limit query
+                history = await firestore.getSensorHistory(limit ? parseInt(limit) : 288);
+            }
+
             res.json(history);
         } catch (error) {
             console.error('[SENSORS] Error getting history:', error);

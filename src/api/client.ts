@@ -3,7 +3,9 @@
 
 // Read API base URL from environment (Vite/Firebase) or use default (Localhost)
 // NOTE: We prefer VITE_API_URL to allow switching between Local and Cloud Run.
-export const API_BASE_URL = (import.meta as any).env.VITE_API_URL || ((import.meta as any).env.PROD ? '' : 'http://localhost:3000');
+// Cloud Run backend URL - Required fallback for production
+const CLOUD_RUN_URL = 'https://pkgrower-backend-664237832244.us-central1.run.app';
+export const API_BASE_URL = (import.meta as any).env.VITE_API_URL || ((import.meta as any).env.PROD ? CLOUD_RUN_URL : 'http://localhost:3000');
 
 export interface SensorData {
   timestamp: string

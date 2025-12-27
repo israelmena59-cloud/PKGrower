@@ -1133,6 +1133,7 @@ app.use('/api/calendar', require('./routes/calendar')({
 app.use('/api/sensors', require('./routes/sensors')({
     getTuyaDevices: () => tuyaDevices,
     getSimulationMode: () => MODO_SIMULACION,
+    firestore: firestore,
 }));
 
 // --- DEVICES ROUTE MOUNT ---
@@ -1362,6 +1363,128 @@ app.post('/api/cropsteering/settings', async (req, res) => {
     } catch (error) {
         console.error('[CROPSTEERING] Error saving settings:', error);
         res.status(500).json({ error: error.message });
+    }
+});
+
+// --- API CROP STEERING (Frontend format with hyphen) ---
+const cropSteeringEngine = require('./cropSteeringEngine');
+
+// States list for dropdown
+const CROP_STAGES = [
+    { id: 'veg_early', name: 'Vegetativo Temprano' },
+    { id: 'veg_late', name: 'Vegetativo Tardío' },
+    { id: 'transition', name: 'Transición' },
+    { id: 'flower_early', name: 'Floración Temprana' },
+    { id: 'flower_mid', name: 'Floración Media' },
+    { id: 'flower_late', name: 'Floración Tardía' },
+    { id: 'ripening', name: 'Maduración' }
+];
+
+// GET /api/crop-steering/status - Current crop steering status
+app.get('/api/crop-steering/status', async (req, res) => {
+    try {
+        const direction = appSettings.cropSteering?.direction || 'vegetative';
+        const phaseInfo = cropSteeringEngine.getCurrentPhase(appSettings.lighting || {}, direction);
+
+        // Get current VWC from latest sensor data
+        let currentVWC = 0;
+        const subHums = [];
+        ['sensorSustrato1', 'sensorSustrato2', 'sensorSustrato3'].forEach(k => {
+            if (tuyaDevices[k]?.humidity !== undefined) {
+                subHums.push(tuyaDevices[k].humidity);
+            }
+        });
+        if (subHums.length > 0) {
+            currentVWC = subHums.reduce((a, b) => a + b, 0) / subHums.length;
+        }
+
+        res.json({
+            success: true,
+            stage: appSettings.cropSteering?.stage || 'veg_early',
+            direction: direction,
+            currentVWC: Math.round(currentVWC),
+            targetVWC: appSettings.cropSteering?.targetVWC || 55,
+            phase: phaseInfo.phase,
+            phaseMessage: phaseInfo.message,
+            isInWindow: phaseInfo.isInWindow,
+            lightsOn: phaseInfo.lightsOn,
+            daysInCycle: appSettings.cropSteering?.daysInCycle || 0
+        });
+    } catch (error) {
+        console.error('[CROP-STEERING] Error getting status:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// GET /api/crop-steering/recommendation - Irrigation recommendation
+app.get('/api/crop-steering/recommendation', async (req, res) => {
+    try {
+        const pumpState = {
+            lastOffTime: appSettings.irrigation?.lastIrrigationTime || null,
+            lastVwcAtOn: appSettings.irrigation?.lastVwcAtOn || null
+        };
+
+        const decision = cropSteeringEngine.evaluateIrrigation(
+            sensorHistory,
+            appSettings,
+            pumpState
+        );
+
+        res.json({
+            success: true,
+            recommendation: {
+                shouldIrrigate: decision.shouldIrrigate,
+                phase: decision.phase,
+                reason: decision.reasoning,
+                suggestedPercentage: decision.eventSize || 0,
+                nextIrrigationIn: null
+            }
+        });
+    } catch (error) {
+        console.error('[CROP-STEERING] Error getting recommendation:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// GET /api/crop-steering/stages - Available stages list
+app.get('/api/crop-steering/stages', (req, res) => {
+    res.json({
+        success: true,
+        stages: CROP_STAGES
+    });
+});
+
+// POST /api/crop-steering/stage - Change current stage
+app.post('/api/crop-steering/stage', async (req, res) => {
+    try {
+        const { stage } = req.body;
+
+        if (!stage || !CROP_STAGES.find(s => s.id === stage)) {
+            return res.status(400).json({ success: false, error: 'Invalid stage' });
+        }
+
+        // Map stage to direction
+        let direction = 'vegetative';
+        if (stage.includes('flower') || stage === 'ripening') {
+            direction = stage === 'ripening' ? 'ripening' : 'generative';
+        } else if (stage === 'transition') {
+            direction = 'balanced';
+        }
+
+        appSettings.cropSteering = {
+            ...appSettings.cropSteering,
+            stage: stage,
+            direction: direction,
+            stageChangedAt: new Date().toISOString()
+        };
+
+        await firestore.saveCropSteeringSettings(appSettings.cropSteering);
+
+        console.log(`[CROP-STEERING] Stage changed to ${stage} (direction: ${direction})`);
+        res.json({ success: true, stage, direction });
+    } catch (error) {
+        console.error('[CROP-STEERING] Error setting stage:', error);
+        res.status(500).json({ success: false, error: error.message });
     }
 });
 
@@ -1791,10 +1914,38 @@ const aiService = new AIService(process.env.GEMINI_API_KEY, {
     },
     sensorReader: {
         getLatest: async () => {
-             // Return latest from history or current cache
-             if (sensorHistory.length > 0) return sensorHistory[sensorHistory.length - 1];
-             // Fallback
-             return { temperature: 0, humidity: 0, vpd: 0, substrateHumidity: 0 };
+             // Get fresh data from Tuya devices (same logic as /api/sensors/latest)
+             let temp = 0, hum = 0, subHum = 0, vpd = 0;
+
+             // Environment sensor
+             if (tuyaDevices.sensorAmbiente && tuyaDevices.sensorAmbiente.temperature !== undefined) {
+                 temp = tuyaDevices.sensorAmbiente.temperature;
+                 hum = tuyaDevices.sensorAmbiente.humidity || 0;
+             }
+
+             // Substrate sensors
+             const subHums = [];
+             ['sensorSustrato1', 'sensorSustrato2', 'sensorSustrato3'].forEach(k => {
+                 const val = tuyaDevices[k]?.humidity !== undefined ? tuyaDevices[k].humidity : tuyaDevices[k]?.value;
+                 if (val !== undefined && val !== null) subHums.push(val);
+             });
+             if (subHums.length > 0) {
+                 subHum = subHums.reduce((a, b) => a + b, 0) / subHums.length;
+             }
+
+             // Calculate VPD
+             if (temp > 0 && hum > 0) {
+                 const svp = 0.61078 * Math.exp((17.27 * temp) / (temp + 237.3));
+                 vpd = parseFloat((svp * (1 - hum / 100)).toFixed(2));
+             }
+
+             return {
+                 temperature: temp,
+                 humidity: hum,
+                 vpd: vpd,
+                 substrateHumidity: parseFloat(subHum.toFixed(1)),
+                 timestamp: new Date().toISOString()
+             };
         }
     },
     irrigationController: {

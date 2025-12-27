@@ -35,10 +35,13 @@ import {
   Moon,
   LogOut,
   User,
-  Droplet
+  Droplet,
+  Home
 } from 'lucide-react';
 import { apiClient, API_BASE_URL } from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import { useCropSteering } from '../context/CropSteeringContext';
+import { RoomManager } from '../components/rooms';
 import { useCropSteering } from '../context/CropSteeringContext';
 
 
@@ -430,6 +433,7 @@ const SettingsPage: React.FC = () => {
           <Tab label="Xiaomi" icon={<Database size={18} />} iconPosition="start" />
           <Tab label="Cultivo" icon={<Leaf size={18} />} iconPosition="start" />
           <Tab label="Sistema" icon={<Info size={18} />} iconPosition="start" />
+          <Tab label="Salas" icon={<Home size={18} />} iconPosition="start" />
         </Tabs>
 
         {/* Tab: General */}
@@ -1084,6 +1088,11 @@ const SettingsPage: React.FC = () => {
               </Grid>
             </Grid>
           </Box>
+        </TabPanel>
+
+        {/* Tab: Salas */}
+        <TabPanel value={tabValue} index={6}>
+          <RoomManager />
         </TabPanel>
       </Paper>
 

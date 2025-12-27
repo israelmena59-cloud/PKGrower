@@ -7,9 +7,7 @@ import RulesModal from '../components/dashboard/RulesModal';
 import HistoryChart from '../components/dashboard/HistoryChart';
 import CropSteeringWidget from '../components/dashboard/CropSteeringWidget';
 import QuickActionsWidget from '../components/dashboard/QuickActionsWidget';
-import AIInsightsWidget from '../components/dashboard/AIInsightsWidget';
-import SmartNotifications from '../components/ai/SmartNotifications';
-import { PageHeader } from '../components/layout/PageHeader';
+import UnifiedAIPanel from '../components/dashboard/UnifiedAIPanel';
 import { Thermometer, Droplet, Wind, Droplets, Lightbulb, RefreshCw } from 'lucide-react';
 import { Box, CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField } from '@mui/material';
 
@@ -261,33 +259,17 @@ const Dashboard: React.FC = () => {
     return (
 
         <div className="max-w-[1800px] mx-auto p-4">
-            <PageHeader
-                title="PKGrower OS"
-                activePage={activePage}
-                pages={Object.keys(pages)}
-                onPageChange={setActivePage}
-                onAddPage={() => setIsAddPageOpen(true)}
-                onDeletePage={handleDeletePage}
-                onRefresh={handleRefresh}
-                onReset={() => {
-                     if (confirm('¿Restablecer todo el diseño? Se perderán las personalizaciones.')) {
-                        triggerReset();
-                     }
-                }}
-                onOpenConfig={() => setIsConfigOpen(true)}
-                onOpenRules={() => setIsRulesOpen(true)}
-                refreshing={refreshing}
-            />
 
             <ConfigModal open={isConfigOpen} onClose={() => setIsConfigOpen(false)} />
             <RulesModal open={isRulesOpen} onClose={() => setIsRulesOpen(false)} />
 
-            {/* STATIC CHARTS GRID */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+            {/* AI CONTROL CENTER */}
+            <UnifiedAIPanel autoRefresh={true} refreshInterval={30000} />
+
+            {/* STATIC WIDGETS GRID */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 mt-4">
                 <CropSteeringWidget />
                 <QuickActionsWidget />
-                <AIInsightsWidget autoRefresh={true} />
-                <SmartNotifications maxVisible={3} autoRefresh={true} refreshInterval={30000} />
             </div>
 
             {/* ENVIRONMENT CHARTS GRID */}
