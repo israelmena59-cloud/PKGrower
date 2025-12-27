@@ -32,8 +32,6 @@ export interface CropSteeringSettings {
   autoStageProgression: boolean;
   lightsOnHour: number;
   lightsOffHour: number;
-  photoperiodMode?: string; // e.g., '18/6', '12/12', 'custom'
-  photoperiodPreset?: string;
   potSizeLiters: number;
   pumpRateMlPerMin: number; // Pump flow rate in ml/min for shot duration calculation
   // Override values (null = use stage defaults)
@@ -102,8 +100,6 @@ const defaultSettings: CropSteeringSettings = {
   autoStageProgression: true,
   lightsOnHour: 6,
   lightsOffHour: 0, // Midnight for 18/6
-  photoperiodMode: 'custom',
-  photoperiodPreset: undefined,
   potSizeLiters: 3.8, // 1 gallon
   pumpRateMlPerMin: 60, // Default pump rate
   overrides: {
@@ -143,7 +139,7 @@ interface CropSteeringProviderProps {
   children: ReactNode;
 }
 
-export const CropSteeringProvider: React.FC<CropSteeringProviderProps> = ({ children }: CropSteeringProviderProps) => {
+export const CropSteeringProvider: React.FC<CropSteeringProviderProps> = ({ children }) => {
   const { activeRoomId } = useRooms();
   const [settings, setSettings] = useState<CropSteeringSettings>(defaultSettings);
   const [conditions, setConditions] = useState<CurrentConditions>(defaultConditions);
@@ -190,7 +186,7 @@ export const CropSteeringProvider: React.FC<CropSteeringProviderProps> = ({ chil
     // Apply update if changed
     if (suggestedStage !== 'none' && suggestedStage !== settings.currentStage) {
         console.log(`[AutoStage] Switching to ${suggestedStage} based on dates`);
-        setSettings((prev: CropSteeringSettings) => ({ ...prev, currentStage: suggestedStage }));
+        setSettings(prev => ({ ...prev, currentStage: suggestedStage }));
     }
   }, [settings.growStartDate, settings.flipDate, settings.autoStageProgression]);
 
@@ -315,7 +311,7 @@ export const CropSteeringProvider: React.FC<CropSteeringProviderProps> = ({ chil
 
   // Actions
   const updateSettings = useCallback((updates: Partial<CropSteeringSettings>) => {
-    setSettings((prev: CropSteeringSettings) => {
+    setSettings(prev => {
       const updated = { ...prev, ...updates };
       const key = `cropSteeringSettings_${activeRoomId}`;
       localStorage.setItem(key, JSON.stringify(updated));
@@ -328,7 +324,7 @@ export const CropSteeringProvider: React.FC<CropSteeringProviderProps> = ({ chil
   }, [updateSettings]);
 
   const updateConditions = useCallback((updates: Partial<CurrentConditions>) => {
-    setConditions((prev: CurrentConditions) => {
+    setConditions(prev => {
       const updated = { ...prev, ...updates };
 
       // Auto-calculate dryback if we have last irrigation data
@@ -341,7 +337,7 @@ export const CropSteeringProvider: React.FC<CropSteeringProviderProps> = ({ chil
   }, []);
 
   const recordIrrigation = useCallback((peakVWC: number) => {
-    setConditions((prev: CurrentConditions) => ({
+    setConditions(prev => ({
       ...prev,
       lastIrrigationVWC: peakVWC,
       lastIrrigationTime: new Date(),
@@ -386,7 +382,7 @@ export const CropSteeringProvider: React.FC<CropSteeringProviderProps> = ({ chil
       if (response.ok) {
         const data = await response.json();
         if (data.cropSteering) {
-          setSettings((prev: CropSteeringSettings) => ({ ...prev, ...data.cropSteering }));
+          setSettings(prev => ({ ...prev, ...data.cropSteering }));
         }
       }
     } catch (e) {

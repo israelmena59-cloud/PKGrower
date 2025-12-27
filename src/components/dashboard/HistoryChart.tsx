@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, Box, Typography, ButtonGroup, Button, CircularProgress } from '@mui/material';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, ReferenceArea, ReferenceDot, Legend } from 'recharts';
 import { useTheme } from '../../context/ThemeContext';
-import { apiClient } from '../../api/client';
+import { apiClient, API_BASE_URL } from '../../api/client';
 
 // Helper to add hours to "HH:mm" string safely
 const addHours = (timeStr: string | undefined | null, hours: number) => {
@@ -135,7 +135,7 @@ const HistoryChart: React.FC<HistoryChartProps> = ({ type, title, targets, data:
     const fetchIrrigationEvents = async () => {
       try {
         const today = new Date().toISOString().split('T')[0];
-        const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://34.67.217.13:3000'}/api/irrigation/events?date=${today}`);
+        const response = await fetch(`${API_BASE_URL}/api/irrigation/events?date=${today}`);
         const data = await response.json();
         if (data.success && data.events) {
           setFetchedEvents(data.events.map((e: any) => ({

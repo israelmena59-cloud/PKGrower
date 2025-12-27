@@ -104,7 +104,7 @@ const StageDashboard: React.FC = () => {
   const [selectedStage, setSelectedStage] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const API_URL = (import.meta as any).env?.VITE_API_URL || 'http://34.67.217.13:3000';
+  const API_URL = (import.meta as any).env.VITE_API_URL;
 
   const fetchData = async () => {
     try {
