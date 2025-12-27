@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { useRooms } from '../../context/RoomContext';
 import {
   Card,
   Box,
@@ -17,7 +18,9 @@ import {
   InputLabel,
   Button,
   CircularProgress,
-  Tooltip
+  Tooltip,
+  TextField,
+  IconButton
 } from '@mui/material';
 import {
   Thermometer,
@@ -27,7 +30,11 @@ import {
   TrendingUp,
   AlertTriangle,
   CheckCircle,
-  Clock
+  CheckCircle,
+  Clock,
+  Edit2,
+  Save,
+  X
 } from 'lucide-react';
 
 interface StageData {
@@ -97,12 +104,15 @@ const MetricRow: React.FC<MetricRowProps> = ({ icon, label, current, target, sta
 };
 
 const StageDashboard: React.FC = () => {
+  const { activeRoomId, activeRoom, updateRoom } = useRooms();
   const [data, setData] = useState<StageData | null>(null);
   const [recommendation, setRecommendation] = useState<Recommendation | null>(null);
   const [stages, setStages] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedStage, setSelectedStage] = useState('');
   const [saving, setSaving] = useState(false);
+  const [editingDay, setEditingDay] = useState(false);
+  const [tempDay, setTempDay] = useState(0);
 
   const API_URL = (import.meta as any).env.VITE_API_URL;
 
@@ -209,6 +219,49 @@ const StageDashboard: React.FC = () => {
     }
   };
 
+  const handleDayEdit = () => {
+    setTempDay(data?.stage?.daysInStage || 0);
+    setEditingDay(true);
+  };
+
+  const handleDaySave = async () => {
+    if (!activeRoom) return;
+
+    // Calculate new start date based on current day
+    const today = new Date();
+    const startDate = new Date(today);
+    startDate.setDate(today.getDate() - tempDay);
+
+    // Format as YYYY-MM-DD
+    const dateString = startDate.toISOString().split('T')[0];
+
+    const updates: any = {};
+    const isFlower = selectedStage.includes('flower') || selectedStage === 'ripening';
+
+    if (isFlower) {
+      updates.flipDate = dateString;
+    } else {
+      updates.growStartDate = dateString;
+    }
+
+    try {
+      setSaving(true);
+      await updateRoom(activeRoom.id, updates);
+
+      setData(prev => prev ? ({
+        ...prev,
+        stage: { ...prev.stage, daysInStage: tempDay }
+      }) : null);
+
+      setEditingDay(false);
+      setTimeout(fetchData, 1000);
+    } catch (e) {
+      console.error('Error updating days:', e);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (loading) {
     return (
       <Card sx={{ p: 4, textAlign: 'center' }}>
@@ -244,9 +297,35 @@ const StageDashboard: React.FC = () => {
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Box>
           <Typography variant="h6" fontWeight={600}>Centro de Control</Typography>
-          <Typography variant="body2" color="text.secondary">
-            Día {data?.stage?.daysInStage || 0} en {data?.stage?.name || 'Cargando...'}
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            {editingDay ? (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Typography variant="body2" color="text.secondary">Día</Typography>
+                <TextField
+                  type="number"
+                  variant="standard"
+                  size="small"
+                  value={tempDay}
+                  onChange={(e) => setTempDay(Number(e.target.value))}
+                  sx={{ width: 50 }}
+                  inputProps={{ min: 0 }}
+                />
+                <IconButton size="small" onClick={handleDaySave} disabled={saving}>
+                  <Save size={16} className="text-green-500" />
+                </IconButton>
+                <IconButton size="small" onClick={() => setEditingDay(false)}>
+                  <X size={16} className="text-red-500" />
+                </IconButton>
+              </Box>
+            ) : (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, cursor: 'pointer' }} onClick={handleDayEdit} className="group">
+                <Typography variant="body2" color="text.secondary">
+                  Día {data?.stage?.daysInStage || 0} en {data?.stage?.name || 'Cargando...'}
+                </Typography>
+                <Edit2 size={14} className="text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+              </Box>
+            )}
+          </Box>
         </Box>
 
         <FormControl size="small" sx={{ minWidth: 150 }}>
