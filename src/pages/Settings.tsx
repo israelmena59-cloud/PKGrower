@@ -42,7 +42,7 @@ import { apiClient, API_BASE_URL } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { useCropSteering } from '../context/CropSteeringContext';
 import { RoomManager } from '../components/rooms';
-import { useCropSteering } from '../context/CropSteeringContext';
+import { useRooms } from '../context/RoomContext';
 
 
 interface TabPanelProps {
@@ -90,6 +90,7 @@ const SettingsPage: React.FC = () => {
     updateSettings: updateCropSteeringSettings,
     saveSettings: saveCropSteering
   } = useCropSteering();
+  const { activeRoom, updateRoom } = useRooms();
   const [tabValue, setTabValue] = useState(0);
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -857,8 +858,12 @@ const SettingsPage: React.FC = () => {
                             label="Fecha Inicio (Vegetativo)"
                             type="date"
                             fullWidth
-                            value={settings.growStartDate || ''}
-                            onChange={e => updateCropSteeringSettings({ growStartDate: e.target.value })}
+                            value={settings.growStartDate || activeRoom?.growStartDate || ''}
+                            onChange={e => {
+                                const newVal = e.target.value;
+                                updateCropSteeringSettings({ growStartDate: newVal });
+                                if (activeRoom) updateRoom(activeRoom.id, { growStartDate: newVal });
+                            }}
                             InputLabelProps={{ shrink: true }}
                             helperText="Día 0 de Vegetativo"
                          />
@@ -868,8 +873,12 @@ const SettingsPage: React.FC = () => {
                             label="Fecha Flip (Floración)"
                             type="date"
                             fullWidth
-                            value={settings.flipDate || ''}
-                            onChange={e => updateCropSteeringSettings({ flipDate: e.target.value })}
+                            value={settings.flipDate || activeRoom?.flipDate || ''}
+                            onChange={e => {
+                                const newVal = e.target.value;
+                                updateCropSteeringSettings({ flipDate: newVal });
+                                if (activeRoom) updateRoom(activeRoom.id, { flipDate: newVal });
+                            }}
                             InputLabelProps={{ shrink: true }}
                             helperText="Inicio ciclo 12/12"
                          />
@@ -880,7 +889,15 @@ const SettingsPage: React.FC = () => {
                         <Button
                             key={stage}
                             variant={settings.currentStage?.startsWith(stage) ? 'contained' : 'outlined'}
-                            onClick={() => updateCropSteeringSettings({ currentStage: (stage === 'veg' ? 'veg_early' : stage === 'flower' ? 'flower_early' : 'veg_early') as any })}
+                            onClick={() => {
+                                const newStage = (stage === 'veg' ? 'veg_early' : stage === 'flower' ? 'flower_early' : 'veg_early') as any;
+                                updateCropSteeringSettings({ currentStage: newStage });
+                                // Also update flipDate automatically if switching to flower
+                                if (stage === 'flower' && activeRoom && !activeRoom.flipDate) {
+                                    const today = new Date().toISOString().split('T')[0];
+                                    updateRoom(activeRoom.id, { flipDate: today });
+                                }
+                            }}
                             sx={{ flex: 1, py: 1.5 }}
                             color={stage === 'veg' ? 'success' : stage === 'flower' ? 'secondary' : 'inherit'}
                         >
@@ -901,8 +918,14 @@ const SettingsPage: React.FC = () => {
                             label="Hora Encendido (Lights On)"
                             type="time"
                             fullWidth
-                            value={lightingSettings.onTime}
-                            onChange={e => setLightingSettings({ ...lightingSettings, onTime: e.target.value })}
+                            value={activeRoom?.lightsOnTime || settings.lightsOnHour + ':00' || '06:00'}
+                            onChange={e => {
+                                const newVal = e.target.value;
+                                const [h] = newVal.split(':');
+                                setLightingSettings({ ...lightingSettings, onTime: newVal }); // Keep local for UI
+                                updateCropSteeringSettings({ lightsOnHour: parseInt(h) });
+                                if (activeRoom) updateRoom(activeRoom.id, { lightsOnTime: newVal });
+                            }}
                             InputLabelProps={{ shrink: true }}
                             InputProps={{ startAdornment: <Sun size={18} className="mr-2 text-yellow-500"/> }}
                          />
@@ -912,8 +935,14 @@ const SettingsPage: React.FC = () => {
                             label="Hora Apagado (Lights Off)"
                             type="time"
                             fullWidth
-                            value={lightingSettings.offTime}
-                            onChange={e => setLightingSettings({ ...lightingSettings, offTime: e.target.value })}
+                            value={activeRoom?.lightsOffTime || settings.lightsOffHour + ':00' || '18:00'}
+                            onChange={e => {
+                                const newVal = e.target.value;
+                                const [h] = newVal.split(':');
+                                setLightingSettings({ ...lightingSettings, offTime: newVal });
+                                updateCropSteeringSettings({ lightsOffHour: parseInt(h) });
+                                if (activeRoom) updateRoom(activeRoom.id, { lightsOffTime: newVal });
+                            }}
                             InputLabelProps={{ shrink: true }}
                             InputProps={{ startAdornment: <Moon size={18} className="mr-2 text-blue-400"/> }}
                          />
