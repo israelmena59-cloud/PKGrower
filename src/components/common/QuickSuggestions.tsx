@@ -145,8 +145,12 @@ const QuickSuggestions: React.FC<QuickSuggestionsProps> = ({
         const match = suggestion.action.command.match(/set_irrigation\((\d+)\)/);
         if (match) {
            const seconds = parseInt(match[1]);
-           // Convert to ms for backend
-           await apiClient.pulseDevice('bombaControlador', seconds * 1000);
+           // Convert seconds to ml based on default pump rate (70ml/min)
+           const volumeMl = (seconds / 60) * 70;
+           await apiClient.request('/api/irrigation/trigger', {
+              method: 'POST',
+              body: JSON.stringify({ shotSize: Math.round(volumeMl), phase: 'manual' })
+           });
         }
       } else if (suggestion.action.command.startsWith('toggle_device(')) {
         // format: toggle_device(deviceId, on)

@@ -167,8 +167,15 @@ const UnifiedAIPanel: React.FC<UnifiedAIPanelProps> = ({
         const match = item.action.command.match(/set_irrigation\((\d+)\)/);
         if (match) {
            const seconds = parseInt(match[1]);
-           // Convert to ms for backend
-           await apiClient.pulseDevice('bombaControlador', seconds * 1000);
+           // Convert seconds to ml based on default pump rate (70ml/min)
+           // 30s = 0.5 min * 70 = 35ml
+           const volumeMl = (seconds / 60) * 70;
+
+           // Use dedicated irrigation endpoint which is more robust
+           await apiClient.request('/api/irrigation/trigger', {
+              method: 'POST',
+              body: JSON.stringify({ shotSize: Math.round(volumeMl), phase: 'manual' })
+           });
         }
       } else if (item.action.command.startsWith('toggle_device(')) {
         // format: toggle_device(deviceId, on)
