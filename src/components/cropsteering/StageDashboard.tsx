@@ -11,24 +11,14 @@ import {
   Typography,
   CircularProgress,
   IconButton,
-  Grid,
-  Select,
-  MenuItem,
-  FormControl,
-  Button
+  Grid
 } from '@mui/material';
 import {
   Thermometer,
   Droplets,
   Sun,
-  Leaf,
-  TrendingUp,
-  AlertTriangle,
-  CheckCircle,
   Clock,
-  Edit2,
   Save,
-  X,
   Sprout,
   Flower2,
   Zap,
@@ -79,42 +69,46 @@ interface Recommendation {
 const getStageTheme = (stageId: string) => {
   if (stageId.includes('veg')) {
     return {
-      gradient: 'linear-gradient(135deg, rgba(34,197,94,0.15) 0%, rgba(16,185,129,0.05) 100%)',
-      border: 'rgba(34,197,94,0.3)',
-      iconColor: '#22c55e', // Green
+      gradient: 'linear-gradient(180deg, rgba(34,197,94,0.25) 0%, rgba(34,197,94,0) 100%)',
+      background: 'linear-gradient(180deg, #052e16 0%, #0a0a0a 100%)', // Deep Green to Black
+      border: 'rgba(74, 222, 128, 0.3)',
+      iconColor: '#4ade80', // Bright Green
       mainIcon: Sprout,
       accent: 'success.main',
-      glow: '0 0 20px rgba(34,197,94,0.2)'
+      glow: '0 0 40px rgba(34,197,94,0.2)'
     };
   }
   if (stageId.includes('flower')) {
     return {
-      gradient: 'linear-gradient(135deg, rgba(168,85,247,0.15) 0%, rgba(236,72,153,0.05) 100%)',
-      border: 'rgba(168,85,247,0.3)',
-      iconColor: '#d946ef', // Fuchsia
+      gradient: 'linear-gradient(180deg, rgba(192,38,211,0.25) 0%, rgba(192,38,211,0) 100%)',
+      background: 'linear-gradient(180deg, #2e052a 0%, #0a0a0a 100%)', // Deep Purple to Black
+      border: 'rgba(232, 121, 249, 0.3)',
+      iconColor: '#e879f9', // Bright Fuchsia
       mainIcon: Flower2,
       accent: 'secondary.main',
-      glow: '0 0 20px rgba(168,85,247,0.2)'
+      glow: '0 0 40px rgba(192,38,211,0.2)'
     };
   }
   if (stageId === 'ripening') {
     return {
-      gradient: 'linear-gradient(135deg, rgba(245,158,11,0.15) 0%, rgba(251,146,60,0.05) 100%)',
-      border: 'rgba(245,158,11,0.3)',
-      iconColor: '#f59e0b', // Amber
+      gradient: 'linear-gradient(180deg, rgba(245,158,11,0.25) 0%, rgba(245,158,11,0) 100%)',
+      background: 'linear-gradient(180deg, #2e1c05 0%, #0a0a0a 100%)', // Deep Amber to Black
+      border: 'rgba(251, 191, 36, 0.3)',
+      iconColor: '#fbbf24', // Bright Amber
       mainIcon: Sun,
       accent: 'warning.main',
-      glow: '0 0 20px rgba(245,158,11,0.2)'
+      glow: '0 0 40px rgba(245,158,11,0.2)'
     };
   }
   // Transition or Default
   return {
-    gradient: 'linear-gradient(135deg, rgba(59,130,246,0.15) 0%, rgba(99,102,241,0.05) 100%)',
-    border: 'rgba(59,130,246,0.3)',
-    iconColor: '#3b82f6', // Blue
+    gradient: 'linear-gradient(180deg, rgba(59,130,246,0.25) 0%, rgba(59,130,246,0) 100%)',
+    background: 'linear-gradient(180deg, #0f1c30 0%, #0a0a0a 100%)', // Deep Blue to Black
+    border: 'rgba(96, 165, 250, 0.3)',
+    iconColor: '#60a5fa', // Bright Blue
     mainIcon: Wind,
     accent: 'info.main',
-    glow: '0 0 20px rgba(59,130,246,0.2)'
+    glow: '0 0 40px rgba(59,130,246,0.2)'
   };
 };
 
@@ -295,7 +289,7 @@ const StageDashboard: React.FC = () => {
       p: 0,
       borderRadius: '24px',
       overflow: 'hidden',
-      background: '#121212',
+      background: theme.background,
       border: `1px solid ${theme.border}`,
       boxShadow: theme.glow,
       transition: 'all 0.5s ease-in-out'
@@ -381,7 +375,7 @@ const StageDashboard: React.FC = () => {
       </Box>
 
       {/* --- Metrics Content --- */}
-      <Box sx={{ p: 3, bgcolor: '#121212' }}>
+      <Box sx={{ p: 3, background: 'transparent' }}>
 
         {/* Recommendation Pill */}
         {recommendation && (
