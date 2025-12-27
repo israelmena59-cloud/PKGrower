@@ -1,5 +1,4 @@
-// require('dotenv').config({ path: require('path').join(__dirname, '.env') });
-// NOTE: In Cloud Run, env vars are set directly. No need for dotenv here.
+require('dotenv').config({ path: require('path').join(__dirname, '.env') });
 
 // --- CONFIGURACIÃ“N DE LA INTEGRACIÃ“N ---
 const MODO_SIMULACION = process.env.MODO_SIMULACION === 'true';
