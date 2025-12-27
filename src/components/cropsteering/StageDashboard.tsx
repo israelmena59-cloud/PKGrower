@@ -148,9 +148,14 @@ const StageDashboard: React.FC = () => {
         // Calculate Days Locally based on Active Room (Source of Truth)
         let calculatedDays = statusData.daysInCycle || 0;
         if (activeRoom) {
-            const currentStageId = statusData.stage || 'veg_early';
-            const isFlower = currentStageId.includes('flower') || currentStageId === 'ripening' || currentStageId === 'transition';
-            const relevantDate = isFlower && activeRoom.flipDate ? activeRoom.flipDate : activeRoom.growStartDate;
+            // Use selectedStage logic to determine phase, fallback to backend stage
+            const activeStageId = selectedStage || statusData.stage || 'veg_early';
+            const isFlower = activeStageId.includes('flower') || activeStageId === 'ripening' || activeStageId === 'transition';
+
+            // Critical: If we are in flower, we MUST use flipDate
+            const relevantDate = isFlower
+                ? (activeRoom.flipDate || activeRoom.growStartDate)
+                : activeRoom.growStartDate;
 
             if (relevantDate) {
                 const start = new Date(relevantDate);
@@ -191,7 +196,9 @@ const StageDashboard: React.FC = () => {
           }
         };
         setData(safeData);
-        setSelectedStage(statusData.stage || 'veg_early');
+        if (!selectedStage) {
+          setSelectedStage(statusData.stage || 'veg_early');
+        }
       }
       if (recoData.success && recoData.recommendation) setRecommendation(recoData.recommendation);
       if (stagesData.success && stagesData.stages) setStages(stagesData.stages);
