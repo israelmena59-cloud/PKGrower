@@ -1,9 +1,9 @@
 /**
  * UnifiedAIPanel - Componente fusionado de AI Insights + Smart Notifications
- * Reemplaza AIInsightsWidget y SmartNotifications en un solo componente horizontal
+ * Diseño Premium Glassmorphism con tarjetas interactivas
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -12,12 +12,10 @@ import {
   Chip,
   CircularProgress,
   Tooltip,
-  LinearProgress,
 } from '@mui/material';
 import {
   Sparkles,
   RefreshCw,
-  Bell,
   AlertTriangle,
   CheckCircle,
   Zap,
@@ -25,14 +23,17 @@ import {
   Thermometer,
   Wind,
   Lightbulb,
-  ChevronRight,
   TrendingUp,
+  BrainCircuit,
+  Activity,
+  ShieldCheck,
+  ShieldAlert
 } from 'lucide-react';
 import { apiClient } from '../../api/client';
 
 interface AIItem {
   id: string;
-  type: 'critical' | 'warning' | 'success' | 'info' | 'insight';
+  type: 'critical' | 'warning' | 'success' | 'info';
   title: string;
   message: string;
   action?: { label: string; command: string };
@@ -54,7 +55,6 @@ const UnifiedAIPanel: React.FC<UnifiedAIPanelProps> = ({
   const [executing, setExecuting] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
 
-  // Fetch combined data from AI insights and sensors
   const fetchData = async () => {
     setLoading(true);
     try {
@@ -70,72 +70,53 @@ const UnifiedAIPanel: React.FC<UnifiedAIPanelProps> = ({
         combined.push({
           id: `insight-${index}`,
           type: insight.type === 'critical' ? 'critical' : insight.type === 'warning' ? 'warning' : 'success',
-          title: insight.type === 'critical' ? '⚠️ Crítico' : insight.type === 'warning' ? '💡 Sugerencia' : '✅ Óptimo',
+          title: insight.type === 'critical' ? 'Atención Requerida' : insight.type === 'warning' ? 'Sugerencia de Optimización' : 'Estado Óptimo',
           message: insight.message,
           action: insight.action ? { label: insight.action, command: insight.action } : undefined,
           source: 'ai',
         });
       });
 
-      // Add sensor-based alerts (only if anomalies)
+      // Add sensor-based alerts
       if (sensors) {
         if (sensors.vpd !== null && sensors.vpd !== undefined) {
           if (sensors.vpd < 0.4) {
-            combined.push({
-              id: 'vpd-low',
-              type: 'critical',
-              title: 'VPD Crítico',
-              message: `VPD: ${sensors.vpd.toFixed(2)} kPa - Riesgo de hongos`,
-              action: { label: 'Activar Extractor', command: 'toggle_device(extractorControlador, on)' },
-              icon: 'wind',
-              source: 'sensor',
+            combined.unshift({
+                id: 'vpd-low', type: 'critical', title: 'Riesgo Fúngico',
+                message: `VPD Crítico (${sensors.vpd.toFixed(2)} kPa). Aumentar temperatura o reducir humedad inmediatamente.`,
+                action: { label: 'Activar Extractor', command: 'toggle_device(extractorControlador, on)' }, icon: 'wind', source: 'sensor'
             });
           } else if (sensors.vpd > 1.6) {
             combined.push({
-              id: 'vpd-high',
-              type: 'warning',
-              title: 'VPD Alto',
-              message: `VPD: ${sensors.vpd.toFixed(2)} kPa - Estrés posible`,
-              action: { label: 'Activar Humidificador', command: 'toggle_device(humidifier, on)' },
-              icon: 'droplets',
-              source: 'sensor',
+                id: 'vpd-high', type: 'warning', title: 'Posible Estrés Hídrico',
+                message: `VPD Alto (${sensors.vpd.toFixed(2)} kPa). Las plantas pueden cerrar estomas.`,
+                action: { label: 'Activar Humidificador', command: 'toggle_device(humidifier, on)' }, icon: 'droplets', source: 'sensor'
             });
           }
         }
 
         if (sensors.temperature !== null && sensors.temperature > 30) {
-          combined.push({
-            id: 'temp-high',
-            type: 'critical',
-            title: 'Temp. Alta',
-            message: `${sensors.temperature.toFixed(1)}°C - Activar ventilación`,
-            action: { label: 'Enfriar', command: 'toggle_device(extractorControlador, on)' },
-            icon: 'thermometer',
-            source: 'sensor',
-          });
+            combined.unshift({
+                id: 'temp-high', type: 'critical', title: 'Estrés Térmico',
+                message: `Temperatura en ${sensors.temperature.toFixed(1)}°C. Riesgo de degradación de terpenos.`,
+                action: { label: 'Enfriar Ahora', command: 'toggle_device(extractorControlador, on)' }, icon: 'thermometer', source: 'sensor'
+            });
         }
 
         if (sensors.substrateHumidity !== null && sensors.substrateHumidity < 30) {
-          combined.push({
-            id: 'substrate-dry',
-            type: 'warning',
-            title: 'Sustrato Seco',
-            message: `${sensors.substrateHumidity.toFixed(0)}% - Necesita riego`,
-            action: { label: 'Regar', command: 'set_irrigation(30)' },
-            icon: 'droplets',
-            source: 'sensor',
-          });
+            combined.push({
+                id: 'substrate-dry', type: 'warning', title: 'Riego Necesario',
+                message: `Humedad de sustrato al ${sensors.substrateHumidity.toFixed(0)}%.`,
+                action: { label: 'Iniciar Riego (30s)', command: 'set_irrigation(30)' }, icon: 'droplets', source: 'sensor'
+            });
         }
 
-        // All good message
-        if (combined.filter(i => i.source === 'sensor').length === 0 && combined.length === 0) {
-          combined.push({
-            id: 'all-good',
-            type: 'success',
-            title: 'Todo en Orden',
-            message: 'Parámetros dentro de rangos óptimos 🌱',
-            source: 'sensor',
-          });
+        // All good fallback
+        if (combined.length === 0) {
+            combined.push({
+                id: 'all-good', type: 'success', title: 'Sistemas Nominales',
+                message: 'Todos los parámetros biológicos dentro de rangos óptimos. Crecimiento estable.', source: 'sensor'
+            });
         }
       }
 
@@ -143,7 +124,6 @@ const UnifiedAIPanel: React.FC<UnifiedAIPanelProps> = ({
       setLastUpdate(new Date());
     } catch (error) {
       console.error('Error fetching AI data:', error);
-      setItems([{ id: 'error', type: 'warning', title: 'Error', message: 'No se pudieron cargar datos', source: 'ai' }]);
     } finally {
       setLoading(false);
     }
@@ -157,7 +137,6 @@ const UnifiedAIPanel: React.FC<UnifiedAIPanelProps> = ({
     }
   }, [autoRefresh, refreshInterval]);
 
-  // Execute action
   const executeAction = async (item: AIItem) => {
     if (!item.action) return;
     setExecuting(item.id);
@@ -171,210 +150,181 @@ const UnifiedAIPanel: React.FC<UnifiedAIPanelProps> = ({
     }
   };
 
-  const getTypeColor = (type: string) => {
+  const getTheme = (type: string) => {
     switch (type) {
-      case 'critical': return '#ef4444';
-      case 'warning': return '#f59e0b';
-      case 'success': return '#22c55e';
-      default: return '#3b82f6';
+      case 'critical': return { color: '#ef4444', bg: 'rgba(239,68,68,0.1)', border: 'rgba(239,68,68,0.3)', icon: ShieldAlert };
+      case 'warning': return { color: '#f59e0b', bg: 'rgba(245,158,11,0.1)', border: 'rgba(245,158,11,0.3)', icon: AlertTriangle };
+      case 'success': return { color: '#22c55e', bg: 'rgba(34,197,94,0.1)', border: 'rgba(34,197,94,0.3)', icon: ShieldCheck };
+      default: return { color: '#3b82f6', bg: 'rgba(59,130,246,0.1)', border: 'rgba(59,130,246,0.3)', icon: Sparkles };
     }
   };
 
-  const getTypeIcon = (type: string, icon?: string) => {
-    const size = 16;
-    if (icon === 'droplets') return <Droplets size={size} />;
-    if (icon === 'thermometer') return <Thermometer size={size} />;
-    if (icon === 'wind') return <Wind size={size} />;
-
-    switch (type) {
-      case 'critical': return <AlertTriangle size={size} />;
-      case 'warning': return <Lightbulb size={size} />;
-      case 'success': return <CheckCircle size={size} />;
-      default: return <Sparkles size={size} />;
-    }
-  };
-
-  // Summary stats
+  // Stats
   const criticalCount = items.filter(i => i.type === 'critical').length;
   const warningCount = items.filter(i => i.type === 'warning').length;
-  const healthScore = Math.max(0, 100 - (criticalCount * 30) - (warningCount * 10));
+  // Score formula: 100 - (critical * 20) - (warning * 10)
+  const healthScore = Math.max(0, 100 - (criticalCount * 20) - (warningCount * 10));
 
   return (
-    <Box
-      className="glass-panel"
-      sx={{
-        p: 2,
-        borderRadius: 'var(--squircle-radius)',
-        bgcolor: 'var(--glass-bg)',
-        backdropFilter: 'var(--backdrop-blur)',
-        border: 'var(--glass-border)',
-        boxShadow: 'var(--glass-shadow)',
+    <Box sx={{
         gridColumn: 'span 4',
         width: '100%',
-      }}
-    >
-      {/* Header Row */}
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-          <Sparkles size={22} className="text-cyan-400 animate-pulse" />
-          <Typography variant="h6" fontWeight="bold" sx={{ color: 'white' }}>
-            Centro de Control IA
-          </Typography>
-          {lastUpdate && (
-            <Chip
-              size="small"
-              label={lastUpdate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              sx={{ fontSize: '0.7rem', bgcolor: 'rgba(255,255,255,0.1)', color: 'white' }}
-            />
-          )}
-        </Box>
-
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          {/* Health Score */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.6)' }}>
-              Salud:
-            </Typography>
-            <Box sx={{ width: 80 }}>
-              <LinearProgress
-                variant="determinate"
-                value={healthScore}
-                sx={{
-                  height: 6,
-                  borderRadius: 3,
-                  bgcolor: 'rgba(255,255,255,0.1)',
-                  '& .MuiLinearProgress-bar': {
-                    bgcolor: healthScore > 70 ? '#22c55e' : healthScore > 40 ? '#f59e0b' : '#ef4444',
-                    borderRadius: 3,
-                  },
-                }}
-              />
-            </Box>
-            <Typography variant="caption" fontWeight="bold" sx={{ color: 'white' }}>
-              {healthScore}%
-            </Typography>
+        position: 'relative',
+        zIndex: 5
+    }}>
+      {/* Visual Header */}
+      <Box sx={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2,
+          p: 2, borderRadius: '16px',
+          background: 'linear-gradient(90deg, rgba(16,185,129,0.1) 0%, rgba(6,182,212,0.1) 100%)',
+          border: '1px solid rgba(255,255,255,0.05)',
+          backdropFilter: 'blur(10px)'
+      }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Box sx={{
+                  p: 1.5, borderRadius: '12px', bgcolor: 'rgba(6,182,212,0.2)',
+                  boxShadow: '0 0 15px rgba(6,182,212,0.3)'
+              }}>
+                  <BrainCircuit size={24} className="text-cyan-400" />
+              </Box>
+              <Box>
+                  <Typography variant="h6" fontWeight={700} color="white" sx={{ letterSpacing: 0.5 }}>
+                      CEREBRO CENTRAL
+                  </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: '#22c55e', boxShadow: '0 0 5px #22c55e' }} />
+                      <Typography variant="caption" color="text.secondary">
+                        Sistemas IA Online • {lastUpdate?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </Typography>
+                  </Box>
+              </Box>
           </Box>
 
-          {/* Counters */}
-          {criticalCount > 0 && (
-            <Chip
-              icon={<AlertTriangle size={12} />}
-              label={criticalCount}
-              size="small"
-              sx={{ bgcolor: 'rgba(239,68,68,0.2)', color: '#ef4444', fontSize: '0.7rem' }}
-            />
-          )}
-          {warningCount > 0 && (
-            <Chip
-              icon={<Lightbulb size={12} />}
-              label={warningCount}
-              size="small"
-              sx={{ bgcolor: 'rgba(245,158,11,0.2)', color: '#f59e0b', fontSize: '0.7rem' }}
-            />
-          )}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+              {/* Health Circular Indicator */}
+              <Box sx={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <CircularProgress
+                    variant="determinate" value={100} size={50} thickness={4}
+                    sx={{ color: 'rgba(255,255,255,0.1)', position: 'absolute' }}
+                  />
+                  <CircularProgress
+                    variant="determinate" value={healthScore} size={50} thickness={4}
+                    sx={{
+                        color: healthScore > 80 ? '#22c55e' : healthScore > 50 ? '#f59e0b' : '#ef4444',
+                        filter: 'drop-shadow(0 0 4px currentColor)'
+                    }}
+                  />
+                  <Box sx={{ position: 'absolute', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                      <Activity size={12} color={healthScore > 80 ? '#22c55e' : healthScore > 50 ? '#f59e0b' : '#ef4444'} />
+                      <Typography variant="caption" fontWeight="bold" sx={{ fontSize: '0.65rem', color: 'white' }}>{healthScore}%</Typography>
+                  </Box>
+              </Box>
 
-          <Tooltip title="Actualizar">
-            <IconButton
-              size="small"
-              onClick={fetchData}
-              disabled={loading}
-              sx={{ color: 'white' }}
-            >
-              <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-            </IconButton>
-          </Tooltip>
-        </Box>
+              <Tooltip title="Actualizar Análisis">
+                <IconButton onClick={fetchData} disabled={loading} size="small" sx={{ bgcolor: 'rgba(255,255,255,0.05)' }}>
+                    <RefreshCw size={18} className={`text-gray-400 ${loading ? 'animate-spin' : ''}`} />
+                </IconButton>
+              </Tooltip>
+          </Box>
       </Box>
 
-      {/* Items Row */}
-      {loading && items.length === 0 ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
-          <CircularProgress size={24} sx={{ color: 'cyan' }} />
-        </Box>
-      ) : (
-        <Box
-          sx={{
-            display: 'flex',
-            gap: 2,
-            overflowX: 'auto',
-            pb: 1,
-            '&::-webkit-scrollbar': { height: 4 },
-            '&::-webkit-scrollbar-thumb': { bgcolor: 'rgba(255,255,255,0.2)', borderRadius: 2 },
-          }}
-        >
-          {items.length === 0 ? (
-            <Box sx={{ flex: 1, textAlign: 'center', py: 2, color: 'rgba(255,255,255,0.5)' }}>
-              <TrendingUp size={32} />
-              <Typography variant="body2" mt={1}>Analizando...</Typography>
-            </Box>
+      {/* Cards Scroll Container */}
+      <Box sx={{
+          display: 'flex',
+          gap: 2,
+          overflowX: 'auto',
+          pb: 1,
+          px: 0.5,
+          '&::-webkit-scrollbar': { height: 6 },
+          '&::-webkit-scrollbar-thumb': { bgcolor: 'rgba(255,255,255,0.1)', borderRadius: 3 },
+          '&::-webkit-scrollbar-track': { bgcolor: 'transparent' }
+      }}>
+          {loading && items.length === 0 ? (
+              [1,2,3].map(i => (
+                  <Box key={i} sx={{ minWidth: 260, height: 160, borderRadius: '16px', bgcolor: 'rgba(255,255,255,0.03)' }} />
+              ))
           ) : (
-            items.map((item) => (
-              <Box
-                key={item.id}
-                sx={{
-                  minWidth: 200,
-                  maxWidth: 280,
-                  p: 2,
-                  borderRadius: 2,
-                  bgcolor: `${getTypeColor(item.type)}15`,
-                  border: `1px solid ${getTypeColor(item.type)}40`,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 1,
-                  transition: 'all 0.2s',
-                  '&:hover': {
-                    bgcolor: `${getTypeColor(item.type)}25`,
-                    transform: 'translateY(-2px)',
-                  },
-                }}
-              >
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Box sx={{ color: getTypeColor(item.type) }}>
-                    {getTypeIcon(item.type, item.icon)}
-                  </Box>
-                  <Typography
-                    variant="caption"
-                    fontWeight="bold"
-                    sx={{ color: getTypeColor(item.type) }}
-                  >
-                    {item.title}
-                  </Typography>
-                </Box>
+              items.map((item) => {
+                  const theme = getTheme(item.type);
+                  const Icon = theme.icon;
 
-                <Typography
-                  variant="body2"
-                  sx={{
-                    color: 'rgba(255,255,255,0.85)',
-                    fontSize: '0.8rem',
-                    lineHeight: 1.4,
-                    flex: 1,
-                  }}
-                >
-                  {item.message}
-                </Typography>
+                  return (
+                    <Box
+                        key={item.id}
+                        sx={{
+                            minWidth: 280,
+                            maxWidth: 320,
+                            p: 2.5,
+                            borderRadius: '20px',
+                            background: `linear-gradient(145deg, rgba(20,30,40,0.8) 0%, rgba(10,12,15,0.9) 100%)`, // Base dark
+                            border: `1px solid ${theme.border}`,
+                            backdropFilter: 'blur(20px)',
+                            position: 'relative',
+                            overflow: 'hidden',
+                            transition: 'transform 0.2s, box-shadow 0.2s',
+                            '&:hover': {
+                                transform: 'translateY(-4px)',
+                                boxShadow: `0 10px 30px -10px ${theme.color}40`,
+                                border: `1px solid ${theme.color}60`
+                            }
+                        }}
+                    >
+                        {/* Status Line */}
+                        <Box sx={{
+                            position: 'absolute', top: 0, left: 0, width: '100%', height: '3px',
+                            bgcolor: theme.color, boxShadow: `0 0 10px ${theme.color}`
+                        }} />
 
-                {item.action && (
-                  <Button
-                    size="small"
-                    variant="contained"
-                    startIcon={executing === item.id ? <CircularProgress size={12} /> : <Zap size={12} />}
-                    onClick={() => executeAction(item)}
-                    disabled={executing === item.id}
-                    sx={{
-                      bgcolor: getTypeColor(item.type),
-                      fontSize: '0.7rem',
-                      py: 0.5,
-                      '&:hover': { bgcolor: getTypeColor(item.type), filter: 'brightness(1.1)' },
-                    }}
-                  >
-                    {item.action.label}
-                  </Button>
-                )}
-              </Box>
-            ))
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2, mt: 1 }}>
+                            <Box sx={{
+                                p: 1, borderRadius: '10px',
+                                bgcolor: `${theme.color}20`, color: theme.color
+                            }}>
+                                <Icon size={20} />
+                            </Box>
+                            {item.source === 'ai' && (
+                                <Chip label="AI INSIGHT" size="small" sx={{
+                                    height: 20, fontSize: '0.6rem', fontWeight: 800,
+                                    bgcolor: 'rgba(6,182,212,0.2)', color: '#22d3ee', letterSpacing: 1
+                                }} />
+                            )}
+                        </Box>
+
+                        <Typography variant="subtitle2" fontWeight={700} color="white" gutterBottom>
+                            {item.title}
+                        </Typography>
+
+                        <Typography variant="body2" color="rgba(255,255,255,0.7)" sx={{ mb: 2, minHeight: 40, fontSize: '0.85rem' }}>
+                            {item.message}
+                        </Typography>
+
+                        {item.action && (
+                            <Button
+                                fullWidth
+                                variant="outlined"
+                                startIcon={executing === item.id ? <CircularProgress size={14} color="inherit" /> : <Zap size={14} />}
+                                onClick={() => executeAction(item)}
+                                disabled={executing === item.id}
+                                sx={{
+                                    borderColor: theme.border,
+                                    color: theme.color,
+                                    borderRadius: '12px',
+                                    textTransform: 'none',
+                                    fontWeight: 600,
+                                    '&:hover': {
+                                        borderColor: theme.color,
+                                        bgcolor: `${theme.color}15`
+                                    }
+                                }}
+                            >
+                                {item.action.label}
+                            </Button>
+                        )}
+                    </Box>
+                  );
+              })
           )}
-        </Box>
-      )}
+      </Box>
     </Box>
   );
 };
