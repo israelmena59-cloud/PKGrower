@@ -279,13 +279,13 @@ function autoDetectPumpID() {
              // FORCE RETURN for this specific user ID to unblock
              console.log(`[DEBUG-MATCH] FORCE RETURN for target ID: ${d.id}`);
              detectionLog.push(`FORCE MATCH found for: ${d.id}`);
-             return key;
+             return d.id; // FIX: Return actual device ID, not internal key
         }
 
         if (candidates.some(isMatch)) {
-             console.log(`[PUMP] Auto-detected Tuya (Deep): ${d.name} (${key})`);
-             detectionLog.push(`Match Tuya: ${key}`);
-             return key;
+             console.log(`[PUMP] Auto-detected Tuya (Deep): ${d.name} (${d.id})`);
+             detectionLog.push(`Match Tuya: ${d.id}`);
+             return d.id; // FIX: Return actual device ID, not internal key
         }
     }
 
