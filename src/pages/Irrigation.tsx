@@ -287,13 +287,7 @@ const Irrigation: React.FC = () => {
                         </Box>
 
                         <ResponsiveContainer width="100%" height={350}>
-                            <AreaChart data={strategyData}>
-                                <defs>
-                                    <linearGradient id="colorVwc" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.1}/>
-                                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-                                    </linearGradient>
-                                </defs>
+                            <LineChart data={strategyData}>
                                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={true} vertical={false} />
                                 <XAxis dataKey="time" stroke="#666" fontSize={12} tickLine={false} axisLine={false} />
 
@@ -313,15 +307,16 @@ const Irrigation: React.FC = () => {
                                 <ReferenceArea x1="11:00" x2="16:00" yAxisId="left" fill="#22c55e" fillOpacity={0.05} />
 
                                 {/* Data Series */}
-                                <Area
+                                <Line
                                     yAxisId="left"
                                     type="monotone"
                                     dataKey="vwc"
                                     name="VWC (Humedad)"
                                     stroke="#3b82f6"
                                     strokeWidth={3}
-                                    fill="url(#colorVwc)"
+                                    dot={false}
                                     connectNulls
+                                    isAnimationActive={false}
                                 />
                                 <Line
                                     yAxisId="right"

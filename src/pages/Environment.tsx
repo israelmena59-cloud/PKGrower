@@ -292,28 +292,21 @@ const Environment: React.FC = () => {
                 </div>
             </div>
             <ResponsiveContainer width="100%" height={320}>
-                <AreaChart data={vpdData}>
-                    <defs>
-                        <linearGradient id="colorTemp" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.1}/>
-                            <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/>
-                        </linearGradient>
-                        <linearGradient id="colorHum" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.1}/>
-                            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-                        </linearGradient>
-                    </defs>
+            <ResponsiveContainer width="100%" height={320}>
+                <LineChart data={vpdData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={true} vertical={false} />
                     <XAxis dataKey="time" stroke="#666" fontSize={12} tickLine={false} axisLine={false} />
-                    <YAxis yAxisId="left" domain={['dataMin - 5', 'auto']} stroke="#666" fontSize={12} tickLine={false} axisLine={false} unit="°C" width={30} />
+                    <YAxis yAxisId="left" domain={['dataMin - 2', 'auto']} stroke="#666" fontSize={12} tickLine={false} axisLine={false} unit="°C" width={30} />
                     <YAxis yAxisId="right" orientation="right" domain={['dataMin - 5', 'auto']} stroke="#666" fontSize={12} tickLine={false} axisLine={false} unit="%" width={30} />
                     <RechartsTooltip
                         contentStyle={{ backgroundColor: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' }}
                         itemStyle={{ fontSize: '12px' }}
                     />
-                    <Area yAxisId="left" type="monotone" dataKey="temp" stroke="#f59e0b" strokeWidth={2} fill="url(#colorTemp)" connectNulls />
-                    <Area yAxisId="right" type="monotone" dataKey="hum" stroke="#3b82f6" strokeWidth={2} fill="url(#colorHum)" connectNulls />
-                </AreaChart>
+                    <Line yAxisId="left" type="monotone" dataKey="temp" stroke="#f59e0b" strokeWidth={3} dot={false} connectNulls isAnimationActive={false} />
+                    <Line yAxisId="right" type="monotone" dataKey="hum" stroke="#3b82f6" strokeWidth={3} dot={false} connectNulls isAnimationActive={false} />
+                </LineChart>
+            </ResponsiveContainer>
+            <div className="absolute bottom-2 right-2 text-[10px] text-gray-500">v3-LineFix</div>
             </ResponsiveContainer>
         </div>
 
