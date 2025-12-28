@@ -158,6 +158,7 @@ const UnifiedAIPanel: React.FC<UnifiedAIPanelProps> = ({
                    // Attach debug metadata to array for display
                    (result as any)._debugTarget = debugInfo.detectedId;
                    (result as any)._debugTotal = allDevices.length;
+                   (result as any)._debugCandidates = allDevices; // Add full list for debug
 
                    setTuyaDevices(result);
                } else {
@@ -362,6 +363,23 @@ const UnifiedAIPanel: React.FC<UnifiedAIPanelProps> = ({
                           <br/>
                           Total Devs: { (tuyaDevices as any)._debugTotal || 0 }
                       </Typography>
+
+                      {/* Show ALL devices for debugging */}
+                      {(tuyaDevices as any)._debugCandidates && (
+                          <Box sx={{ mt: 2, borderTop: '1px solid #444', pt: 1 }}>
+                              <Typography variant="caption" sx={{ color: '#fff', fontWeight: 'bold' }}>Candidatos Disponibles ({ (tuyaDevices as any)._debugCandidates.length }):</Typography>
+                              {(tuyaDevices as any)._debugCandidates.map((c: any) => (
+                                  <Box key={c.id} sx={{ mt: 0.5, p: 0.5, bgcolor: 'rgba(255,255,255,0.05)' }}>
+                                      <Typography variant="caption" sx={{ color: '#aaa', display: 'block' }}>
+                                          {c.name} <span style={{ opacity: 0.5 }}>({c.platform})</span>
+                                      </Typography>
+                                      <Typography variant="caption" sx={{ color: '#555', display: 'block', fontSize: '0.6em' }}>
+                                          ID: {c.id}
+                                      </Typography>
+                                  </Box>
+                              ))}
+                          </Box>
+                      )}
                   </Box>
               ) : (
                   tuyaDevices.map(d => (
