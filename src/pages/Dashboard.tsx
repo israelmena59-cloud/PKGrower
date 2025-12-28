@@ -166,32 +166,15 @@ const Dashboard: React.FC = () => {
             // Dynamic Device Widget Mapping (for newly added device widgets)
             if (w.type === 'device' && w.props?.deviceId) {
                 const deviceId = w.props.deviceId;
-                const deviceState = devices?.[deviceId];
-                const meta = deviceMeta.find(d => d.id === deviceId);
                 const widgetSubtype = w.props?.widgetType || 'control';
 
-                if (widgetSubtype === 'sensor') {
-                    // Sensor device
-                    const sensorVal = latestSensors?.[deviceId as keyof SensorData];
-                    props = {
-                        icon: <RefreshCw/>,
-                        name: w.props.deviceName || meta?.name || w.title,
-                        value: typeof sensorVal === 'number' ? sensorVal.toFixed(1) : (sensorVal ?? '--'),
-                        unit: meta?.unit || '',
-                        color: meta?.color || '#64748b',
-                        onRename: handleRename,
-                        deviceId
-                    };
-                } else {
-                    // Control device
-                    props = {
-                        id: deviceId,
-                        icon: meta?.type === 'light' ? <Lightbulb/> : <RefreshCw/>,
-                        name: w.props.deviceName || meta?.name || w.title,
-                        isOn: !!deviceState,
-                        onRename: handleRename
-                    };
-                }
+                // DeviceDataWidget handles its own data fetching, so we just pass the configuration
+                props = {
+                    deviceId,
+                    deviceName: w.props.deviceName || w.title,
+                    widgetType: widgetSubtype,
+                    onRename: handleRename
+                };
             }
 
             // Generic Chart Widget Mapping (for dynamically created charts)
