@@ -214,6 +214,16 @@ function autoDetectPumpID() {
         return TERMS.some(t => norm.includes(t));
     };
 
+    // 1. Check override in settings (BUT VERIFY IT EXISTS)
+    if (appSettings.irrigation?.pumpId) {
+        const id = appSettings.irrigation.pumpId;
+        // Verify existence to avoid phantom IDs blocking auto-detect
+        if (merossDevices[id] || tuyaDevices[id]) {
+            return id;
+        }
+        console.log(`[PUMP] Stale pump ID in settings (${id}) - Device not found. Retrying auto-detect...`);
+    }
+
     // 2. Search in Meross Devices (Priority)
     for (const key of Object.keys(merossDevices)) {
         const d = merossDevices[key];
