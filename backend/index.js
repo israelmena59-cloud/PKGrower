@@ -724,11 +724,18 @@ app.get('/api/irrigation/detected', async (req, res) => {
         // Optional: Calibrate with known events (user provides calibration data)
         let calibration = undefined;
         if (calibrate) {
-            // Example: calibrate=01:00:3,02:00:3 means 3% shots at 01:00 and 02:00
+            // Format: HH:MM:PERCENT,HH:MM:PERCENT (e.g., 01:00:3,02:00:3)
             const knownEvents = calibrate.split(',').map(e => {
-                const [time, percent] = e.split(':');
-                return { time: time + ':' + percent.split(':')[0], shotPercent: Number(percent.split(':')[1] || percent) };
-            }).filter(e => e.time && e.shotPercent > 0);
+                const parts = e.trim().split(':');
+                if (parts.length >= 3) {
+                    const time = parts[0] + ':' + parts[1]; // "01:00"
+                    const shotPercent = Number(parts[2]);   // 3
+                    return { time, shotPercent };
+                }
+                return null;
+            }).filter(e => e && e.time && e.shotPercent > 0);
+
+            console.log('[DETECTED] Parsed known events:', knownEvents);
 
             if (knownEvents.length > 0) {
                 calibration = calibrateFromKnownEvents(history, knownEvents);
