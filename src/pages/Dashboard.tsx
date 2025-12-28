@@ -194,6 +194,32 @@ const Dashboard: React.FC = () => {
                 }
             }
 
+            // Generic Chart Widget Mapping (for dynamically created charts)
+            if (w.type === 'chart' && !['chart_vpd', 'chart_soil'].includes(w.id)) {
+                // Determine dataKey from widget props or title
+                let dataKey = w.props?.dataKey || 'temperature';
+                let color = w.props?.color || '#3b82f6';
+                let unit = w.props?.unit || '';
+
+                // Auto-detect from title
+                const titleLower = (w.title || '').toLowerCase();
+                if (titleLower.includes('vpd')) { dataKey = 'vpd'; color = '#22c55e'; unit = 'kPa'; }
+                else if (titleLower.includes('temp')) { dataKey = 'temperature'; color = '#ef4444'; unit = '°C'; }
+                else if (titleLower.includes('hum')) { dataKey = 'humidity'; color = '#3b82f6'; unit = '%'; }
+                else if (titleLower.includes('sustrato') || titleLower.includes('soil') || titleLower.includes('vwc')) {
+                    dataKey = 'substrateHumidity'; color = '#f59e0b'; unit = '%';
+                }
+
+                props = {
+                    data: sensorHistory,
+                    dataKey,
+                    color,
+                    unit,
+                    lightSchedule,
+                    title: w.title
+                };
+            }
+
             widgets.push({ ...w, props });
         });
 
