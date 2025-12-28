@@ -248,7 +248,10 @@ function autoDetectPumpID() {
     // 3. Search in Tuya Devices
     for (const key of Object.keys(tuyaDevices)) {
         const d = tuyaDevices[key];
-        if (d.deviceType === 'sensor') continue;
+
+        // RELAXED FILTER: Don't skip 'sensor' blindly.
+        // Some controllers are categorized as sensors/switches ambiguously.
+        // if (d.deviceType === 'sensor') continue;
 
         const candidates = [
             d.name,
