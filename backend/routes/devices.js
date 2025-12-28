@@ -513,5 +513,48 @@ module.exports = ({
     });
     router.get('/meross', (req, res) => res.json(getMerossDevices()));
 
+    // Meross Login Endpoint
+    router.post('/meross/login', async (req, res) => {
+        try {
+            const { email, password } = req.body;
+
+            if (!email || !password) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Email y contraseña son requeridos'
+                });
+            }
+
+            // Set environment variables
+            process.env.MEROSS_EMAIL = email;
+            process.env.MEROSS_PASSWORD = password;
+
+            // Save to Firestore for persistence
+            try {
+                await firestore.saveCredentials('meross', { email, password });
+            } catch (e) {
+                console.warn('[MEROSS] Could not save credentials to Firestore:', e.message);
+            }
+
+            // Initialize Meross connection
+            await initMerossDevices();
+
+            const devices = getMerossDevices();
+            const deviceCount = Object.keys(devices).length;
+
+            res.json({
+                success: true,
+                message: `Conectado exitosamente. ${deviceCount} dispositivos encontrados.`
+            });
+
+        } catch (error) {
+            console.error('[MEROSS] Login error:', error.message);
+            res.status(500).json({
+                success: false,
+                error: error.message || 'Error al conectar con Meross'
+            });
+        }
+    });
+
     return router;
 };

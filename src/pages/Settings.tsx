@@ -157,7 +157,7 @@ const SettingsPage: React.FC = () => {
     setMerossLoading(true);
     setMerossStatus('Conectando...');
     try {
-      const res = await fetch(`${API_BASE_URL}/api/meross/login`, {
+      const res = await fetch(`${API_BASE_URL}/api/devices/meross/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: merossLogin.email, password: merossLogin.password })
