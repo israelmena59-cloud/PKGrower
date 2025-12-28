@@ -109,42 +109,33 @@ const Environment: React.FC = () => {
         try {
             const historyData = await apiClient.getSensorHistory();
             if (historyData && historyData.length > 0) {
+                // STRICT PRE-FILTER: Only keep records with valid temp AND humidity
+                // This removes any records where environment sensor failed to read
+                const validData = historyData.filter((d: any) =>
+                    d.temperature != null && d.temperature > 0 &&
+                    d.humidity != null && d.humidity > 0
+                );
+
+                if (validData.length === 0) {
+                    console.log('[ENV-CHART] No valid environment data available');
+                    return;
+                }
+
                 // Sort by timestamp and take last 48 points for ~24h
-                const sortedData = [...historyData].sort((a: any, b: any) =>
+                const sortedData = [...validData].sort((a: any, b: any) =>
                     new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
                 );
                 const slicedData = sortedData.slice(-48);
 
-                // Pre-scan to find first valid values for initialization
-                let lastVpd = slicedData.find((d: any) => d.vpd > 0)?.vpd || 1.0;
-                let lastTemp = slicedData.find((d: any) => d.temperature > 0)?.temperature || 25;
-                let lastHum = slicedData.find((d: any) => d.humidity > 0)?.humidity || 60;
+                // Format for chart - all values are guaranteed valid now
+                const chartData = slicedData.map((d: any) => ({
+                    time: new Date(d.timestamp).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }),
+                    vpd: d.vpd > 0 ? Number(d.vpd.toFixed(2)) : null,
+                    temp: Number(d.temperature.toFixed(1)),
+                    hum: Number(d.humidity.toFixed(0))
+                }));
 
-                const chartData = slicedData.map((d: any) => {
-                    // Get values or use last known (interpolation)
-                    const vpd = (d.vpd != null && d.vpd > 0) ? d.vpd : null;
-                    const temp = (d.temperature != null && d.temperature > 0) ? d.temperature : null;
-                    const hum = (d.humidity != null && d.humidity > 0) ? d.humidity : null;
-
-                    // Update last known values for interpolation
-                    if (vpd !== null) lastVpd = vpd;
-                    if (temp !== null) lastTemp = temp;
-                    if (hum !== null) lastHum = hum;
-
-                    // Use interpolated values (never 0)
-                    const finalTemp = temp ?? lastTemp;
-                    const finalHum = hum ?? lastHum;
-                    const finalVpd = vpd ?? lastVpd;
-
-                    return {
-                        time: new Date(d.timestamp).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }),
-                        vpd: Number(finalVpd.toFixed(2)),
-                        temp: Number(finalTemp.toFixed(1)),
-                        hum: Number(finalHum.toFixed(0))
-                    };
-                }).filter((d: any) => d.temp > 0 && d.hum > 0); // Remove any 0 values
-
-                console.log('[ENV-CHART] Data sample:', chartData.slice(0, 5));
+                console.log('[ENV-CHART] Valid data points:', chartData.length, 'Sample:', chartData.slice(0, 3));
                 setVpdData(chartData);
             }
         } catch (histErr) {

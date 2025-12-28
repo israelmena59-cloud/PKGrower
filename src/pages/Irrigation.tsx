@@ -21,39 +21,40 @@ const formatStrategyData = (historyData: any[]) => {
         }));
     }
 
+    // STRICT PRE-FILTER: Only keep records with valid substrate humidity
+    // This removes any records where substrate sensor failed to read
+    const validData = historyData.filter((d: any) =>
+        d.substrateHumidity != null && d.substrateHumidity > 0
+    );
+
+    if (validData.length === 0) {
+        console.log('[IRRIGATION-CHART] No valid substrate data available');
+        return Array.from({ length: 24 }, (_, i) => ({
+            time: `${i}:00`,
+            vwc: 45,
+            ec: 2.5,
+            temp: 22,
+            phase: i >= 6 && i < 11 ? 'P1 Ramp' : (i >= 11 && i < 16 ? 'P2 Maint' : 'P3 Dryback')
+        }));
+    }
+
     // Sort by timestamp and take last 48 points (~24h)
-    const sortedData = [...historyData].sort((a: any, b: any) =>
+    const sortedData = [...validData].sort((a: any, b: any) =>
         new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
     );
     const slicedData = sortedData.slice(-48);
 
-    // Pre-scan to find first valid values (avoids initial 0s)
-    let lastVwc = slicedData.find((d: any) => d.substrateHumidity > 0)?.substrateHumidity || 50;
-    let lastTemp = slicedData.find((d: any) => d.temperature > 0)?.temperature || 25;
-
+    // Format for chart - all values are guaranteed valid now
     return slicedData.map((d: any) => {
         const hour = new Date(d.timestamp).getHours();
-
-        // Get values or use null for missing
-        const vwc = (d.substrateHumidity != null && d.substrateHumidity > 0) ? d.substrateHumidity : null;
-        const temp = (d.temperature != null && d.temperature > 0) ? d.temperature : null;
-
-        // Update last known values for interpolation
-        if (vwc !== null) lastVwc = vwc;
-        if (temp !== null) lastTemp = temp;
-
-        // Use interpolated values (ensure numbers, never strings or 0)
-        const finalVwc = Number((vwc ?? lastVwc).toFixed(1));
-        const finalTemp = Number((temp ?? lastTemp).toFixed(1));
-
         return {
             time: new Date(d.timestamp).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }),
-            vwc: finalVwc,
+            vwc: Number(d.substrateHumidity.toFixed(1)),
             ec: 2.5, // EC not tracked yet - placeholder
-            temp: finalTemp,
+            temp: d.temperature > 0 ? Number(d.temperature.toFixed(1)) : 25,
             phase: hour >= 6 && hour < 11 ? 'P1 Ramp' : (hour >= 11 && hour < 16 ? 'P2 Maint' : 'P3 Dryback')
         };
-    }).filter((d: any) => d.vwc > 0 && d.temp > 0); // Remove any 0 values
+    });
 };
 
 // --- SUB-COMPONENTS ---
