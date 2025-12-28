@@ -23,6 +23,7 @@ require('dotenv').config({ path: require('path').join(__dirname, '.env') });
 const firestore = require('./firestore');
 const xiaomiBrowserAuth = require('./xiaomi-browser-auth');
 const { AIService } = require('./services/ai-service'); // [NEW] AI Service Import
+const { detectIrrigationEvents, calibrateFromKnownEvents } = require('./irrigationEventDetection'); // [NEW] Event Detection
 
 // Log para debugging - ver quÃ© se estÃ¡ leyendo del .env
 console.log('\n[DEBUG] Variables de entorno cargadas:');
@@ -685,6 +686,69 @@ app.get('/api/irrigation/events', async (req, res) => {
     } catch (error) {
         console.error('[IRRIGATION] Error getting events:', error);
         res.json({ success: true, date: req.query.date, events: [] });
+    }
+});
+
+// --- API IRRIGATION DETECTED (AUTO-DETECT FROM SENSOR DATA) ---
+app.get('/api/irrigation/detected', async (req, res) => {
+    try {
+        const { date, calibrate } = req.query;
+        const targetDate = date || new Date().toISOString().split('T')[0];
+
+        // Get sensor history for the target date
+        const startStr = `${targetDate}T00:00:00.000Z`;
+        const endStr = `${targetDate}T23:59:59.999Z`;
+
+        let history = [];
+        try {
+            history = await firestore.getSensorHistoryRange(startStr, endStr);
+        } catch(e) {
+            console.warn('[DETECTED] Firestore error:', e.message);
+        }
+
+        // Add in-memory history if available
+        if (sensorHistory && sensorHistory.length > 0) {
+            const memPoints = sensorHistory.filter(p => {
+                const t = new Date(p.timestamp).getTime();
+                return t >= new Date(startStr).getTime() && t <= new Date(endStr).getTime();
+            });
+            const timestamps = new Set(history.map(h => h.timestamp));
+            memPoints.forEach(p => {
+                if (!timestamps.has(p.timestamp)) history.push(p);
+            });
+        }
+
+        // Sort by time
+        history.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
+        // Optional: Calibrate with known events (user provides calibration data)
+        let calibration = undefined;
+        if (calibrate) {
+            // Example: calibrate=01:00:3,02:00:3 means 3% shots at 01:00 and 02:00
+            const knownEvents = calibrate.split(',').map(e => {
+                const [time, percent] = e.split(':');
+                return { time: time + ':' + percent.split(':')[0], shotPercent: Number(percent.split(':')[1] || percent) };
+            }).filter(e => e.time && e.shotPercent > 0);
+
+            if (knownEvents.length > 0) {
+                calibration = calibrateFromKnownEvents(history, knownEvents);
+                console.log('[DETECTED] Calibrated:', calibration);
+            }
+        }
+
+        // Detect events
+        const detectedEvents = detectIrrigationEvents(history, calibration);
+
+        res.json({
+            success: true,
+            date: targetDate,
+            totalDataPoints: history.length,
+            calibration: calibration || 'default',
+            events: detectedEvents
+        });
+    } catch (error) {
+        console.error('[DETECTED] Error:', error);
+        res.status(500).json({ error: error.message });
     }
 });
 
