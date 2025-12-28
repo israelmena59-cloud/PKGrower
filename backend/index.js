@@ -205,31 +205,55 @@ function autoDetectPumpID() {
     if (appSettings.irrigation?.pumpId) return appSettings.irrigation.pumpId;
 
     // 2. Search in Meross Devices (Priority)
+// Helper: Normalize string
     const normalize = (str) => (str || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const TERMS = ['bomba', 'agua', 'pump', 'water'];
+    const isMatch = (str) => {
+        if (!str) return false;
+        const norm = normalize(str);
+        return TERMS.some(t => norm.includes(t));
+    };
 
-    const mKeys = Object.keys(merossDevices);
-    for (const key of mKeys) {
+    // 2. Search in Meross Devices (Priority)
+    for (const key of Object.keys(merossDevices)) {
         const d = merossDevices[key];
-        const nameRaw = (d.name || '').toLowerCase();
-        const nameNorm = normalize(d.name);
+        const candidates = [
+            d.name,
+            d.customName,
+            d.device?.def?.name,
+            d.device?.def?.uuid
+        ];
 
-        // Check both raw and normalized for maximum safety
-        if (nameNorm.includes('bomba') || nameNorm.includes('agua') || nameNorm.includes('pump') || nameNorm.includes('water') ||
-            nameRaw.includes('bomba') || nameRaw.includes('agua')) {
-            console.log(`[PUMP] Auto-detected Meross pump: ${d.name} (${key})`);
+        // Check custom config override
+        if (typeof customDeviceConfigs !== 'undefined' && customDeviceConfigs[key]) {
+            candidates.push(customDeviceConfigs[key].name);
+        }
+
+        if (candidates.some(isMatch)) {
+            console.log(`[PUMP] Auto-detected Meross (Deep): ${d.name} (${key})`);
             return key;
         }
     }
 
     // 3. Search in Tuya Devices
-    const tKeys = Object.keys(tuyaDevices);
-    for (const key of tKeys) {
+    for (const key of Object.keys(tuyaDevices)) {
         const d = tuyaDevices[key];
-        const nameNorm = normalize(d.name);
-         // Allow switches, outlets, and unspecified types (avoid strict 'sensor' exclusion if name matches strongly)
-        if (d.deviceType !== 'sensor' &&
-           (nameNorm.includes('bomba') || nameNorm.includes('agua') || nameNorm.includes('pump') || nameNorm.includes('water'))) {
-             console.log(`[PUMP] Auto-detected Tuya pump: ${d.name} (${key})`);
+        if (d.deviceType === 'sensor') continue;
+
+        const candidates = [
+            d.name,
+            d.cloudDevice?.name,
+            d.cloudDevice?.local_name,
+            d.cloudDevice?.product_name
+        ];
+
+        // Check custom config override
+        if (typeof customDeviceConfigs !== 'undefined' && customDeviceConfigs[d.id]) {
+            candidates.push(customDeviceConfigs[d.id].name);
+        }
+
+        if (candidates.some(isMatch)) {
+             console.log(`[PUMP] Auto-detected Tuya (Deep): ${d.name} (${key})`);
              return key;
         }
     }
@@ -242,8 +266,32 @@ function autoDetectPumpID() {
 app.get('/api/debug/pump', (req, res) => {
     try {
         const detectedId = autoDetectPumpID();
-        const merossList = Object.values(merossDevices).map(d => ({ name: d.name, id: d.id, online: d.online }));
-        const tuyaList = Object.values(tuyaDevices).map(d => ({ name: d.name, id: d.id, type: d.deviceType }));
+
+        const getCandidates = (d, platform) => {
+            const list = [d.name];
+            if (platform === 'meross') {
+                if(d.customName) list.push(d.customName);
+                if(d.device?.def?.name) list.push(d.device.def.name);
+            } else if (platform === 'tuya') {
+                 if(d.cloudDevice?.name) list.push(d.cloudDevice.name);
+                 if(d.cloudDevice?.product_name) list.push(d.cloudDevice.product_name);
+            }
+             if (typeof customDeviceConfigs !== 'undefined' && customDeviceConfigs[d.id]) {
+                list.push(`Custom: ${customDeviceConfigs[d.id].name}`);
+            }
+            return list;
+        };
+
+        const merossList = Object.values(merossDevices).map(d => ({
+            id: d.id,
+            name: d.name,
+            candidates: getCandidates(d, 'meross')
+        }));
+        const tuyaList = Object.values(tuyaDevices).map(d => ({
+            id: d.id,
+            name: d.name,
+            candidates: getCandidates(d, 'tuya')
+        }));
 
         res.json({
             success: true,
