@@ -746,12 +746,16 @@ app.get('/api/irrigation/detected', async (req, res) => {
         // Detect events
         const detectedEvents = detectIrrigationEvents(history, calibration);
 
+        // Filter to only medium/high confidence events
+        const filteredEvents = detectedEvents.filter(e => e.confidence !== 'low');
+
         res.json({
             success: true,
             date: targetDate,
             totalDataPoints: history.length,
             calibration: calibration || 'default',
-            events: detectedEvents
+            totalDetected: detectedEvents.length,
+            events: filteredEvents
         });
     } catch (error) {
         console.error('[DETECTED] Error:', error);

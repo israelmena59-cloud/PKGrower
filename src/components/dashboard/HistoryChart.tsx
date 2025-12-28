@@ -130,19 +130,21 @@ const HistoryChart: React.FC<HistoryChartProps> = ({ type, title, targets, data:
   // Merge prop events with fetched events
   const irrigationEvents = [...propEvents, ...fetchedEvents];
 
-  // Fetch irrigation events from API
+  // Fetch irrigation events from API (now uses auto-detection with calibration)
   useEffect(() => {
     const fetchIrrigationEvents = async () => {
       try {
-        const today = new Date().toISOString().split('T')[0];
-        const response = await fetch(`${API_BASE_URL}/api/irrigation/events?date=${today}`);
+        const today = selectedDate || new Date().toISOString().split('T')[0];
+        // Use auto-detected events API with calibration for known 3% shots
+        const calibrationStr = '01:00:3,02:00:3,03:00:3'; // Known 3% shots at these times
+        const response = await fetch(`${API_BASE_URL}/api/irrigation/detected?date=${today}&calibrate=${calibrationStr}`);
         const data = await response.json();
         if (data.success && data.events) {
           setFetchedEvents(data.events.map((e: any) => ({
-            time: e.time,
-            phase: e.phase as 'p1' | 'p2' | 'p3',
-            vwcValue: e.vwcValue,
-            percentage: e.percentage
+            time: e.timeStr,
+            phase: 'p1' as 'p1' | 'p2' | 'p3', // Default to p1, could be enhanced
+            vwcValue: e.avgDelta,
+            percentage: e.estimatedShotPercent
           })));
         }
       } catch (e) { console.error('Error fetching irrigation events:', e); }
@@ -642,22 +644,22 @@ const HistoryChart: React.FC<HistoryChartProps> = ({ type, title, targets, data:
                                     </>
                                 )}
 
-                                {/* Irrigation Event Markers (P1/P2/P3 dots) */}
+                                {/* Irrigation Event Markers (Auto-detected with shot %) */}
                                 {type === 'substrate' && irrigationEvents && irrigationEvents.length > 0 && irrigationEvents.map((event, idx) => (
                                     <ReferenceDot
                                         key={`irrigation-${idx}`}
                                         yAxisId="left"
                                         x={event.time}
-                                        y={event.vwcValue || targets?.vwc || 50}
-                                        r={8}
-                                        fill={IRRIGATION_EVENT_COLORS[event.phase] || '#22c55e'}
+                                        y={event.vwcValue ? (targets?.vwc || 50) + event.vwcValue : targets?.vwc || 50}
+                                        r={10}
+                                        fill="#3b82f6"
                                         stroke="#fff"
                                         strokeWidth={2}
                                         label={{
-                                            value: event.phase.toUpperCase(),
+                                            value: event.percentage ? `${event.percentage}%` : '💧',
                                             position: 'top',
-                                            fill: IRRIGATION_EVENT_COLORS[event.phase] || '#22c55e',
-                                            fontSize: 9,
+                                            fill: '#3b82f6',
+                                            fontSize: 10,
                                             fontWeight: 'bold'
                                         }}
                                     />
