@@ -200,12 +200,27 @@ app.get('/health', (req, res) => {
 });
 
 // --- HELPER: Pump Auto-Detection ---
+// Global log buffer for debugging
+let detectionLog = [];
+
 function autoDetectPumpID() {
+    detectionLog = []; // Reset log on each run
+    detectionLog.push('Start Auto-Detect');
+
     // 1. Check override in settings
-    if (appSettings.irrigation?.pumpId) return appSettings.irrigation.pumpId;
+    if (appSettings.irrigation?.pumpId) {
+        const id = appSettings.irrigation.pumpId;
+        // Verify existence to avoid phantom IDs blocking auto-detect
+        if (merossDevices[id] || tuyaDevices[id]) {
+            console.log(`[PUMP] Using configured pump ID: ${id}`);
+            return id;
+        }
+        detectionLog.push(`Stale override ID: ${id}`);
+        console.log(`[PUMP] Stale pump ID in settings (${id}) - Device not found. Retrying auto-detect...`);
+    }
 
     // 2. Search in Meross Devices (Priority)
-// Helper: Normalize string
+    // Helper: Normalize string
     const normalize = (str) => (str || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     const TERMS = ['bomba', 'agua', 'pump', 'water'];
     const isMatch = (str) => {
@@ -214,18 +229,7 @@ function autoDetectPumpID() {
         return TERMS.some(t => norm.includes(t));
     };
 
-    // 1. Check override in settings (BUT VERIFY IT EXISTS)
-    if (appSettings.irrigation?.pumpId) {
-        const id = appSettings.irrigation.pumpId;
-        // Verify existence to avoid phantom IDs blocking auto-detect
-        if (merossDevices[id] || tuyaDevices[id]) {
-            console.log(`[PUMP] Using configured pump ID: ${id}`);
-            return id;
-        }
-        console.log(`[PUMP] Stale pump ID in settings (${id}) - Device not found. Retrying auto-detect...`);
-    }
-
-    // 2. Search in Meross Devices (Priority)
+    detectionLog.push(`Scanning Meross: ${Object.keys(merossDevices).length} devices`);
     for (const key of Object.keys(merossDevices)) {
         const d = merossDevices[key];
         const candidates = [
@@ -242,11 +246,13 @@ function autoDetectPumpID() {
 
         if (candidates.some(isMatch)) {
             console.log(`[PUMP] Auto-detected Meross (Deep): ${d.name} (${key})`);
+            detectionLog.push(`Match Meross: ${key}`);
             return key;
         }
     }
 
     // 3. Search in Tuya Devices
+    detectionLog.push(`Scanning Tuya: ${Object.keys(tuyaDevices).length} devices`);
     for (const key of Object.keys(tuyaDevices)) {
         const d = tuyaDevices[key];
 
@@ -272,16 +278,19 @@ function autoDetectPumpID() {
              console.log(`[DEBUG-MATCH] Candidates:`, JSON.stringify(candidates));
              // FORCE RETURN for this specific user ID to unblock
              console.log(`[DEBUG-MATCH] FORCE RETURN for target ID: ${d.id}`);
+             detectionLog.push(`FORCE MATCH found for: ${d.id}`);
              return key;
         }
 
         if (candidates.some(isMatch)) {
              console.log(`[PUMP] Auto-detected Tuya (Deep): ${d.name} (${key})`);
+             detectionLog.push(`Match Tuya: ${key}`);
              return key;
         }
     }
 
     // 4. Fallback default
+    detectionLog.push('Ended with default: bombaControlador');
     return 'bombaControlador';
 }
 
@@ -321,6 +330,7 @@ app.get('/api/debug/pump', (req, res) => {
             detectedId,
             merossDevices: merossList,
             tuyaDevices: tuyaList,
+            auditLog: detectionLog, // <--- EXPOSE AUDIT LOG
             message: detectedId === 'bombaControlador' ? 'Using default/fallback ID' : 'Auto-detected successfully'
         });
     } catch (e) {
