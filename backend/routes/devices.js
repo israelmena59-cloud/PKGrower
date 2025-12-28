@@ -400,6 +400,7 @@ module.exports = ({
 
             if ((deviceConfig && deviceConfig.platform === 'tuya') || tuyaDev) {
                  if (!getTuyaConnected()) return res.status(503).json({ error: 'Tuya offline' });
+                 if (!tuyaClient) return res.status(503).json({ error: 'Tuya client not initialized' });
 
                  const tuyaId = tuyaDev ? tuyaDev.id : (deviceConfig ? deviceConfig.id : deviceId);
                  const code = (tuyaDev && tuyaDev.switchCode) ? tuyaDev.switchCode : 'switch_1';
