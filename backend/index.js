@@ -219,6 +219,7 @@ function autoDetectPumpID() {
         const id = appSettings.irrigation.pumpId;
         // Verify existence to avoid phantom IDs blocking auto-detect
         if (merossDevices[id] || tuyaDevices[id]) {
+            console.log(`[PUMP] Using configured pump ID: ${id}`);
             return id;
         }
         console.log(`[PUMP] Stale pump ID in settings (${id}) - Device not found. Retrying auto-detect...`);
@@ -263,6 +264,18 @@ function autoDetectPumpID() {
         // Check custom config override
         if (typeof customDeviceConfigs !== 'undefined' && customDeviceConfigs[d.id]) {
             candidates.push(customDeviceConfigs[d.id].name);
+        }
+
+        // DEBUG: Specific log for the problematic device
+        if (d.id === 'ebf427eih6oxomiv') {
+             console.log(`[DEBUG-MATCH] Checking user device: ${d.name} (${key})`);
+             console.log(`[DEBUG-MATCH] Candidates:`, JSON.stringify(candidates));
+             const matchResult = candidates.some(isMatch);
+             console.log(`[DEBUG-MATCH] Match Result: ${matchResult}`);
+             if (matchResult) {
+                 console.log(`[DEBUG-MATCH] SUCCESS DETECTED! Returning key: ${key}`);
+                 return key;
+             }
         }
 
         if (candidates.some(isMatch)) {
