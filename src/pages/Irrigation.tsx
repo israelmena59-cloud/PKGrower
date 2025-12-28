@@ -289,7 +289,7 @@ const Irrigation: React.FC = () => {
                             <AreaChart data={strategyData}>
                                 <defs>
                                     <linearGradient id="colorVwc" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4}/>
+                                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.1}/>
                                         <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
                                     </linearGradient>
                                 </defs>
@@ -297,7 +297,7 @@ const Irrigation: React.FC = () => {
                                 <XAxis dataKey="time" stroke="#666" fontSize={12} tickLine={false} axisLine={false} />
 
                                 {/* Y-Axis Left: VWC */}
-                                <YAxis yAxisId="left" domain={['dataMin - 5', 'dataMax + 5']} stroke="#3b82f6" fontSize={12} tickLine={false} axisLine={false} unit="%" width={30} />
+                                <YAxis yAxisId="left" domain={['dataMin - 5', 'auto']} stroke="#3b82f6" fontSize={12} tickLine={false} axisLine={false} unit="%" width={30} />
                                 {/* Y-Axis Right: EC */}
                                 <YAxis yAxisId="right" orientation="right" domain={[1, 5]} stroke="#f59e0b" fontSize={12} tickLine={false} axisLine={false} width={30} />
 
@@ -319,10 +319,8 @@ const Irrigation: React.FC = () => {
                                     name="VWC (Humedad)"
                                     stroke="#3b82f6"
                                     strokeWidth={3}
-                                    fillOpacity={0.3}
-                                    fill="#3b82f6"
+                                    fill="url(#colorVwc)"
                                     connectNulls
-                                    isAnimationActive={false}
                                 />
                                 <Line
                                     yAxisId="right"

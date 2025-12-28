@@ -304,24 +304,24 @@ const Environment: React.FC = () => {
                 <AreaChart data={vpdData}>
                     <defs>
                         <linearGradient id="colorTemp" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.3}/>
+                            <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.1}/>
                             <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/>
                         </linearGradient>
                         <linearGradient id="colorHum" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.1}/>
                             <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
                         </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={true} vertical={false} />
                     <XAxis dataKey="time" stroke="#666" fontSize={12} tickLine={false} axisLine={false} />
-                    <YAxis yAxisId="left" domain={['dataMin - 2', 'dataMax + 2']} stroke="#666" fontSize={12} tickLine={false} axisLine={false} unit="°C" width={30} />
-                    <YAxis yAxisId="right" orientation="right" domain={['dataMin - 5', 'dataMax + 5']} stroke="#666" fontSize={12} tickLine={false} axisLine={false} unit="%" width={30} />
+                    <YAxis yAxisId="left" domain={['dataMin - 5', 'auto']} stroke="#666" fontSize={12} tickLine={false} axisLine={false} unit="°C" width={30} />
+                    <YAxis yAxisId="right" orientation="right" domain={['dataMin - 5', 'auto']} stroke="#666" fontSize={12} tickLine={false} axisLine={false} unit="%" width={30} />
                     <RechartsTooltip
                         contentStyle={{ backgroundColor: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' }}
                         itemStyle={{ fontSize: '12px' }}
                     />
-                    <Area yAxisId="left" type="monotone" dataKey="temp" stroke="#f59e0b" fillOpacity={0.3} fill="#f59e0b" strokeWidth={2} connectNulls isAnimationActive={false} />
-                    <Area yAxisId="right" type="monotone" dataKey="hum" stroke="#3b82f6" fillOpacity={0.3} fill="#3b82f6" strokeWidth={2} connectNulls isAnimationActive={false} />
+                    <Area yAxisId="left" type="monotone" dataKey="temp" stroke="#f59e0b" strokeWidth={2} fill="url(#colorTemp)" connectNulls />
+                    <Area yAxisId="right" type="monotone" dataKey="hum" stroke="#3b82f6" strokeWidth={2} fill="url(#colorHum)" connectNulls />
                 </AreaChart>
             </ResponsiveContainer>
         </div>
