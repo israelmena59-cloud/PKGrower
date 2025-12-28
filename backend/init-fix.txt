@@ -1,0 +1,36 @@
+// IMMEDIATE TUYA INITIALIZATION - Fixed version
+// Inicializar dispositivos (IMMEDIATE)
+if (!MODO_SIMULACION) {
+  console.log('\n📱 Iniciando conexión con Tuya/Xiaomi INMEDIATAMENTE...');
+
+  // Execute immediately (not deferred)
+  (async () => {
+      try {
+          console.log('📱 [INIT] Conectando con Tuya Cloud API...');
+
+          // 1. Conectar Cliente Tuya (Core)
+          await initSystemConnectors();
+
+          // 2. Descubrir Dispositivos
+          await initTuyaDevices();
+          await initXiaomiDevices();
+          console.log('📱 [INIT] Dispositivos inicializados correctamente.');
+
+      } catch (err) {
+          console.error('❌ [INIT ERROR]', err);
+      }
+  })();
+
+  // Iniciar Polling de Tuya (Cada 60 segundos)
+  setInterval(async () => {
+      console.log('[POLLING] Actualizando estados de Tuya...');
+      await initTuyaDevices();
+
+      // Actualizar historial de sensores
+      try {
+           await saveSensorSnapshot();
+      } catch (e) {
+           console.error('[HISTORY-BG] Error saving snapshot:', e.message);
+      }
+  }, 60000); // 60s
+}

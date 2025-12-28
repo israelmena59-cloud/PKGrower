@@ -156,8 +156,7 @@ const HistoryChart: React.FC<HistoryChartProps> = ({ type, title, targets, data:
   const rawData = (externalData && range === 'day' && isLive) ? externalData : internalData;
 
   // Process data for charts (Sanitization & Formatting)
-  // This ensures BOTH externalData and internalData are cleaned of zeros.
-  // Process data for charts (Sanitization & Formatting)
+  // This ensures BOTH externalData and internalData are cleaned of zeros and nulls.
   const chartData = React.useMemo(() => {
     if (!Array.isArray(rawData)) return [];
 
@@ -189,6 +188,11 @@ const HistoryChart: React.FC<HistoryChartProps> = ({ type, title, targets, data:
                     }
                 }
 
+                // Convert 0 or NaN to null (prevents chart drops)
+                const safeT = (t > 0 && !isNaN(t)) ? t : null;
+                const safeH = (h > 0 && !isNaN(h)) ? h : null;
+                const safeS = (s > 0 && !isNaN(s)) ? s : null;
+
                 return {
                   ...d,
                   timeStr: dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -196,23 +200,29 @@ const HistoryChart: React.FC<HistoryChartProps> = ({ type, title, targets, data:
                   fullDate: dateObj,
                   lightValue,
 
-                  // Map 0 to null to prevent drops/spikes (converts falsy 0 to null)
-                  temperature: t > 0 ? t : null,
-                  humidity: h > 0 ? h : null,
-                  substrateHumidity: s > 0 ? s : null,
-                  sh1: sh1 > 0 ? sh1 : null,
-                  sh2: sh2 > 0 ? sh2 : null,
-                  sh3: sh3 > 0 ? sh3 : null,
+                  temperature: safeT,
+                  humidity: safeH,
+                  substrateHumidity: safeS,
+                  sh1: (sh1 > 0 && !isNaN(sh1)) ? sh1 : null,
+                  sh2: (sh2 > 0 && !isNaN(sh2)) ? sh2 : null,
+                  sh3: (sh3 > 0 && !isNaN(sh3)) ? sh3 : null,
 
-                  dp: (t > 0 && h > 0) ? calculateDP(t, h) : null,
-                  vpd: (d.vpd && Number(d.vpd) > 0) ? Number(d.vpd) : ((t > 0 && h > 0) ? calculateVPD(t, h) : null)
+                  dp: (safeT && safeH) ? calculateDP(safeT, safeH) : null,
+                  vpd: (d.vpd && Number(d.vpd) > 0) ? Number(d.vpd) : ((safeT && safeH) ? calculateVPD(safeT, safeH) : null)
                 };
             } catch (err) {
                 console.warn("Skipping malformed data point", d);
                 return null;
             }
         })
-        .filter(Boolean); // Remove nulls from map errors
+        .filter(Boolean) // Remove nulls from map errors
+        // CRITICAL: Filter out records where primary sensors are missing to prevent Area fill drops
+        .filter(d => {
+            // For environment chart: need temp OR humidity
+            // For substrate chart: need substrateHumidity
+            // Keep record if it has at least one valid sensor reading
+            return d.temperature !== null || d.humidity !== null || d.substrateHumidity !== null;
+        });
   }, [rawData, lightingSchedule]);
 
   useEffect(() => {

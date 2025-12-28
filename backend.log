@@ -1,0 +1,53 @@
+
+> pkgrower-web-app@0.0.0 start
+> node backend/index.js
+
+[DEBUG] Checking dist path: /Users/israelmenanovion/Desktop/PKGrower/dist
+[DEBUG] dist folder EXISTS. Contents: [
+  '404.html',
+  'assets',
+  'favicon.ico',
+  'index.html',
+  'logo.png',
+  'manifest.json',
+  'pwa-192x192.png',
+  'pwa-512x512.png',
+  'pwa-icon.svg'
+]
+[FIRESTORE] Local mode - buscando credenciales en: /Users/israelmenanovion/Desktop/PKGrower/backend/service-account.json
+[FIRESTORE] ✓ Conexión exitosa via Service Account.
+
+[DEBUG] Variables de entorno cargadas:
+  MODO_SIMULACION: false
+  XIAOMI_HUMIDIFIER_ID: CONFIGURADO
+  XIAOMI_HUMIDIFIER_TOKEN: CONFIGURADO (primeros 10 chars: c2bafea798...)
+  XIAOMI_CAMERA_ID: CONFIGURADO
+  XIAOMI_CAMERA_TOKEN: CONFIGURADO (primeros 10 chars: 4632736962...)
+  GEMINI_API_KEY: CONFIGURADO (****POJ0)
+  XIAOMI_HUMIDIFIER_MODEL: deerma.humidifier.jsq2w
+  XIAOMI_CAMERA_MODEL: isa.camera.hlc7
+  TUYA_ACCESS_KEY: CONFIGURADO (primeros 10 chars: dtpfhgrhn4...)
+  TUYA_SECRET_KEY: CONFIGURADO (primeros 10 chars: 8f7a1dcbd6...)
+
+node:internal/modules/cjs/loader:1424
+  throw err;
+  ^
+
+Error: Cannot find module 'express-rate-limit'
+Require stack:
+- /Users/israelmenanovion/Desktop/PKGrower/backend/index.js
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1421:15)
+    at defaultResolveImpl (node:internal/modules/cjs/loader:1059:19)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1064:22)
+    at Module._load (node:internal/modules/cjs/loader:1227:37)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:245:24)
+    at Module.require (node:internal/modules/cjs/loader:1504:12)
+    at require (node:internal/modules/helpers:152:16)
+    at Object.<anonymous> (/Users/israelmenanovion/Desktop/PKGrower/backend/index.js:57:19)
+    at Module._compile (node:internal/modules/cjs/loader:1761:14) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [ '/Users/israelmenanovion/Desktop/PKGrower/backend/index.js' ]
+}
+
+Node.js v24.12.0
