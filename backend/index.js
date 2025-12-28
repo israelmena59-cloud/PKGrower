@@ -1346,6 +1346,25 @@ app.get('/api/devices/all', async (req, res) => {
       }
     }
 
+    // Agregar dispositivos Meross to output
+    for (const [key, device] of Object.entries(merossDevices)) {
+        devices.push({
+            id: device.id,
+            name: device.name,
+            type: device.type || 'outlet',
+            status: device.online,
+            platform: 'meross',
+            value: 0,
+            unit: '',
+            description: `${device.name} (Meross)`,
+            lastUpdate: new Date().toLocaleTimeString(),
+            properties: {
+                online: device.online,
+                type: device.type
+            }
+        });
+    }
+
     res.json(devices);
   } catch (error) {
     res.status(500).json({ error: error.message });
