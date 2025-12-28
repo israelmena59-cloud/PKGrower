@@ -205,11 +205,17 @@ function autoDetectPumpID() {
     if (appSettings.irrigation?.pumpId) return appSettings.irrigation.pumpId;
 
     // 2. Search in Meross Devices (Priority)
+    const normalize = (str) => (str || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
     const mKeys = Object.keys(merossDevices);
     for (const key of mKeys) {
         const d = merossDevices[key];
-        const name = (d.name || '').toLowerCase();
-        if (name.includes('bomba') || name.includes('agua') || name.includes('pump') || name.includes('water')) {
+        const nameRaw = (d.name || '').toLowerCase();
+        const nameNorm = normalize(d.name);
+
+        // Check both raw and normalized for maximum safety
+        if (nameNorm.includes('bomba') || nameNorm.includes('agua') || nameNorm.includes('pump') || nameNorm.includes('water') ||
+            nameRaw.includes('bomba') || nameRaw.includes('agua')) {
             console.log(`[PUMP] Auto-detected Meross pump: ${d.name} (${key})`);
             return key;
         }
@@ -219,8 +225,10 @@ function autoDetectPumpID() {
     const tKeys = Object.keys(tuyaDevices);
     for (const key of tKeys) {
         const d = tuyaDevices[key];
-        const name = (d.name || '').toLowerCase();
-        if (d.deviceType !== 'sensor' && (name.includes('bomba') || name.includes('agua') || name.includes('pump') || name.includes('water'))) {
+        const nameNorm = normalize(d.name);
+         // Allow switches, outlets, and unspecified types (avoid strict 'sensor' exclusion if name matches strongly)
+        if (d.deviceType !== 'sensor' &&
+           (nameNorm.includes('bomba') || nameNorm.includes('agua') || nameNorm.includes('pump') || nameNorm.includes('water'))) {
              console.log(`[PUMP] Auto-detected Tuya pump: ${d.name} (${key})`);
              return key;
         }
