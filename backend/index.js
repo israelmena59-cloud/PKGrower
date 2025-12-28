@@ -596,30 +596,53 @@ async function saveSensorSnapshot() {
 
     const sub = countSubstrate > 0 ? parseFloat((avgSubstrate / countSubstrate).toFixed(0)) : null;
 
-    // CRITICAL: Do not log if all values are invalid
-    if (temp === null && hum === null && sub === null) return;
+    // CRITICAL FIX: Track which data types are complete
+    const hasEnvironmentData = temp !== null && hum !== null;
+    const hasSubstrateData = sub !== null;
 
+    // SKIP if NO valid data at all
+    if (!hasEnvironmentData && !hasSubstrateData) {
+        console.log('[TICK] Skipping snapshot: No valid sensor data');
+        return;
+    }
+
+    // Create record - only include fields that have valid data
+    // This prevents nulls from being saved and later interpreted as 0
     const newRecord = {
         timestamp: new Date().toISOString(),
-        temperature: temp,
-        humidity: hum,
-        substrateHumidity: sub,
-        sh1: sh1, // Individual sensor 1
-        sh2: sh2, // Individual sensor 2
-        sh3: sh3  // Individual sensor 3
     };
 
-    // Only save if we have at least one valid reading
-    if (newRecord.temperature !== null || newRecord.humidity !== null || newRecord.substrateHumidity !== null) {
-        sensorHistory.push(newRecord);
-        if (sensorHistory.length > MAX_HISTORY_LENGTH) sensorHistory.shift();
+    // Only add environment data if BOTH temp and humidity are valid
+    // (prevents partial saves that cause chart drops)
+    if (hasEnvironmentData) {
+        newRecord.temperature = temp;
+        newRecord.humidity = hum;
+        // Calculate VPD if we have valid environment data
+        const safeT = temp;
+        const safeH = hum;
+        const svp = 610.7 * Math.pow(10, (7.5 * safeT) / (237.3 + safeT));
+        const vpd = ((100 - safeH) / 100) * svp / 1000;
+        newRecord.vpd = parseFloat(vpd.toFixed(2));
+    }
 
-        try {
-            await firestore.saveSensorRecord(newRecord);
-            console.log('[TICK] Sensor snapshot saved:', newRecord);
-        } catch (e) {
-            console.error('[TICK] Error saving snapshot:', e.message);
-        }
+    // Substrate data
+    if (hasSubstrateData) {
+        newRecord.substrateHumidity = sub;
+        if (sh1 !== null) newRecord.sh1 = sh1;
+        if (sh2 !== null) newRecord.sh2 = sh2;
+        if (sh3 !== null) newRecord.sh3 = sh3;
+    }
+
+    // Push to in-memory history
+    sensorHistory.push(newRecord);
+    if (sensorHistory.length > MAX_HISTORY_LENGTH) sensorHistory.shift();
+
+    // Save to Firestore
+    try {
+        await firestore.saveSensorRecord(newRecord);
+        console.log('[TICK] Sensor snapshot saved:', newRecord);
+    } catch (e) {
+        console.error('[TICK] Error saving snapshot:', e.message);
     }
 }
 
