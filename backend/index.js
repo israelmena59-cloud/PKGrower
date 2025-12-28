@@ -547,52 +547,69 @@ async function runAutomationRulesTick() {
 }
 
 // --- SENSOR SNAPSHOT FUNCTION ---
-// --- SENSOR SNAPSHOT FUNCTION ---
 async function saveSensorSnapshot() {
     if (MODO_SIMULACION) return;
 
-    // Aggregate sensor data from tuyaDevices cache
-    let avgTemp = 0, avgHum = 0, avgSubstrate = 0;
-    let countTemp = 0, countHum = 0, countSubstrate = 0;
+    // Helper: Find device by name substring (case-insensitive)
+    const findByName = (substr) => Object.values(tuyaDevices).find(d =>
+        d.name?.toLowerCase().includes(substr.toLowerCase()) ||
+        d.cloudDevice?.name?.toLowerCase().includes(substr.toLowerCase())
+    );
 
-    // Environment sensor
-    if (tuyaDevices['sensorAmbiente']) {
-        if (tuyaDevices['sensorAmbiente'].temperature !== undefined) {
-            avgTemp = tuyaDevices['sensorAmbiente'].temperature;
-            countTemp = 1;
+    // Environment sensor (look for "Ambiente" or "RH/TH" in name)
+    const envSensor = findByName('ambiente') || findByName('rh/th');
+    let temp = null, hum = null;
+    if (envSensor) {
+        if (envSensor.temperature !== undefined && envSensor.temperature !== null) {
+            temp = parseFloat(Number(envSensor.temperature).toFixed(1));
         }
-        if (tuyaDevices['sensorAmbiente'].humidity !== undefined) {
-            avgHum = tuyaDevices['sensorAmbiente'].humidity;
-            countHum = 1;
+        if (envSensor.humidity !== undefined && envSensor.humidity !== null) {
+            hum = parseFloat(Number(envSensor.humidity).toFixed(0));
         }
     }
 
-    // Substrate sensors (Enhanced check for humidity or value)
-    ['sensorSustrato1', 'sensorSustrato2', 'sensorSustrato3'].forEach(key => {
-        const dev = tuyaDevices[key];
-        const val = dev?.humidity !== undefined ? dev.humidity : dev?.value;
-        if (val !== undefined && val !== null) {
-            avgSubstrate += val;
+    // Substrate sensors (look for "Sustrato" or "Soil" in name)
+    const substrateSensors = Object.values(tuyaDevices).filter(d =>
+        d.name?.toLowerCase().includes('sustrato') ||
+        d.name?.toLowerCase().includes('soil') ||
+        d.cloudDevice?.name?.toLowerCase().includes('sustrato') ||
+        d.cloudDevice?.name?.toLowerCase().includes('soil')
+    ).sort((a, b) => (a.name || '').localeCompare(b.name || '')); // Sort by name for consistent sh1/sh2/sh3 order
+
+    let sh1 = null, sh2 = null, sh3 = null;
+    let avgSubstrate = 0, countSubstrate = 0;
+
+    substrateSensors.forEach((dev, index) => {
+        const val = dev.humidity !== undefined ? dev.humidity : dev.value;
+        if (val !== undefined && val !== null && val > 0) {
+            const numVal = parseFloat(Number(val).toFixed(0));
+            avgSubstrate += numVal;
             countSubstrate++;
+
+            // Assign to sh1, sh2, sh3 based on index
+            if (index === 0) sh1 = numVal;
+            else if (index === 1) sh2 = numVal;
+            else if (index === 2) sh3 = numVal;
         }
     });
 
-    const temp = countTemp > 0 ? parseFloat(avgTemp.toFixed(1)) : null;
-    const hum = countHum > 0 ? parseFloat(avgHum.toFixed(0)) : null;
     const sub = countSubstrate > 0 ? parseFloat((avgSubstrate / countSubstrate).toFixed(0)) : null;
 
-    // CRITICAL: Do not log zeroes if they look invalid (basic sanity check)
-    if (temp === 0 && hum === 0) return;
+    // CRITICAL: Do not log if all values are invalid
+    if (temp === null && hum === null && sub === null) return;
 
     const newRecord = {
         timestamp: new Date().toISOString(),
         temperature: temp,
         humidity: hum,
-        substrateHumidity: sub
+        substrateHumidity: sub,
+        sh1: sh1, // Individual sensor 1
+        sh2: sh2, // Individual sensor 2
+        sh3: sh3  // Individual sensor 3
     };
 
     // Only save if we have at least one valid reading
-    if (newRecord.temperature !== null || newRecord.humidity !== null) {
+    if (newRecord.temperature !== null || newRecord.humidity !== null || newRecord.substrateHumidity !== null) {
         sensorHistory.push(newRecord);
         if (sensorHistory.length > MAX_HISTORY_LENGTH) sensorHistory.shift();
 
