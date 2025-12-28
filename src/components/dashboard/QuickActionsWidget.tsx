@@ -82,29 +82,38 @@ const QuickActionsWidget: React.FC = () => {
     };
   }, []);
 
-  // Current phase indicator
+  // Current phase based on time of day (3 periods only)
+  // P1: Primer riego hasta saturación de campo (blue)
+  // P2: Eventos de mantenimiento (light blue/celeste)
+  // P3: Dryback (yellow)
   const now = new Date();
   const hour = now.getHours();
   const lightsOn = settings.lightsOnHour || 6;
   const lightsOff = settings.lightsOffHour || 18;
   const isDay = hour >= lightsOn && hour < lightsOff;
 
-  let currentPhase = 'P5';
+  let currentPhase = 'P3'; // Default to dryback (night or late day)
+  let phaseColor = '#f59e0b'; // Yellow
+
   if (isDay) {
     const hoursIntoDay = hour - lightsOn;
     const totalDayHours = lightsOff - lightsOn;
-    if (hoursIntoDay < 2) currentPhase = 'P1';
-    else if (hoursIntoDay < totalDayHours * 0.4) currentPhase = 'P2';
-    else if (hoursIntoDay < totalDayHours * 0.7) currentPhase = 'P3';
-    else currentPhase = 'P4';
+    if (hoursIntoDay < 2) {
+      currentPhase = 'P1';
+      phaseColor = '#3b82f6'; // Blue - Saturación
+    } else if (hoursIntoDay < totalDayHours * 0.7) {
+      currentPhase = 'P2';
+      phaseColor = '#22d3ee'; // Celeste/Light blue - Mantenimiento
+    } else {
+      currentPhase = 'P3';
+      phaseColor = '#f59e0b'; // Yellow - Dryback
+    }
   }
 
   const phaseDescriptions: Record<string, string> = {
-    'P1': 'Primer riego',
-    'P2': 'Fase vegetativa',
-    'P3': 'Fase generativa',
-    'P4': 'Último riego',
-    'P5': 'Período nocturno'
+    'P1': 'Saturación de campo',
+    'P2': 'Mantenimiento',
+    'P3': 'Dryback'
   };
 
   return (
@@ -125,9 +134,10 @@ const QuickActionsWidget: React.FC = () => {
           icon={<Clock size={12} />}
           label={`${currentPhase} - ${phaseDescriptions[currentPhase]}`}
           sx={{
-            bgcolor: isDay ? 'rgba(255, 149, 0, 0.2)' : 'rgba(100, 100, 255, 0.2)',
-            color: isDay ? '#FF9500' : '#6464FF',
-            fontSize: '0.65rem'
+            bgcolor: `${phaseColor}25`,
+            color: phaseColor,
+            fontSize: '0.65rem',
+            border: `1px solid ${phaseColor}40`
           }}
         />
       </Box>
@@ -163,16 +173,13 @@ const QuickActionsWidget: React.FC = () => {
         </Box>
       )}
 
-      {/* Quick Shot Buttons - P1-P6 with Gradients */}
+      {/* Quick Shot Buttons - 3 Periods with specific colors */}
       <Grid container spacing={1} sx={{ mb: 2 }}>
         {[
-          { label: 'P1', pct: 1, color: '#22c55e' },
-          { label: 'P2', pct: 2, color: '#3b82f6' },
-          { label: 'P3', pct: 3, color: '#8b5cf6' },
-          { label: 'P4', pct: 4, color: '#f59e0b' },
-          { label: 'P5', pct: 5, color: '#ef4444' },
-          { label: 'P6', pct: 6, color: '#ec4899' }
-        ].map(({ label, pct, color }) => (
+          { label: 'P1', pct: 3, color: '#3b82f6', desc: 'Saturación' }, // Blue
+          { label: 'P2', pct: 2, color: '#22d3ee', desc: 'Mantenimiento' }, // Light blue/Celeste
+          { label: 'P3', pct: 1, color: '#f59e0b', desc: 'Dryback' } // Yellow
+        ].map(({ label, pct, color, desc }) => (
           <Grid item xs={4} key={label}>
             <Button
               fullWidth
@@ -191,8 +198,11 @@ const QuickActionsWidget: React.FC = () => {
               {pulsing ? <CircularProgress size={14} color="inherit" /> : (
                 <>
                   <Typography variant="body2" fontWeight="bold">{label}</Typography>
-                  <Typography variant="caption" sx={{ opacity: 0.8, fontSize: '0.55rem' }}>
-                    {getVolume(pct)}ml / {Math.round((parseFloat(getVolume(pct)) / pumpRate) * 60)}s
+                  <Typography variant="caption" sx={{ opacity: 0.9, fontSize: '0.5rem' }}>
+                    {desc}
+                  </Typography>
+                  <Typography variant="caption" sx={{ opacity: 0.7, fontSize: '0.55rem' }}>
+                    {getVolume(pct)}ml
                   </Typography>
                 </>
               )}
@@ -235,20 +245,19 @@ const QuickActionsWidget: React.FC = () => {
         </Box>
       )}
 
-      {/* Phase Recommendation */}
       {currentPhase === 'P1' && !pulsing && (
         <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-          💡 P1: Primer riego del día. Recomendado 3-5% para activar metabolismo.
+          💡 P1: Primer riego del día. Alcanzar saturación de campo (3-5%).
         </Typography>
       )}
-      {currentPhase === 'P4' && !pulsing && (
+      {currentPhase === 'P2' && !pulsing && (
         <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-          💡 P4: Último riego. Mantener VWC para el período nocturno.
+          💡 P2: Eventos de mantenimiento según etapa (veg/flower). Mantener VWC óptimo.
         </Typography>
       )}
-      {currentPhase === 'P5' && !pulsing && (
+      {currentPhase === 'P3' && !pulsing && (
         <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-          🌙 P5: Período nocturno. Evitar riego para permitir dryback.
+          🌙 P3: Dryback. Reducir VWC gradualmente. Evitar riego excesivo.
         </Typography>
       )}
     </Box>
