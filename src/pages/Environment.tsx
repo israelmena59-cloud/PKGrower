@@ -109,8 +109,11 @@ const Environment: React.FC = () => {
         try {
             const historyData = await apiClient.getSensorHistory();
             if (historyData && historyData.length > 0) {
-                // Format for chart - take last 48 points for ~24h
-                const slicedData = historyData.slice(-48);
+                // Sort by timestamp and take last 48 points for ~24h
+                const sortedData = [...historyData].sort((a: any, b: any) =>
+                    new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+                );
+                const slicedData = sortedData.slice(-48);
 
                 // Pre-scan to find first valid values for initialization
                 let lastVpd = slicedData.find((d: any) => d.vpd > 0)?.vpd || 1.0;

@@ -21,8 +21,11 @@ const formatStrategyData = (historyData: any[]) => {
         }));
     }
 
-    // Format real data - take last 48 points (~24h)
-    const slicedData = historyData.slice(-48);
+    // Sort by timestamp and take last 48 points (~24h)
+    const sortedData = [...historyData].sort((a: any, b: any) =>
+        new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    );
+    const slicedData = sortedData.slice(-48);
 
     // Pre-scan to find first valid values (avoids initial 0s)
     let lastVwc = slicedData.find((d: any) => d.substrateHumidity > 0)?.substrateHumidity || 50;
