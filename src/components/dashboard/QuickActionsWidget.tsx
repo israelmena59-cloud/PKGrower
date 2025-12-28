@@ -173,14 +173,17 @@ const QuickActionsWidget: React.FC = () => {
         </Box>
       )}
 
-      {/* Quick Shot Buttons - 3 Periods with specific colors */}
+      {/* Quick Shot Buttons - Percentage shots 1%-6% */}
       <Grid container spacing={1} sx={{ mb: 2 }}>
         {[
-          { label: 'P1', pct: 3, color: '#3b82f6', desc: 'Saturación' }, // Blue
-          { label: 'P2', pct: 2, color: '#22d3ee', desc: 'Mantenimiento' }, // Light blue/Celeste
-          { label: 'P3', pct: 1, color: '#f59e0b', desc: 'Dryback' } // Yellow
-        ].map(({ label, pct, color, desc }) => (
-          <Grid item xs={4} key={label}>
+          { pct: 1, color: '#22c55e' },
+          { pct: 2, color: '#3b82f6' },
+          { pct: 3, color: '#8b5cf6' },
+          { pct: 4, color: '#f59e0b' },
+          { pct: 5, color: '#ef4444' },
+          { pct: 6, color: '#ec4899' }
+        ].map(({ pct, color }) => (
+          <Grid item xs={4} key={pct}>
             <Button
               fullWidth
               variant="contained"
@@ -197,11 +200,8 @@ const QuickActionsWidget: React.FC = () => {
             >
               {pulsing ? <CircularProgress size={14} color="inherit" /> : (
                 <>
-                  <Typography variant="body2" fontWeight="bold">{label}</Typography>
-                  <Typography variant="caption" sx={{ opacity: 0.9, fontSize: '0.5rem' }}>
-                    {desc}
-                  </Typography>
-                  <Typography variant="caption" sx={{ opacity: 0.7, fontSize: '0.55rem' }}>
+                  <Typography variant="body2" fontWeight="bold">{pct}%</Typography>
+                  <Typography variant="caption" sx={{ opacity: 0.8, fontSize: '0.55rem' }}>
                     {getVolume(pct)}ml
                   </Typography>
                 </>
@@ -210,6 +210,34 @@ const QuickActionsWidget: React.FC = () => {
           </Grid>
         ))}
       </Grid>
+
+      {/* Current Period Info - P1/P2/P3 with colors */}
+      <Box sx={{
+        p: 1.5,
+        mb: 1,
+        borderRadius: '10px',
+        bgcolor: `${phaseColor}15`,
+        border: `1px solid ${phaseColor}40`,
+        textAlign: 'center'
+      }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1, mb: 0.5 }}>
+          <Box sx={{
+            width: 10,
+            height: 10,
+            borderRadius: '50%',
+            bgcolor: phaseColor,
+            boxShadow: `0 0 6px ${phaseColor}`
+          }} />
+          <Typography variant="subtitle2" fontWeight="bold" sx={{ color: phaseColor }}>
+            {currentPhase} - {phaseDescriptions[currentPhase]}
+          </Typography>
+        </Box>
+        <Typography variant="caption" color="text.secondary">
+          {currentPhase === 'P1' && '💧 Primer riego del día. Alcanzar saturación de campo.'}
+          {currentPhase === 'P2' && '🌱 Eventos de mantenimiento según etapa (veg/flower).'}
+          {currentPhase === 'P3' && '🌙 Dryback. Reducir VWC gradualmente.'}
+        </Typography>
+      </Box>
 
       {/* Volume Info */}
       <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1, textAlign: 'center' }}>
@@ -245,21 +273,7 @@ const QuickActionsWidget: React.FC = () => {
         </Box>
       )}
 
-      {currentPhase === 'P1' && !pulsing && (
-        <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-          💡 P1: Primer riego del día. Alcanzar saturación de campo (3-5%).
-        </Typography>
-      )}
-      {currentPhase === 'P2' && !pulsing && (
-        <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-          💡 P2: Eventos de mantenimiento según etapa (veg/flower). Mantener VWC óptimo.
-        </Typography>
-      )}
-      {currentPhase === 'P3' && !pulsing && (
-        <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-          🌙 P3: Dryback. Reducir VWC gradualmente. Evitar riego excesivo.
-        </Typography>
-      )}
+
     </Box>
   );
 };
