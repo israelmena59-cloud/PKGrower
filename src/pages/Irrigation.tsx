@@ -22,13 +22,24 @@ const formatStrategyData = (historyData: any[]) => {
     }
 
     // Format real data - take last 48 points (~24h)
+    // Interpolate missing values to prevent chart drops
+    let lastVwc = 45, lastTemp = 22;
     return historyData.slice(-48).map((d: any) => {
         const hour = new Date(d.timestamp).getHours();
+
+        // Get values or use null for missing
+        const vwc = (d.substrateHumidity != null && d.substrateHumidity > 0) ? d.substrateHumidity : null;
+        const temp = (d.temperature != null && d.temperature > 0) ? d.temperature : null;
+
+        // Update last known values for interpolation
+        if (vwc !== null) lastVwc = vwc;
+        if (temp !== null) lastTemp = temp;
+
         return {
             time: new Date(d.timestamp).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }),
-            vwc: d.substrateHumidity || 0,
+            vwc: vwc ?? lastVwc,
             ec: 2.5, // EC not tracked yet - placeholder
-            temp: d.temperature || 0,
+            temp: temp ?? lastTemp,
             phase: hour >= 6 && hour < 11 ? 'P1 Ramp' : (hour >= 11 && hour < 16 ? 'P2 Maint' : 'P3 Dryback')
         };
     });
