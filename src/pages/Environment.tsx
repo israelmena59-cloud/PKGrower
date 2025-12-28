@@ -110,9 +110,14 @@ const Environment: React.FC = () => {
             const historyData = await apiClient.getSensorHistory();
             if (historyData && historyData.length > 0) {
                 // Format for chart - take last 48 points for ~24h
-                // Interpolate missing values to prevent chart drops
-                let lastVpd = 0, lastTemp = 0, lastHum = 0;
-                const chartData = historyData.slice(-48).map((d: any) => {
+                const slicedData = historyData.slice(-48);
+
+                // Pre-scan to find first valid values for initialization
+                let lastVpd = slicedData.find((d: any) => d.vpd > 0)?.vpd || 1.0;
+                let lastTemp = slicedData.find((d: any) => d.temperature > 0)?.temperature || 25;
+                let lastHum = slicedData.find((d: any) => d.humidity > 0)?.humidity || 60;
+
+                const chartData = slicedData.map((d: any) => {
                     // Get values or use last known (interpolation)
                     const vpd = (d.vpd != null && d.vpd > 0) ? d.vpd : null;
                     const temp = (d.temperature != null && d.temperature > 0) ? d.temperature : null;
@@ -125,9 +130,9 @@ const Environment: React.FC = () => {
 
                     return {
                         time: new Date(d.timestamp).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }),
-                        vpd: (vpd ?? lastVpd)?.toFixed(2) || lastVpd.toFixed(2),
-                        temp: (temp ?? lastTemp)?.toFixed(1) || lastTemp.toFixed(1),
-                        hum: (hum ?? lastHum)?.toFixed(0) || lastHum.toFixed(0)
+                        vpd: (vpd ?? lastVpd).toFixed(2),
+                        temp: (temp ?? lastTemp).toFixed(1),
+                        hum: (hum ?? lastHum).toFixed(0)
                     };
                 });
                 setVpdData(chartData);

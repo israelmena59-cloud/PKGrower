@@ -22,9 +22,13 @@ const formatStrategyData = (historyData: any[]) => {
     }
 
     // Format real data - take last 48 points (~24h)
-    // Interpolate missing values to prevent chart drops
-    let lastVwc = 45, lastTemp = 22;
-    return historyData.slice(-48).map((d: any) => {
+    const slicedData = historyData.slice(-48);
+
+    // Pre-scan to find first valid values (avoids initial 0s)
+    let lastVwc = slicedData.find((d: any) => d.substrateHumidity > 0)?.substrateHumidity || 50;
+    let lastTemp = slicedData.find((d: any) => d.temperature > 0)?.temperature || 25;
+
+    return slicedData.map((d: any) => {
         const hour = new Date(d.timestamp).getHours();
 
         // Get values or use null for missing

@@ -221,14 +221,15 @@ const HistoryChart: React.FC<HistoryChartProps> = ({ type, title, targets, data:
         .filter((d: any) => d.temperature !== null || d.humidity !== null || d.substrateHumidity !== null);
 
     // Step 2: Interpolation - Fill null values with previous valid values to prevent Area drops
-    let lastTemp: number | null = null;
-    let lastHum: number | null = null;
-    let lastSub: number | null = null;
-    let lastVpd: number | null = null;
-    let lastDp: number | null = null;
-    let lastSh1: number | null = null;
-    let lastSh2: number | null = null;
-    let lastSh3: number | null = null;
+    // Pre-scan to find first valid values (avoids leading nulls causing chart drops)
+    let lastTemp: number | null = filtered.find((d: any) => d.temperature !== null)?.temperature ?? null;
+    let lastHum: number | null = filtered.find((d: any) => d.humidity !== null)?.humidity ?? null;
+    let lastSub: number | null = filtered.find((d: any) => d.substrateHumidity !== null)?.substrateHumidity ?? null;
+    let lastVpd: number | null = filtered.find((d: any) => d.vpd !== null)?.vpd ?? null;
+    let lastDp: number | null = filtered.find((d: any) => d.dp !== null)?.dp ?? null;
+    let lastSh1: number | null = filtered.find((d: any) => d.sh1 !== null)?.sh1 ?? null;
+    let lastSh2: number | null = filtered.find((d: any) => d.sh2 !== null)?.sh2 ?? null;
+    let lastSh3: number | null = filtered.find((d: any) => d.sh3 !== null)?.sh3 ?? null;
 
     return filtered.map((d: any) => {
         // Store valid values and use last known for nulls
