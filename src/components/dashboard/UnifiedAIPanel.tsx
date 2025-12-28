@@ -154,7 +154,12 @@ const UnifiedAIPanel: React.FC<UnifiedAIPanelProps> = ({
                if (debugInfo && debugInfo.detectedId) {
                    // Filter to show ONLY the detected pump
                    const pump = allDevices.find(d => d.id === debugInfo.detectedId);
-                   setTuyaDevices(pump ? [pump] : []);
+                   const result = pump ? [pump] : [];
+                   // Attach debug metadata to array for display
+                   (result as any)._debugTarget = debugInfo.detectedId;
+                   (result as any)._debugTotal = allDevices.length;
+
+                   setTuyaDevices(result);
                } else {
                    // Fallback: show all if debug fails
                    setTuyaDevices(allDevices);
@@ -346,7 +351,18 @@ const UnifiedAIPanel: React.FC<UnifiedAIPanelProps> = ({
           <Box sx={{ mb: 2, p: 1.5, bgcolor: 'rgba(0,0,0,0.2)', borderRadius: 2, maxHeight: 200, overflowY: 'auto' }}>
               <Typography variant="subtitle2" sx={{ color: '#aaa', mb: 1 }}>Bomba Detectada (Auto)</Typography>
               {tuyaDevices.length === 0 ? (
-                  <Typography variant="caption" sx={{ color: '#666' }}>No se encontraron dispositivos o error de carga.</Typography>
+                  <Box sx={{ p: 1 }}>
+                      <Typography variant="caption" sx={{ color: '#ff6666', display: 'block' }}>
+                          No se encontró el dispositivo de riego.
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: '#999', mt: 1, display: 'block', fontSize: '0.7em', fontFamily: 'monospace' }}>
+                          DEBUG: ID="{tuyaDevices[0] ? 'OK' : 'MISSING'}"
+                          <br/>
+                          Target: { (tuyaDevices as any)._debugTarget || '?' }
+                          <br/>
+                          Total Devs: { (tuyaDevices as any)._debugTotal || 0 }
+                      </Typography>
+                  </Box>
               ) : (
                   tuyaDevices.map(d => (
                       <Box key={d.id} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1, p: 0.5, borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
