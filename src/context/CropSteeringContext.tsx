@@ -161,6 +161,38 @@ export const CropSteeringProvider: React.FC<CropSteeringProviderProps> = ({ chil
     }
   }, [activeRoomId]);
 
+  // AUTO-FETCH: Poll sensor data every 60 seconds to keep conditions updated
+  useEffect(() => {
+    const fetchSensorData = async () => {
+      try {
+        const { API_BASE_URL } = await import('../api/client');
+        const response = await fetch(`${API_BASE_URL}/api/sensors/latest`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.temperature && data.humidity) {
+            setConditions(prev => ({
+              ...prev,
+              temperature: data.temperature,
+              humidity: data.humidity,
+              vpd: data.vpd || prev.vpd,
+              vwc: data.substrateHumidity || prev.vwc
+            }));
+            console.log('[CropSteering] Sensor data updated:', { temp: data.temperature, hum: data.humidity });
+          }
+        }
+      } catch (error) {
+        console.warn('[CropSteering] Failed to fetch sensor data:', error);
+      }
+    };
+
+    // Fetch immediately on mount
+    fetchSensorData();
+
+    // Then poll every 60 seconds
+    const interval = setInterval(fetchSensorData, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
   // Sync room light schedule and dates to crop steering settings
   useEffect(() => {
     if (!activeRoom) return;
