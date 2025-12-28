@@ -161,7 +161,8 @@ const HistoryChart: React.FC<HistoryChartProps> = ({ type, title, targets, data:
   const chartData = React.useMemo(() => {
     if (!Array.isArray(rawData)) return [];
 
-    return rawData
+    // Step 1: Transform and sanitize
+    const filtered = rawData
         .filter(d => d && typeof d === 'object' && d.timestamp) // Filter invalid objects
         .map((d: any) => {
             try {
@@ -217,13 +218,41 @@ const HistoryChart: React.FC<HistoryChartProps> = ({ type, title, targets, data:
             }
         })
         .filter(Boolean) // Remove nulls from map errors
-        // CRITICAL: Filter out records where primary sensors are missing to prevent Area fill drops
-        .filter(d => {
-            // For environment chart: need temp OR humidity
-            // For substrate chart: need substrateHumidity
-            // Keep record if it has at least one valid sensor reading
-            return d.temperature !== null || d.humidity !== null || d.substrateHumidity !== null;
-        });
+        .filter((d: any) => d.temperature !== null || d.humidity !== null || d.substrateHumidity !== null);
+
+    // Step 2: Interpolation - Fill null values with previous valid values to prevent Area drops
+    let lastTemp: number | null = null;
+    let lastHum: number | null = null;
+    let lastSub: number | null = null;
+    let lastVpd: number | null = null;
+    let lastDp: number | null = null;
+    let lastSh1: number | null = null;
+    let lastSh2: number | null = null;
+    let lastSh3: number | null = null;
+
+    return filtered.map((d: any) => {
+        // Store valid values and use last known for nulls
+        if (d.temperature !== null) lastTemp = d.temperature;
+        if (d.humidity !== null) lastHum = d.humidity;
+        if (d.substrateHumidity !== null) lastSub = d.substrateHumidity;
+        if (d.vpd !== null) lastVpd = d.vpd;
+        if (d.dp !== null) lastDp = d.dp;
+        if (d.sh1 !== null) lastSh1 = d.sh1;
+        if (d.sh2 !== null) lastSh2 = d.sh2;
+        if (d.sh3 !== null) lastSh3 = d.sh3;
+
+        return {
+            ...d,
+            temperature: d.temperature ?? lastTemp,
+            humidity: d.humidity ?? lastHum,
+            substrateHumidity: d.substrateHumidity ?? lastSub,
+            vpd: d.vpd ?? lastVpd,
+            dp: d.dp ?? lastDp,
+            sh1: d.sh1 ?? lastSh1,
+            sh2: d.sh2 ?? lastSh2,
+            sh3: d.sh3 ?? lastSh3,
+        };
+    });
   }, [rawData, lightingSchedule]);
 
   useEffect(() => {
