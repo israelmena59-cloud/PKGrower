@@ -143,11 +143,22 @@ const UnifiedAIPanel: React.FC<UnifiedAIPanelProps> = ({
       setLoading(false);
 
       // Fetch devices for diagnostics (ONCE or low freq)
-      // Fetch ALL devices for diagnostics (including Meross/Pump)
+      // Fetch devices AND debug info to filter only the Pump
       try {
-           const allDevices = await apiClient.request<any[]>('/api/devices/list');
+           const [allDevices, debugInfo] = await Promise.all([
+               apiClient.request<any[]>('/api/devices/list'),
+               apiClient.request<any>('/api/debug/pump').catch(() => null)
+           ]);
+
            if (Array.isArray(allDevices)) {
-               setTuyaDevices(allDevices);
+               if (debugInfo && debugInfo.detectedId) {
+                   // Filter to show ONLY the detected pump
+                   const pump = allDevices.find(d => d.id === debugInfo.detectedId);
+                   setTuyaDevices(pump ? [pump] : []);
+               } else {
+                   // Fallback: show all if debug fails
+                   setTuyaDevices(allDevices);
+               }
            }
       } catch (e) { console.warn('Device fetch failed', e); }
     }
@@ -333,7 +344,7 @@ const UnifiedAIPanel: React.FC<UnifiedAIPanelProps> = ({
       {/* DEBUG DEVICE LIST */}
        <Collapse in={debugMode}>
           <Box sx={{ mb: 2, p: 1.5, bgcolor: 'rgba(0,0,0,0.2)', borderRadius: 2, maxHeight: 200, overflowY: 'auto' }}>
-              <Typography variant="subtitle2" sx={{ color: '#aaa', mb: 1 }}>Dispositivos Detectados (Diagnóstico)</Typography>
+              <Typography variant="subtitle2" sx={{ color: '#aaa', mb: 1 }}>Bomba Detectada (Auto)</Typography>
               {tuyaDevices.length === 0 ? (
                   <Typography variant="caption" sx={{ color: '#666' }}>No se encontraron dispositivos o error de carga.</Typography>
               ) : (
