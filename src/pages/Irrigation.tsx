@@ -290,7 +290,7 @@ const Irrigation: React.FC = () => {
                                 <XAxis dataKey="time" stroke="#666" fontSize={12} tickLine={false} axisLine={false} />
 
                                 {/* Y-Axis Left: VWC */}
-                                <YAxis yAxisId="left" domain={[20, 80]} stroke="#3b82f6" fontSize={12} tickLine={false} axisLine={false} unit="%" width={30} />
+                                <YAxis yAxisId="left" domain={['dataMin - 5', 'dataMax + 5']} stroke="#3b82f6" fontSize={12} tickLine={false} axisLine={false} unit="%" width={30} />
                                 {/* Y-Axis Right: EC */}
                                 <YAxis yAxisId="right" orientation="right" domain={[1, 5]} stroke="#f59e0b" fontSize={12} tickLine={false} axisLine={false} width={30} />
 
@@ -314,6 +314,7 @@ const Irrigation: React.FC = () => {
                                     strokeWidth={3}
                                     fillOpacity={1}
                                     fill="url(#colorVwc)"
+                                    connectNulls
                                 />
                                 <Line
                                     yAxisId="right"

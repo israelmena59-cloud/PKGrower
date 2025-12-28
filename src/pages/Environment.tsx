@@ -304,14 +304,14 @@ const Environment: React.FC = () => {
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={true} vertical={false} />
                     <XAxis dataKey="time" stroke="#666" fontSize={12} tickLine={false} axisLine={false} />
-                    <YAxis yAxisId="left" domain={[15, 35]} stroke="#666" fontSize={12} tickLine={false} axisLine={false} unit="°C" width={30} />
-                    <YAxis yAxisId="right" orientation="right" domain={[30, 90]} stroke="#666" fontSize={12} tickLine={false} axisLine={false} unit="%" width={30} />
+                    <YAxis yAxisId="left" domain={['dataMin - 2', 'dataMax + 2']} stroke="#666" fontSize={12} tickLine={false} axisLine={false} unit="°C" width={30} />
+                    <YAxis yAxisId="right" orientation="right" domain={['dataMin - 5', 'dataMax + 5']} stroke="#666" fontSize={12} tickLine={false} axisLine={false} unit="%" width={30} />
                     <RechartsTooltip
                         contentStyle={{ backgroundColor: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' }}
                         itemStyle={{ fontSize: '12px' }}
                     />
-                    <Area yAxisId="left" type="monotone" dataKey="temp" stroke="#f59e0b" fillOpacity={1} fill="url(#colorTemp)" strokeWidth={2} />
-                    <Area yAxisId="right" type="monotone" dataKey="hum" stroke="#3b82f6" fillOpacity={1} fill="url(#colorHum)" strokeWidth={2} />
+                    <Area yAxisId="left" type="monotone" dataKey="temp" stroke="#f59e0b" fillOpacity={1} fill="url(#colorTemp)" strokeWidth={2} connectNulls />
+                    <Area yAxisId="right" type="monotone" dataKey="hum" stroke="#3b82f6" fillOpacity={1} fill="url(#colorHum)" strokeWidth={2} connectNulls />
                 </AreaChart>
             </ResponsiveContainer>
         </div>
