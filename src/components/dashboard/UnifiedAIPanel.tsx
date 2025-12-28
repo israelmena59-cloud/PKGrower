@@ -143,10 +143,11 @@ const UnifiedAIPanel: React.FC<UnifiedAIPanelProps> = ({
       setLoading(false);
 
       // Fetch devices for diagnostics (ONCE or low freq)
+      // Fetch ALL devices for diagnostics (including Meross/Pump)
       try {
-           const devRes = await apiClient.getTuyaDevices();
-           if (devRes && devRes.devices) {
-               setTuyaDevices(devRes.devices);
+           const allDevices = await apiClient.request<any[]>('/api/devices/list');
+           if (Array.isArray(allDevices)) {
+               setTuyaDevices(allDevices);
            }
       } catch (e) { console.warn('Device fetch failed', e); }
     }
