@@ -253,6 +253,11 @@ const HistoryChart: React.FC<HistoryChartProps> = ({ type, title, targets, data:
             sh2: d.sh2 ?? lastSh2,
             sh3: d.sh3 ?? lastSh3,
         };
+    }).filter((d: any) => {
+        // Final filter: ensure at least temperature OR humidity OR substrateHumidity is valid
+        return (d.temperature !== null && d.temperature > 0) ||
+               (d.humidity !== null && d.humidity > 0) ||
+               (d.substrateHumidity !== null && d.substrateHumidity > 0);
     });
   }, [rawData, lightingSchedule]);
 
