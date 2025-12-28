@@ -131,13 +131,20 @@ const Environment: React.FC = () => {
                     if (temp !== null) lastTemp = temp;
                     if (hum !== null) lastHum = hum;
 
+                    // Use interpolated values (never 0)
+                    const finalTemp = temp ?? lastTemp;
+                    const finalHum = hum ?? lastHum;
+                    const finalVpd = vpd ?? lastVpd;
+
                     return {
                         time: new Date(d.timestamp).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }),
-                        vpd: (vpd ?? lastVpd).toFixed(2),
-                        temp: (temp ?? lastTemp).toFixed(1),
-                        hum: (hum ?? lastHum).toFixed(0)
+                        vpd: Number(finalVpd.toFixed(2)),
+                        temp: Number(finalTemp.toFixed(1)),
+                        hum: Number(finalHum.toFixed(0))
                     };
-                });
+                }).filter((d: any) => d.temp > 0 && d.hum > 0); // Remove any 0 values
+
+                console.log('[ENV-CHART] Data sample:', chartData.slice(0, 5));
                 setVpdData(chartData);
             }
         } catch (histErr) {

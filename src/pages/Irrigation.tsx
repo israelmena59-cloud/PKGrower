@@ -42,14 +42,18 @@ const formatStrategyData = (historyData: any[]) => {
         if (vwc !== null) lastVwc = vwc;
         if (temp !== null) lastTemp = temp;
 
+        // Use interpolated values (ensure numbers, never strings or 0)
+        const finalVwc = Number((vwc ?? lastVwc).toFixed(1));
+        const finalTemp = Number((temp ?? lastTemp).toFixed(1));
+
         return {
             time: new Date(d.timestamp).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }),
-            vwc: vwc ?? lastVwc,
+            vwc: finalVwc,
             ec: 2.5, // EC not tracked yet - placeholder
-            temp: temp ?? lastTemp,
+            temp: finalTemp,
             phase: hour >= 6 && hour < 11 ? 'P1 Ramp' : (hour >= 11 && hour < 16 ? 'P2 Maint' : 'P3 Dryback')
         };
-    });
+    }).filter((d: any) => d.vwc > 0 && d.temp > 0); // Remove any 0 values
 };
 
 // --- SUB-COMPONENTS ---
