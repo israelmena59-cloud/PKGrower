@@ -34,10 +34,21 @@ const UnifiedCropSteeringWidget: React.FC = () => {
   const [irrigationLog, setIrrigationLog] = useState<IrrigationEvent[]>([]);
   const countdownRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Stage translations to Spanish
+  const stageTranslations: Record<string, string> = {
+    'veg_early': 'VEG. TEMPRANA',
+    'veg_late': 'VEG. TARDÍA',
+    'flower_transition': 'TRANSICIÓN FLOR',
+    'flower_early': 'FLORACIÓN TEMPRANA',
+    'flower_mid': 'FLORACIÓN MEDIA',
+    'flower_late': 'FLORACIÓN TARDÍA',
+    'ripening': 'MADURACIÓN'
+  };
+
   // Crop Steering Data
   const vpd = currentVPD;
   const targets = getTargetVPD();
-  const stageLabel = currentStage.replace(/_/g, ' ').toUpperCase();
+  const stageLabel = stageTranslations[currentStage] || currentStage.replace(/_/g, ' ').toUpperCase();
   const daysInGrow = settings.growStartDate
     ? Math.floor((Date.now() - new Date(settings.growStartDate).getTime()) / (1000 * 60 * 60 * 24))
     : 0;
