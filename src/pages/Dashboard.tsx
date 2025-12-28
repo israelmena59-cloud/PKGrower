@@ -5,8 +5,7 @@ import { apiClient, type SensorData, type DeviceStates } from '../api/client';
 import ConfigModal from '../components/dashboard/ConfigModal';
 import RulesModal from '../components/dashboard/RulesModal';
 import HistoryChart from '../components/dashboard/HistoryChart';
-import CropSteeringWidget from '../components/dashboard/CropSteeringWidget';
-import QuickActionsWidget from '../components/dashboard/QuickActionsWidget';
+import UnifiedCropSteeringWidget from '../components/dashboard/UnifiedCropSteeringWidget';
 import UnifiedAIPanel from '../components/dashboard/UnifiedAIPanel';
 import { Thermometer, Droplet, Wind, Droplets, Lightbulb, RefreshCw } from 'lucide-react';
 import { Box, CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField } from '@mui/material';
@@ -266,10 +265,9 @@ const Dashboard: React.FC = () => {
             {/* AI CONTROL CENTER */}
             <UnifiedAIPanel autoRefresh={true} refreshInterval={30000} />
 
-            {/* STATIC WIDGETS GRID */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 mt-4">
-                <CropSteeringWidget />
-                <QuickActionsWidget />
+            {/* UNIFIED CROP STEERING + QUICK ACTIONS WIDGET */}
+            <div className="mb-4 mt-4">
+                <UnifiedCropSteeringWidget />
             </div>
 
             {/* ENVIRONMENT CHARTS GRID */}
