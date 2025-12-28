@@ -159,6 +159,7 @@ const UnifiedAIPanel: React.FC<UnifiedAIPanelProps> = ({
                    (result as any)._debugTarget = debugInfo.detectedId;
                    (result as any)._debugTotal = allDevices.length;
                    (result as any)._debugCandidates = allDevices; // Add full list for debug
+                   (result as any)._debugAudit = debugInfo.auditLog; // Add audit log
 
                    setTuyaDevices(result);
                } else {
@@ -376,8 +377,21 @@ const UnifiedAIPanel: React.FC<UnifiedAIPanelProps> = ({
                                       <Typography variant="caption" sx={{ color: '#555', display: 'block', fontSize: '0.6em' }}>
                                           ID: {c.id}
                                       </Typography>
+                                      </Typography>
                                   </Box>
                               ))}
+                          </Box>
+                      )}
+
+                      {/* Show AUDIT LOG */}
+                      {(tuyaDevices as any)._debugAudit && (
+                          <Box sx={{ mt: 2, borderTop: '1px solid #444', pt: 1 }}>
+                              <Typography variant="caption" sx={{ color: '#aaa', fontWeight: 'bold' }}>Detection Log:</Typography>
+                              <Box sx={{ mt: 0.5, p: 1, bgcolor: '#000', borderRadius: 1, fontFamily: 'monospace', fontSize: '0.6em', color: '#0f0', maxHeight: 150, overflowY: 'auto' }}>
+                                  {(tuyaDevices as any)._debugAudit.map((line: string, i: number) => (
+                                      <div key={i}>{line}</div>
+                                  ))}
+                              </Box>
                           </Box>
                       )}
                   </Box>
