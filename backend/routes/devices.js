@@ -57,7 +57,7 @@ module.exports = ({
     getSimulationMode,
     getDeviceStates, // For simulation
     setDeviceStates,
-    tuyaClient, // Object with .request
+    getTuyaClient, // Getter to always get current value
     firestore,
     initTuyaDevices,
     initMerossDevices,
@@ -336,7 +336,7 @@ module.exports = ({
                  const current = cached ? cached.on : false;
                  const newState = !current;
 
-                 await tuyaClient.request({
+                 await getTuyaClient().request({
                       method: 'POST',
                       path: `/v1.0/iot-03/devices/${tuyaId}/commands`,
                       body: { commands: [{ code: code, value: newState }] }
@@ -400,12 +400,12 @@ module.exports = ({
 
             if ((deviceConfig && deviceConfig.platform === 'tuya') || tuyaDev) {
                  if (!getTuyaConnected()) return res.status(503).json({ error: 'Tuya offline' });
-                 if (!tuyaClient) return res.status(503).json({ error: 'Tuya client not initialized' });
+                 if (!getTuyaClient()) return res.status(503).json({ error: 'Tuya client not initialized' });
 
                  const tuyaId = tuyaDev ? tuyaDev.id : (deviceConfig ? deviceConfig.id : deviceId);
                  const code = (tuyaDev && tuyaDev.switchCode) ? tuyaDev.switchCode : 'switch_1';
 
-                 await tuyaClient.request({
+                 await getTuyaClient().request({
                       method: 'POST',
                       path: `/v1.0/iot-03/devices/${tuyaId}/commands`,
                       body: { commands: [{ code: code, value: targetState }] }
@@ -438,7 +438,7 @@ module.exports = ({
              const code = tuyaDevice.switchCode || 'switch_1';
 
              // ON
-             await tuyaClient.request({
+             await getTuyaClient().request({
                  method: 'POST',
                  path: `/v1.0/iot-03/devices/${tuyaDevice.id}/commands`,
                  body: { commands: [{ code, value: true }] }
@@ -447,7 +447,7 @@ module.exports = ({
              // OFF Schedule
              setTimeout(async () => {
                  try {
-                     await tuyaClient.request({
+                     await getTuyaClient().request({
                          method: 'POST',
                          path: `/v1.0/iot-03/devices/${tuyaDevice.id}/commands`,
                          body: { commands: [{ code, value: false }] }

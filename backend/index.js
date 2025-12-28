@@ -1296,7 +1296,7 @@ const devicesRouter = require('./routes/devices')({
     getSimulationMode: () => MODO_SIMULACION,
     getDeviceStates: () => deviceStates,
     setDeviceStates: (s) => { deviceStates = s; },
-    tuyaClient: tuyaClient,
+    getTuyaClient: () => tuyaClient, // Getter to always get current value
     firestore: firestore,
     initTuyaDevices: initTuyaDevices,
     initMerossDevices: initMerossDevices,
