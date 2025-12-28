@@ -319,9 +319,10 @@ const Irrigation: React.FC = () => {
                                     name="VWC (Humedad)"
                                     stroke="#3b82f6"
                                     strokeWidth={3}
-                                    fillOpacity={1}
-                                    fill="url(#colorVwc)"
+                                    fillOpacity={0.3}
+                                    fill="#3b82f6"
                                     connectNulls
+                                    isAnimationActive={false}
                                 />
                                 <Line
                                     yAxisId="right"

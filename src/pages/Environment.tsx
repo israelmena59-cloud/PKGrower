@@ -320,8 +320,8 @@ const Environment: React.FC = () => {
                         contentStyle={{ backgroundColor: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' }}
                         itemStyle={{ fontSize: '12px' }}
                     />
-                    <Area yAxisId="left" type="monotone" dataKey="temp" stroke="#f59e0b" fillOpacity={1} fill="url(#colorTemp)" strokeWidth={2} connectNulls />
-                    <Area yAxisId="right" type="monotone" dataKey="hum" stroke="#3b82f6" fillOpacity={1} fill="url(#colorHum)" strokeWidth={2} connectNulls />
+                    <Area yAxisId="left" type="monotone" dataKey="temp" stroke="#f59e0b" fillOpacity={0.3} fill="#f59e0b" strokeWidth={2} connectNulls isAnimationActive={false} />
+                    <Area yAxisId="right" type="monotone" dataKey="hum" stroke="#3b82f6" fillOpacity={0.3} fill="#3b82f6" strokeWidth={2} connectNulls isAnimationActive={false} />
                 </AreaChart>
             </ResponsiveContainer>
         </div>
