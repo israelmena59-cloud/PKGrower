@@ -393,13 +393,16 @@ module.exports = ({
                  return res.json({ success: true, state: targetState });
             }
 
-            // Tuya
-            if ((deviceConfig && deviceConfig.platform === 'tuya') || tuyaDevices[deviceId]) {
+            // Tuya - search by key OR by device.id property
+            const tuyaByKey = tuyaDevices[deviceId];
+            const tuyaById = Object.values(tuyaDevices).find(d => d.id === deviceId);
+            const tuyaDev = tuyaByKey || tuyaById;
+
+            if ((deviceConfig && deviceConfig.platform === 'tuya') || tuyaDev) {
                  if (!getTuyaConnected()) return res.status(503).json({ error: 'Tuya offline' });
 
-                 const tuyaId = deviceConfig ? deviceConfig.id : deviceId;
-                 const cached = tuyaDevices[deviceId] || Object.values(tuyaDevices).find(d => d.id === tuyaId);
-                 const code = (cached && cached.switchCode) ? cached.switchCode : 'switch_1';
+                 const tuyaId = tuyaDev ? tuyaDev.id : (deviceConfig ? deviceConfig.id : deviceId);
+                 const code = (tuyaDev && tuyaDev.switchCode) ? tuyaDev.switchCode : 'switch_1';
 
                  await tuyaClient.request({
                       method: 'POST',
@@ -407,7 +410,7 @@ module.exports = ({
                       body: { commands: [{ code: code, value: targetState }] }
                  });
 
-                 if (cached) cached.on = targetState;
+                 if (tuyaDev) tuyaDev.on = targetState;
                  return res.json({ success: true, state: targetState });
             }
 
@@ -426,7 +429,8 @@ module.exports = ({
              if (getSimulationMode()) return res.json({ success: true, message: "Pulse simulated" });
 
              const tuyaDevices = getTuyaDevices();
-             const tuyaDevice = tuyaDevices[id];
+             // Search by key OR by d.id property
+             const tuyaDevice = tuyaDevices[id] || Object.values(tuyaDevices).find(d => d.id === id);
              if (!tuyaDevice) return res.status(404).json({ error: "Only Tuya supported for pulse via API" });
              if (!getTuyaConnected()) return res.status(400).json({ error: "Tuya offline" });
 
