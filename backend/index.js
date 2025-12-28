@@ -230,6 +230,25 @@ function autoDetectPumpID() {
     return 'bombaControlador';
 }
 
+// --- DEBUG ENDPOINT ---
+app.get('/api/debug/pump', (req, res) => {
+    try {
+        const detectedId = autoDetectPumpID();
+        const merossList = Object.values(merossDevices).map(d => ({ name: d.name, id: d.id, online: d.online }));
+        const tuyaList = Object.values(tuyaDevices).map(d => ({ name: d.name, id: d.id, type: d.deviceType }));
+
+        res.json({
+            success: true,
+            detectedId,
+            merossDevices: merossList,
+            tuyaDevices: tuyaList,
+            message: detectedId === 'bombaControlador' ? 'Using default/fallback ID' : 'Auto-detected successfully'
+        });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // --- HELPER: Unified Device Control ---
 async function setDeviceState(deviceId, state) {
     if (MODO_SIMULACION) {
