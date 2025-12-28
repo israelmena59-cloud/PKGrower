@@ -89,6 +89,7 @@ interface IrrigationEvent {
     time: string; // "HH:mm" format
     phase: 'p1' | 'p2' | 'p3';
     vwcValue?: number; // VWC at the time of event
+    percentage?: number; // Estimated shot percentage
 }
 
 interface HistoryChartProps {
@@ -591,8 +592,8 @@ const HistoryChart: React.FC<HistoryChartProps> = ({ type, title, targets, data:
                             axisLine={false}
                             minTickGap={30}
                         />
-                        <YAxis yAxisId="left" stroke={textColor} fontSize={12} tickLine={false} axisLine={false} />
-                        <YAxis yAxisId="right" orientation="right" stroke={textColor} fontSize={12} tickLine={false} axisLine={false} />
+                        <YAxis yAxisId="left" domain={['dataMin - 5', 'auto']} stroke={textColor} fontSize={12} tickLine={false} axisLine={false} allowDataOverflow={false} />
+                        <YAxis yAxisId="right" orientation="right" domain={['dataMin', 'auto']} stroke={textColor} fontSize={12} tickLine={false} axisLine={false} />
                         <Tooltip content={<CustomTooltip />} />
                         <Legend
                             verticalAlign="top"
