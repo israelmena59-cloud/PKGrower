@@ -199,6 +199,37 @@ app.get('/health', (req, res) => {
     res.status(200).send('OK');
 });
 
+// --- HELPER: Pump Auto-Detection ---
+function autoDetectPumpID() {
+    // 1. Check override in settings
+    if (appSettings.irrigation?.pumpId) return appSettings.irrigation.pumpId;
+
+    // 2. Search in Meross Devices (Priority)
+    const mKeys = Object.keys(merossDevices);
+    for (const key of mKeys) {
+        const d = merossDevices[key];
+        const name = (d.name || '').toLowerCase();
+        if (name.includes('bomba') || name.includes('agua') || name.includes('pump') || name.includes('water')) {
+            console.log(`[PUMP] Auto-detected Meross pump: ${d.name} (${key})`);
+            return key;
+        }
+    }
+
+    // 3. Search in Tuya Devices
+    const tKeys = Object.keys(tuyaDevices);
+    for (const key of tKeys) {
+        const d = tuyaDevices[key];
+        const name = (d.name || '').toLowerCase();
+        if (d.deviceType !== 'sensor' && (name.includes('bomba') || name.includes('agua') || name.includes('pump') || name.includes('water'))) {
+             console.log(`[PUMP] Auto-detected Tuya pump: ${d.name} (${key})`);
+             return key;
+        }
+    }
+
+    // 4. Fallback default
+    return 'bombaControlador';
+}
+
 // --- HELPER: Unified Device Control ---
 async function setDeviceState(deviceId, state) {
     if (MODO_SIMULACION) {
@@ -206,8 +237,17 @@ async function setDeviceState(deviceId, state) {
         return;
     }
 
+    // Resolve Alias for Pump
+    let targetId = deviceId;
+    if (deviceId === 'bombaControlador') {
+        targetId = autoDetectPumpID();
+        if (targetId !== deviceId) {
+             console.log(`[CONTROL] Redirecting 'bombaControlador' to '${targetId}'`);
+        }
+    }
+
     // 1. Tuya
-    const tDev = tuyaDevices[deviceId] || Object.values(tuyaDevices).find(d => d.id === deviceId);
+    const tDev = tuyaDevices[targetId] || Object.values(tuyaDevices).find(d => d.id === targetId);
     if (tDev) {
         const code = tDev.switchCode || 'switch_1';
         try {
@@ -219,33 +259,33 @@ async function setDeviceState(deviceId, state) {
             tDev.on = state;
             return;
         } catch(e) {
-            console.error(`[CONTROL] Tuya Error (${deviceId}):`, e.message);
+            console.error(`[CONTROL] Tuya Error (${targetId}):`, e.message);
         }
     }
 
     // 2. Xiaomi
-    const deviceConfig = DEVICE_MAP[deviceId];
-    if ((deviceConfig && deviceConfig.platform === 'xiaomi') || xiaomiClients[deviceId]) {
-        const client = xiaomiClients[deviceId];
+    const deviceConfig = DEVICE_MAP[targetId];
+    if ((deviceConfig && deviceConfig.platform === 'xiaomi') || xiaomiClients[targetId]) {
+        const client = xiaomiClients[targetId];
         if (client) {
             try {
                 if (client.setPower) await client.setPower(state);
                 else await client.call('set_power', [state ? 'on' : 'off']);
             } catch(e) {
-                console.error(`[CONTROL] Xiaomi Error (${deviceId}):`, e.message);
+                console.error(`[CONTROL] Xiaomi Error (${targetId}):`, e.message);
             }
         }
     }
 
     // 3. Meross
-    if (merossDevices[deviceId]) {
+    if (merossDevices[targetId]) {
          try {
-             const mDev = merossDevices[deviceId].deviceInstance || merossDevices[deviceId];
+             const mDev = merossDevices[targetId].deviceInstance || merossDevices[targetId];
              if (mDev && mDev.controlToggleX) {
                  mDev.controlToggleX(0, state, () => {});
              }
          } catch(e) {
-            console.error(`[CONTROL] Meross Error (${deviceId}):`, e.message);
+            console.error(`[CONTROL] Meross Error (${targetId}):`, e.message);
          }
     }
 }
@@ -543,7 +583,7 @@ app.post('/api/irrigation/shot', async (req, res) => {
         console.log(`[IRRIGATION] -> Volume: ${volumeMl}ml. Duration: ${durationMs}ms`);
 
         // 3. Ejecutar Disparo
-        const pumpKey = 'bombaControlador';
+        const pumpKey = autoDetectPumpID();
 
         // Prender
         await setDeviceState(pumpKey, true);
@@ -1588,56 +1628,66 @@ app.post('/api/irrigation/trigger', async (req, res) => {
     try {
         const { shotSize = 100, phase = 'manual' } = req.body;
 
-        // Find pump device
-        const pumpDevice = tuyaDevices['bombaControlador'];
-        if (!pumpDevice) {
-            return res.status(404).json({ error: 'Pump controller not found' });
+        // Find pump device (Auto-detect)
+        const pumpKey = autoDetectPumpID();
+        if (!pumpKey) {
+            return res.status(404).json({ error: 'No pump device found or configured (bomba/pump/agua).' });
         }
 
-        // Turn on pump
-        console.log(`[IRRIGATION] Triggering irrigation: ${shotSize}ml`);
+        console.log(`[IRRIGATION] Triggering irrigation: ${shotSize}ml using device: ${pumpKey}`);
 
         // Calculate duration based on pump rate (default 70ml/min)
         const pumpRate = appSettings.irrigation?.pumpRate || 70;
         const durationMs = (shotSize / pumpRate) * 60 * 1000;
 
-        // Send command to turn on
-        if (tuyaConnected && tuyaClient) {
-            await tuyaClient.request({
-                method: 'POST',
-                path: `/v1.0/devices/${pumpDevice.id}/commands`,
-                body: { commands: [{ code: 'switch_1', value: true }] }
-            });
+        // Use unified control to turn ON
+        await setDeviceState(pumpKey, true);
 
-            // Schedule turn off
-            setTimeout(async () => {
+        // Send immediate response to client
+        res.json({
+            success: true,
+            message: `Riego iniciado: ${shotSize}ml (${(durationMs/1000).toFixed(1)}s)`,
+            device: pumpKey,
+            durationMs
+        });
+
+        // Schedule turn OFF in background
+        setTimeout(async () => {
+             try {
+                await setDeviceState(pumpKey, false);
+                console.log(`[IRRIGATION] Shot finished (${durationMs}ms)`);
+
+                // Log event to Firestore
                 try {
-                    await tuyaClient.request({
-                        method: 'POST',
-                        path: `/v1.0/devices/${pumpDevice.id}/commands`,
-                        body: { commands: [{ code: 'switch_1', value: false }] }
-                    });
-                    console.log('[IRRIGATION] Pump off after', durationMs, 'ms');
-                } catch (e) {
-                    console.error('[IRRIGATION] Failed to turn off pump:', e.message);
+                    const event = {
+                        timestamp: new Date().toISOString(),
+                        type: 'manual_shot',
+                        volumeMl: Number(shotSize),
+                        durationSec: Math.round(durationMs / 1000),
+                        phase,
+                        device: pumpKey
+                    };
+
+                    if (firestore && firestore.logIrrigationEvent) {
+                        await firestore.logIrrigationEvent(event);
+                    } else if (firestore && firestore.saveIrrigationLog) {
+                        // Compatibility with alternate method name if exists
+                         await firestore.saveIrrigationLog({
+                            shotSize,
+                            phase,
+                            pumpDuration: durationMs,
+                            source: 'api'
+                        });
+                    }
+                } catch(e) {
+                    console.error('[IRRIGATION] Error logging event:', e.message);
                 }
-            }, durationMs);
 
-            // Log irrigation event
-            await firestore.saveIrrigationLog({
-                shotSize,
-                phase,
-                pumpDuration: durationMs,
-                source: 'api'
-            });
+             } catch(e) {
+                 console.error('[IRRIGATION] Error turning off pump:', e.message);
+             }
+        }, durationMs);
 
-            res.json({
-                success: true,
-                message: `Irrigation triggered: ${shotSize}ml for ${(durationMs/1000).toFixed(1)}s`
-            });
-        } else {
-            res.status(503).json({ error: 'Tuya not connected' });
-        }
     } catch (error) {
         console.error('[IRRIGATION] Error triggering:', error);
         res.status(500).json({ error: error.message });
@@ -1874,15 +1924,15 @@ app.post('/api/settings/verify-2fa', async (req, res) => {
     (async () => {
         try {
             console.log('📱 [INIT] Conectando con Tuya Cloud API...');
-            
+
             // 1. Conectar Cliente Tuya (Core)
             await initSystemConnectors();
-            
+
             // 2. Descubrir Dispositivos
             await initTuyaDevices();
             await initXiaomiDevices();
             console.log('�� [INIT] Dispositivos inicializados correctamente.');
-            
+
         } catch (err) {
             console.error('❌ [INIT ERROR]', err);
         }
@@ -1892,7 +1942,7 @@ app.post('/api/settings/verify-2fa', async (req, res) => {
     setInterval(async () => {
         console.log('[POLLING] Actualizando estados de Tuya...');
         await initTuyaDevices();
-        
+
         // Actualizar historial de sensores
         try {
              await saveSensorSnapshot();
