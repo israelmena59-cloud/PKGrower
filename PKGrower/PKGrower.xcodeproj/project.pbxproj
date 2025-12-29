@@ -1,0 +1,587 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		EF6801E12F023A41002EEB10 /* PKGrowerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF6801E02F023A41002EEB10 /* PKGrowerApp.swift */; };
+		EF6801E32F023A41002EEB10 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF6801E22F023A41002EEB10 /* ContentView.swift */; };
+		EF6801E52F023A45002EEB10 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = EF6801E42F023A45002EEB10 /* Assets.xcassets */; };
+		EF6801E82F023A45002EEB10 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = EF6801E72F023A45002EEB10 /* Preview Assets.xcassets */; };
+		EF6801F22F023A45002EEB10 /* PKGrowerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF6801F12F023A45002EEB10 /* PKGrowerTests.swift */; };
+		EF6801FC2F023A45002EEB10 /* PKGrowerUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF6801FB2F023A45002EEB10 /* PKGrowerUITests.swift */; };
+		EF6801FE2F023A45002EEB10 /* PKGrowerUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF6801FD2F023A45002EEB10 /* PKGrowerUITestsLaunchTests.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		EF6801EE2F023A45002EEB10 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = EF6801D52F023A41002EEB10 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = EF6801DC2F023A41002EEB10;
+			remoteInfo = PKGrower;
+		};
+		EF6801F82F023A45002EEB10 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = EF6801D52F023A41002EEB10 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = EF6801DC2F023A41002EEB10;
+			remoteInfo = PKGrower;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		EF6801DD2F023A41002EEB10 /* PKGrower.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PKGrower.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		EF6801E02F023A41002EEB10 /* PKGrowerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PKGrowerApp.swift; sourceTree = "<group>"; };
+		EF6801E22F023A41002EEB10 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		EF6801E42F023A45002EEB10 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		EF6801E72F023A45002EEB10 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
+		EF6801ED2F023A45002EEB10 /* PKGrowerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PKGrowerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		EF6801F12F023A45002EEB10 /* PKGrowerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PKGrowerTests.swift; sourceTree = "<group>"; };
+		EF6801F72F023A45002EEB10 /* PKGrowerUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PKGrowerUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		EF6801FB2F023A45002EEB10 /* PKGrowerUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PKGrowerUITests.swift; sourceTree = "<group>"; };
+		EF6801FD2F023A45002EEB10 /* PKGrowerUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PKGrowerUITestsLaunchTests.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		EF6801DA2F023A41002EEB10 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		EF6801EA2F023A45002EEB10 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		EF6801F42F023A45002EEB10 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		EF6801D42F023A41002EEB10 = {
+			isa = PBXGroup;
+			children = (
+				EF6801DF2F023A41002EEB10 /* PKGrower */,
+				EF6801F02F023A45002EEB10 /* PKGrowerTests */,
+				EF6801FA2F023A45002EEB10 /* PKGrowerUITests */,
+				EF6801DE2F023A41002EEB10 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		EF6801DE2F023A41002EEB10 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				EF6801DD2F023A41002EEB10 /* PKGrower.app */,
+				EF6801ED2F023A45002EEB10 /* PKGrowerTests.xctest */,
+				EF6801F72F023A45002EEB10 /* PKGrowerUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		EF6801DF2F023A41002EEB10 /* PKGrower */ = {
+			isa = PBXGroup;
+			children = (
+				EF6801E02F023A41002EEB10 /* PKGrowerApp.swift */,
+				EF6801E22F023A41002EEB10 /* ContentView.swift */,
+				EF6801E42F023A45002EEB10 /* Assets.xcassets */,
+				EF6801E62F023A45002EEB10 /* Preview Content */,
+			);
+			path = PKGrower;
+			sourceTree = "<group>";
+		};
+		EF6801E62F023A45002EEB10 /* Preview Content */ = {
+			isa = PBXGroup;
+			children = (
+				EF6801E72F023A45002EEB10 /* Preview Assets.xcassets */,
+			);
+			path = "Preview Content";
+			sourceTree = "<group>";
+		};
+		EF6801F02F023A45002EEB10 /* PKGrowerTests */ = {
+			isa = PBXGroup;
+			children = (
+				EF6801F12F023A45002EEB10 /* PKGrowerTests.swift */,
+			);
+			path = PKGrowerTests;
+			sourceTree = "<group>";
+		};
+		EF6801FA2F023A45002EEB10 /* PKGrowerUITests */ = {
+			isa = PBXGroup;
+			children = (
+				EF6801FB2F023A45002EEB10 /* PKGrowerUITests.swift */,
+				EF6801FD2F023A45002EEB10 /* PKGrowerUITestsLaunchTests.swift */,
+			);
+			path = PKGrowerUITests;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		EF6801DC2F023A41002EEB10 /* PKGrower */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = EF6802012F023A45002EEB10 /* Build configuration list for PBXNativeTarget "PKGrower" */;
+			buildPhases = (
+				EF6801D92F023A41002EEB10 /* Sources */,
+				EF6801DA2F023A41002EEB10 /* Frameworks */,
+				EF6801DB2F023A41002EEB10 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = PKGrower;
+			productName = PKGrower;
+			productReference = EF6801DD2F023A41002EEB10 /* PKGrower.app */;
+			productType = "com.apple.product-type.application";
+		};
+		EF6801EC2F023A45002EEB10 /* PKGrowerTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = EF6802042F023A45002EEB10 /* Build configuration list for PBXNativeTarget "PKGrowerTests" */;
+			buildPhases = (
+				EF6801E92F023A45002EEB10 /* Sources */,
+				EF6801EA2F023A45002EEB10 /* Frameworks */,
+				EF6801EB2F023A45002EEB10 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				EF6801EF2F023A45002EEB10 /* PBXTargetDependency */,
+			);
+			name = PKGrowerTests;
+			productName = PKGrowerTests;
+			productReference = EF6801ED2F023A45002EEB10 /* PKGrowerTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		EF6801F62F023A45002EEB10 /* PKGrowerUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = EF6802072F023A45002EEB10 /* Build configuration list for PBXNativeTarget "PKGrowerUITests" */;
+			buildPhases = (
+				EF6801F32F023A45002EEB10 /* Sources */,
+				EF6801F42F023A45002EEB10 /* Frameworks */,
+				EF6801F52F023A45002EEB10 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				EF6801F92F023A45002EEB10 /* PBXTargetDependency */,
+			);
+			name = PKGrowerUITests;
+			productName = PKGrowerUITests;
+			productReference = EF6801F72F023A45002EEB10 /* PKGrowerUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		EF6801D52F023A41002EEB10 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1520;
+				LastUpgradeCheck = 1520;
+				TargetAttributes = {
+					EF6801DC2F023A41002EEB10 = {
+						CreatedOnToolsVersion = 15.2;
+					};
+					EF6801EC2F023A45002EEB10 = {
+						CreatedOnToolsVersion = 15.2;
+						TestTargetID = EF6801DC2F023A41002EEB10;
+					};
+					EF6801F62F023A45002EEB10 = {
+						CreatedOnToolsVersion = 15.2;
+						TestTargetID = EF6801DC2F023A41002EEB10;
+					};
+				};
+			};
+			buildConfigurationList = EF6801D82F023A41002EEB10 /* Build configuration list for PBXProject "PKGrower" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = EF6801D42F023A41002EEB10;
+			productRefGroup = EF6801DE2F023A41002EEB10 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				EF6801DC2F023A41002EEB10 /* PKGrower */,
+				EF6801EC2F023A45002EEB10 /* PKGrowerTests */,
+				EF6801F62F023A45002EEB10 /* PKGrowerUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		EF6801DB2F023A41002EEB10 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				EF6801E82F023A45002EEB10 /* Preview Assets.xcassets in Resources */,
+				EF6801E52F023A45002EEB10 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		EF6801EB2F023A45002EEB10 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		EF6801F52F023A45002EEB10 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		EF6801D92F023A41002EEB10 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				EF6801E32F023A41002EEB10 /* ContentView.swift in Sources */,
+				EF6801E12F023A41002EEB10 /* PKGrowerApp.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		EF6801E92F023A45002EEB10 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				EF6801F22F023A45002EEB10 /* PKGrowerTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		EF6801F32F023A45002EEB10 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				EF6801FE2F023A45002EEB10 /* PKGrowerUITestsLaunchTests.swift in Sources */,
+				EF6801FC2F023A45002EEB10 /* PKGrowerUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		EF6801EF2F023A45002EEB10 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = EF6801DC2F023A41002EEB10 /* PKGrower */;
+			targetProxy = EF6801EE2F023A45002EEB10 /* PBXContainerItemProxy */;
+		};
+		EF6801F92F023A45002EEB10 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = EF6801DC2F023A41002EEB10 /* PKGrower */;
+			targetProxy = EF6801F82F023A45002EEB10 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		EF6801FF2F023A45002EEB10 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.2;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		EF6802002F023A45002EEB10 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.2;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		EF6802022F023A45002EEB10 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "\"PKGrower/Preview Content\"";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.peikos.PKGrower;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		EF6802032F023A45002EEB10 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "\"PKGrower/Preview Content\"";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.peikos.PKGrower;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		EF6802052F023A45002EEB10 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.2;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.peikos.PKGrowerTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PKGrower.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/PKGrower";
+			};
+			name = Debug;
+		};
+		EF6802062F023A45002EEB10 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.2;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.peikos.PKGrowerTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PKGrower.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/PKGrower";
+			};
+			name = Release;
+		};
+		EF6802082F023A45002EEB10 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.peikos.PKGrowerUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = PKGrower;
+			};
+			name = Debug;
+		};
+		EF6802092F023A45002EEB10 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.peikos.PKGrowerUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = PKGrower;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		EF6801D82F023A41002EEB10 /* Build configuration list for PBXProject "PKGrower" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				EF6801FF2F023A45002EEB10 /* Debug */,
+				EF6802002F023A45002EEB10 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		EF6802012F023A45002EEB10 /* Build configuration list for PBXNativeTarget "PKGrower" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				EF6802022F023A45002EEB10 /* Debug */,
+				EF6802032F023A45002EEB10 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		EF6802042F023A45002EEB10 /* Build configuration list for PBXNativeTarget "PKGrowerTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				EF6802052F023A45002EEB10 /* Debug */,
+				EF6802062F023A45002EEB10 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		EF6802072F023A45002EEB10 /* Build configuration list for PBXNativeTarget "PKGrowerUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				EF6802082F023A45002EEB10 /* Debug */,
+				EF6802092F023A45002EEB10 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = EF6801D52F023A41002EEB10 /* Project object */;
+}

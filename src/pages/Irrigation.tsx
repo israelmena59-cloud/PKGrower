@@ -287,7 +287,7 @@ const Irrigation: React.FC = () => {
                         </Box>
 
                         <ResponsiveContainer width="100%" height={350}>
-                            <LineChart data={strategyData}>
+                            <AreaChart data={strategyData}>
                                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={true} vertical={false} />
                                 <XAxis dataKey="time" stroke="#666" fontSize={12} tickLine={false} axisLine={false} />
 

@@ -377,7 +377,6 @@ const UnifiedAIPanel: React.FC<UnifiedAIPanelProps> = ({
                                       <Typography variant="caption" sx={{ color: '#555', display: 'block', fontSize: '0.6em' }}>
                                           ID: {c.id}
                                       </Typography>
-                                      </Typography>
                                   </Box>
                               ))}
                           </Box>

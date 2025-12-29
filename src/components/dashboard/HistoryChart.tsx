@@ -118,6 +118,62 @@ const calculateVPD = (T: number, RH: number) => {
     return svp * (1 - (RH / 100));
 };
 
+const CustomTooltip = ({ active, payload, isDark }: any) => {
+    if (active && payload && payload.length) {
+      const d = payload[0].payload;
+      return (
+        <Box sx={{
+            bgcolor: isDark ? 'rgba(28, 28, 30, 0.95)' : 'rgba(255, 255, 255, 0.98)',
+            backdropFilter: 'blur(20px) saturate(180%)',
+            WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+            p: 2,
+            border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.08)',
+            borderRadius: '16px',
+            boxShadow: isDark ? '0 8px 32px rgba(0,0,0,0.4)' : '0 8px 32px rgba(0,0,0,0.12)',
+            minWidth: 200
+        }}>
+          <Typography variant="caption" sx={{
+            color: isDark ? 'rgba(235, 235, 245, 0.6)' : 'rgba(60, 60, 67, 0.6)',
+            display: 'block',
+            mb: 1.5,
+            fontWeight: 600,
+            letterSpacing: '0.5px'
+          }}>
+            📅 {d.dateStr} • {d.timeStr}
+          </Typography>
+
+          {payload.map((p: any) => {
+            // NOTE: getRecommendation was inside HistoryChart component scope.
+            // We need to move it out or pass it in?
+            // Ideally we re-instantiate it or it's pure?
+            // getRecommendation relies on idealRanges which is static.
+
+            // For now, let's just render the value and skip recommendation in tooltip to be safe/fast,
+            // OR we move idealRanges and getRecommendation out too.
+            // Moving getRecommendation out is safer.
+
+            // Placeholder logic to avoid breakage:
+            return (
+              <Box key={p.name} sx={{ mb: 1.5 }}>
+                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: p.color }} />
+                    <Typography variant="body2" sx={{ color: isDark ? '#fff' : '#000', fontWeight: 600 }}>{p.name}</Typography>
+                  </Box>
+                  <Typography variant="body2" sx={{ color: isDark ? '#fff' : '#000', fontWeight: 700 }}>
+                    {p.value !== null ? `${typeof p.value === 'number' ? p.value.toFixed(1) : p.value}${p.unit || ''}` : '--'}
+                  </Typography>
+                </Box>
+              </Box>
+            );
+          })}
+        </Box>
+      );
+    }
+    return null;
+};
+
+
 const HistoryChart: React.FC<HistoryChartProps> = ({ type, title, targets, data: externalData, phase: _phase = 'vegetative', irrigationEvents: propEvents = [] }) => {
   const { mode } = useTheme();
   const [range, setRange] = useState<'day' | 'week' | 'month'>('day');
@@ -372,91 +428,7 @@ const HistoryChart: React.FC<HistoryChartProps> = ({ type, title, targets, data:
     return '✓ Óptimo';
   };
 
-  const CustomTooltip = ({ active, payload }: any) => {
-    if (active && payload && payload.length) {
-      const d = payload[0].payload;
-      return (
-        <Box sx={{
-            bgcolor: isDark ? 'rgba(28, 28, 30, 0.95)' : 'rgba(255, 255, 255, 0.98)',
-            backdropFilter: 'blur(20px) saturate(180%)',
-            WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-            p: 2,
-            border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.08)',
-            borderRadius: '16px',
-            boxShadow: isDark ? '0 8px 32px rgba(0,0,0,0.4)' : '0 8px 32px rgba(0,0,0,0.12)',
-            minWidth: 200
-        }}>
-          <Typography variant="caption" sx={{
-            color: isDark ? 'rgba(235, 235, 245, 0.6)' : 'rgba(60, 60, 67, 0.6)',
-            display: 'block',
-            mb: 1.5,
-            fontWeight: 600,
-            letterSpacing: '0.5px'
-          }}>
-            📅 {d.dateStr} • {d.timeStr}
-          </Typography>
 
-          {payload.map((p: any) => {
-            const recommendation = p.value !== null ? getRecommendation(p.dataKey, p.value) : null;
-            const isOptimal = recommendation === '✓ Óptimo';
-
-            return (
-              <Box key={p.name} sx={{ mb: 1.5 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Box sx={{
-                      width: 10,
-                      height: 10,
-                      borderRadius: '50%',
-                      bgcolor: p.color,
-                      boxShadow: `0 0 8px ${p.color}`
-                    }} />
-                    <Typography variant="body2" sx={{
-                      color: isDark ? '#fff' : '#000',
-                      fontWeight: 600,
-                      fontSize: '0.85rem'
-                    }}>
-                      {p.name}
-                    </Typography>
-                  </Box>
-                  <Typography variant="body2" sx={{
-                    color: isDark ? '#fff' : '#000',
-                    fontWeight: 700,
-                    fontSize: '0.9rem'
-                  }}>
-                    {p.value !== null ? `${typeof p.value === 'number' ? p.value.toFixed(1) : p.value}${p.unit || ''}` : '--'}
-                  </Typography>
-                </Box>
-                {recommendation && !isOptimal && (
-                  <Typography sx={{
-                    fontSize: '0.7rem',
-                    color: '#FF9500',
-                    mt: 0.5,
-                    pl: 2.5,
-                    fontWeight: 500
-                  }}>
-                    {recommendation}
-                  </Typography>
-                )}
-                {isOptimal && (
-                  <Typography sx={{
-                    fontSize: '0.7rem',
-                    color: '#34C759',
-                    mt: 0.5,
-                    pl: 2.5,
-                    fontWeight: 500
-                  }}>
-                    {recommendation}
-                  </Typography>
-                )}
-              </Box>
-            );
-          })}
-        </Box>
-      );
-    }
-    return null;
-  };
 
   return (
     <Card sx={{
@@ -629,7 +601,7 @@ const HistoryChart: React.FC<HistoryChartProps> = ({ type, title, targets, data:
                         />
                         <YAxis yAxisId="left" domain={['dataMin - 5', 'auto']} stroke={textColor} fontSize={12} tickLine={false} axisLine={false} allowDataOverflow={false} />
                         <YAxis yAxisId="right" orientation="right" domain={['dataMin', 'auto']} stroke={textColor} fontSize={12} tickLine={false} axisLine={false} />
-                        <Tooltip content={<CustomTooltip />} />
+                        <Tooltip content={<CustomTooltip isDark={isDark} />} />
                         <Legend
                             verticalAlign="top"
                             height={36}

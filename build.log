@@ -1,0 +1,44 @@
+
+> pkgrower-web-app@0.0.0 deploy:frontend
+> npm run build:prod && firebase deploy --only hosting
+
+
+> pkgrower-web-app@0.0.0 build:prod
+> vite build --mode production
+
+vite v5.4.21 building for production...
+transforming...
+✓ 280 modules transformed.
+x Build failed in 23.00s
+error during build:
+[vite:esbuild] Transform failed with 2 errors:
+/Users/israelmenanovion/Desktop/PKGrower/src/components/dashboard/UnifiedAIPanel.tsx:380:40: ERROR: Unexpected closing "Typography" tag does not match opening "Box" tag
+/Users/israelmenanovion/Desktop/PKGrower/src/components/dashboard/UnifiedAIPanel.tsx:381:40: ERROR: Unterminated regular expression
+file: /Users/israelmenanovion/Desktop/PKGrower/src/components/dashboard/UnifiedAIPanel.tsx:380:40
+
+Unexpected closing "Typography" tag does not match opening "Box" tag
+378|                                            ID: {c.id}
+379|                                        </Typography>
+380|                                        </Typography>
+   |                                          ^
+381|                                    </Box>
+382|                                ))}
+
+Unterminated regular expression
+379|                                        </Typography>
+380|                                        </Typography>
+381|                                    </Box>
+   |                                          ^
+382|                                ))}
+383|                            </Box>
+
+    at failureErrorWithLog (/Users/israelmenanovion/Desktop/PKGrower/node_modules/esbuild/lib/main.js:1472:15)
+    at /Users/israelmenanovion/Desktop/PKGrower/node_modules/esbuild/lib/main.js:755:50
+    at responseCallbacks.<computed> (/Users/israelmenanovion/Desktop/PKGrower/node_modules/esbuild/lib/main.js:622:9)
+    at handleIncomingPacket (/Users/israelmenanovion/Desktop/PKGrower/node_modules/esbuild/lib/main.js:677:12)
+    at Socket.readFromStdout (/Users/israelmenanovion/Desktop/PKGrower/node_modules/esbuild/lib/main.js:600:7)
+    at Socket.emit (node:events:508:28)
+    at addChunk (node:internal/streams/readable:559:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:510:3)
+    at Readable.push (node:internal/streams/readable:390:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23)

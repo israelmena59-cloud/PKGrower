@@ -65,6 +65,43 @@ const SERIES_COLORS = {
     default: '#8b5cf6'      // violet-500
 };
 
+// Tooltip with Tailwind classes (Moved outside to prevent esbuild issues)
+const CustomTooltip = ({ active, payload, label, unit }: any) => {
+    if (active && payload && payload.length) {
+        const date = new Date(label);
+        const timeStr = !isNaN(date.getTime())
+            ? date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            : '';
+
+        return (
+            <div className="bg-popover/95 backdrop-blur-md border border-border rounded-xl shadow-xl p-3 min-w-[160px]">
+                <p className="text-muted-foreground text-xs font-semibold mb-2">
+                    {timeStr}
+                </p>
+                {payload.map((p: any, index: number) => (
+                    <div key={index} className="flex items-center justify-between gap-4 mb-1">
+                        <div className="flex items-center gap-2">
+                            <div
+                                className="w-2 h-2 rounded-full shadow-[0_0_8px_currentColor]"
+                                style={{ backgroundColor: p.color, color: p.color }}
+                            />
+                            <span className="text-sm font-medium text-foreground capitalize">
+                                {p.name === 'vp' ? 'VPD' : p.name}
+                            </span>
+                        </div>
+                        <span className="text-sm font-bold text-foreground">
+                            {p.value != null ? Number(p.value).toFixed(1) : '--'}
+                            <span className="text-muted-foreground text-xs ml-0.5">{p.unit || unit}</span>
+                        </span>
+                    </div>
+                ))}
+            </div>
+        );
+    }
+    return null;
+};
+
+
 export const ChartWidget: React.FC<ChartWidgetProps & { lightSchedule?: { on: string, off: string } }> = ({
     data,
     dataKey,
@@ -193,41 +230,7 @@ export const ChartWidget: React.FC<ChartWidgetProps & { lightSchedule?: { on: st
         }
     };
 
-    // Tooltip with Tailwind classes
-    const CustomTooltip = ({ active, payload, label }: any) => {
-        if (active && payload && payload.length) {
-            const date = new Date(label);
-            const timeStr = !isNaN(date.getTime())
-                ? date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                : '';
 
-            return (
-                <div className="bg-popover/95 backdrop-blur-md border border-border rounded-xl shadow-xl p-3 min-w-[160px]">
-                    <p className="text-muted-foreground text-xs font-semibold mb-2">
-                        {timeStr}
-                    </p>
-                    {payload.map((p: any, index: number) => (
-                        <div key={index} className="flex items-center justify-between gap-4 mb-1">
-                            <div className="flex items-center gap-2">
-                                <div
-                                    className="w-2 h-2 rounded-full shadow-[0_0_8px_currentColor]"
-                                    style={{ backgroundColor: p.color, color: p.color }}
-                                />
-                                <span className="text-sm font-medium text-foreground capitalize">
-                                    {p.name === 'vp' ? 'VPD' : p.name}
-                                </span>
-                            </div>
-                            <span className="text-sm font-bold text-foreground">
-                                {p.value != null ? Number(p.value).toFixed(1) : '--'}
-                                <span className="text-muted-foreground text-xs ml-0.5">{p.unit || unit}</span>
-                            </span>
-                        </div>
-                    ))}
-                </div>
-            );
-        }
-        return null;
-    };
 
     const renderChart = () => {
         const commonProps = {
@@ -262,7 +265,8 @@ export const ChartWidget: React.FC<ChartWidgetProps & { lightSchedule?: { on: st
                     {xaxis}
                     <YAxis yAxisId="left" domain={['auto', 'auto']} hide />
                     <YAxis yAxisId="right" orientation="right" domain={['auto', 'auto']} hide />
-                    <Tooltip content={<CustomTooltip />} />
+                    <YAxis yAxisId="right" orientation="right" domain={['auto', 'auto']} hide />
+                    <Tooltip content={<CustomTooltip unit={unit} />} />
                     <Legend
                         verticalAlign="top"
                         height={30}
@@ -318,7 +322,7 @@ export const ChartWidget: React.FC<ChartWidgetProps & { lightSchedule?: { on: st
 
         // Single series mode (original behavior)
         const yaxis = <YAxis domain={['auto', 'auto']} hide />;
-        const tooltip = <Tooltip content={<CustomTooltip />} />;
+        const tooltip = <Tooltip content={<CustomTooltip unit={unit} />} />;
         const refZones = renderReferenceZones();
 
         switch (chartType) {
